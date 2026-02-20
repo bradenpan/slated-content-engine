@@ -468,10 +468,17 @@ def load_scheduled_pins(date_str: str, time_slot: str) -> list[dict]:
     # The schedule is a list of pin objects with scheduled_date and scheduled_slot
     pins = schedule if isinstance(schedule, list) else schedule.get("pins", [])
 
+    # Match pins for this date and slot. The evening slot is special:
+    # Claude assigns "evening-1" and "evening-2" but the workflow calls with "evening".
+    if time_slot == "evening":
+        slot_matches = {"evening", "evening-1", "evening-2"}
+    else:
+        slot_matches = {time_slot}
+
     matching_pins = [
         pin for pin in pins
         if pin.get("scheduled_date") == date_str
-        and pin.get("scheduled_slot") == time_slot
+        and pin.get("scheduled_slot") in slot_matches
     ]
 
     expected_count = SLOT_PIN_COUNTS.get(time_slot, 1)

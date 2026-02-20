@@ -5,7 +5,12 @@ name: Promote to Production & Schedule Pins
 on:
   repository_dispatch:
     types: [promote-and-schedule]
-  workflow_dispatch:  # Manual fallback trigger
+  workflow_dispatch:
+    inputs:
+      override_pin_start_date:
+        description: 'Override pin schedule start date (YYYY-MM-DD). Redistributes all pins across 3 days starting from this date. Leave empty for normal scheduling.'
+        required: false
+        default: ''
 
 concurrency:
   group: pinterest-pipeline
@@ -57,6 +62,39 @@ jobs:
         # Appends entries to content-log.jsonl
         # Updates Sheet and sends Slack notification
         run: python -m src.blog_deployer promote
+
+      - name: Override pin schedule dates (test mode)
+        if: ${{ github.event.inputs.override_pin_start_date != '' }}
+        run: |
+          python -c "
+          import json
+          from datetime import datetime, timedelta
+          from pathlib import Path
+
+          start = datetime.strptime('${{ github.event.inputs.override_pin_start_date }}', '%Y-%m-%d').date()
+          schedule_path = Path('data/pin-schedule.json')
+          if not schedule_path.exists():
+              print('No pin-schedule.json found, skipping redate')
+              exit(0)
+
+          schedule = json.loads(schedule_path.read_text())
+          slots = ['morning', 'afternoon', 'evening-1', 'evening-2']
+          num_days = 3  # spread across 3 days
+          total_slots = num_days * len(slots)
+
+          for i, pin in enumerate(schedule):
+              day_offset = (i // len(slots)) % num_days
+              slot_idx = i % len(slots)
+              pin['scheduled_date'] = (start + timedelta(days=day_offset)).isoformat()
+              pin['scheduled_slot'] = slots[slot_idx]
+
+          schedule_path.write_text(json.dumps(schedule, indent=2))
+          print(f'Redated {len(schedule)} pins across {num_days} days starting {start}')
+          for d in range(num_days):
+              day = start + timedelta(days=d)
+              day_pins = [p for p in schedule if p['scheduled_date'] == day.isoformat()]
+              print(f'  {day}: {len(day_pins)} pins')
+          "
 
       - name: Commit updated data files
         run: |
