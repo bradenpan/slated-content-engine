@@ -1,18 +1,18 @@
 {
   "W8-P01": {
-    "slug": "shrimp-zucchini-noodles",
+    "slug": "herb-crusted-cod-green-beans",
     "title": "This Week's Family Dinner Plan — 5 Light Spring Dinners Under 30 Minutes",
-    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/shrimp-zucchini-noodles.mdx",
+    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/herb-crusted-cod-green-beans.mdx",
     "pillar": 1,
     "content_type": "weekly-plan",
-    "hero_image": "/assets/blog/weekly-plan-light-spring-dinners-30-minutes.jpg",
+    "hero_image": "/assets/blog/weekly-plan-fresh-spring-dinners-under-30-minutes.jpg",
     "status": "success",
     "error": null
   },
   "W8-P02": {
-    "slug": "chicken-and-vegetable-quesadillas",
+    "slug": "loaded-chicken-quesadillas",
     "title": "This Week's Family Dinner Plan — 5 Easy Dinners Everyone Will Eat",
-    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/chicken-and-vegetable-quesadillas.mdx",
+    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/loaded-chicken-quesadillas.mdx",
     "pillar": 1,
     "content_type": "weekly-plan",
     "hero_image": "/assets/blog/weekly-plan-5-easy-dinners-everyone-will-eat.jpg",
@@ -30,12 +30,12 @@
     "error": null
   },
   "W8-P04": {
-    "slug": "family-dinner-agreement-before-cooking",
+    "slug": "family-agree-dinner-before-cooking",
     "title": "How to Get Your Family to Agree on Dinner Before You Cook",
-    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/family-dinner-agreement-before-cooking.mdx",
+    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/family-agree-dinner-before-cooking.mdx",
     "pillar": 2,
     "content_type": "guide",
-    "hero_image": "/assets/blog/family-dinner-agreement-before-cooking.jpg",
+    "hero_image": "/assets/blog/family-agree-dinner-before-cooking.jpg",
     "status": "success",
     "error": null
   },
@@ -70,28 +70,28 @@
     "error": null
   },
   "W8-P08": {
-    "slug": "hellofresh-alternative-better-meal-planning",
+    "slug": "hellofresh-alternative-what-we-do-instead",
     "title": "Why We Quit HelloFresh — And What We Do Instead",
-    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/hellofresh-alternative-better-meal-planning.mdx",
+    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/hellofresh-alternative-what-we-do-instead.mdx",
     "pillar": 4,
     "content_type": "guide",
-    "hero_image": "/assets/blog/hellofresh-alternative-better-meal-planning.jpg",
+    "hero_image": "/assets/blog/hellofresh-alternative-what-we-do-instead.jpg",
     "status": "success",
     "error": null
   },
   "W8-P09": {
-    "slug": "air-fryer-honey-garlic-salmon-high-protein-dinner",
-    "title": "Air Fryer Honey Garlic Salmon — High Protein Dinner Ready in 20 Minutes",
-    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/air-fryer-honey-garlic-salmon-high-protein-dinner.mdx",
+    "slug": "air-fryer-honey-garlic-salmon",
+    "title": "Air Fryer Honey Garlic Salmon — 20-Minute High Protein Dinner",
+    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/air-fryer-honey-garlic-salmon.mdx",
     "pillar": 5,
     "content_type": "recipe",
-    "hero_image": "/assets/blog/air-fryer-honey-garlic-salmon-high-protein-dinner.jpg",
+    "hero_image": "/assets/blog/air-fryer-honey-garlic-salmon.jpg",
     "status": "success",
     "error": null
   },
   "W8-P10": {
     "slug": "instant-pot-gluten-free-chicken-rice-bowl",
-    "title": "Instant Pot Gluten-Free Chicken and Rice Bowl - One-Pot Dinner",
+    "title": "Instant Pot Gluten-Free Chicken and Rice Bowl - 30 Minutes",
     "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/instant-pot-gluten-free-chicken-rice-bowl.mdx",
     "pillar": 5,
     "content_type": "recipe",
