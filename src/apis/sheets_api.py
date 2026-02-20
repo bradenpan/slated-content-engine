@@ -230,6 +230,49 @@ class SheetsAPI:
         """Alias for read_plan_approval_status."""
         return self.read_plan_approval_status()
 
+    def write_deploy_status(self, status: str = "pending_review", preview_url: str = "") -> None:
+        """
+        Write production deploy status to Weekly Review tab row 4.
+
+        Layout: A4="PRODUCTION", B4=status, C4=preview_url.
+        The Apps Script watches B4 for "approved" to trigger promotion.
+
+        Args:
+            status: "pending_review" or "approved".
+            preview_url: Vercel preview URL for reviewing blogs.
+        """
+        try:
+            self.sheets.values().update(
+                spreadsheetId=self.sheet_id,
+                range=f"'{TAB_WEEKLY_REVIEW}'!A4:C4",
+                valueInputOption="RAW",
+                body={"values": [["PRODUCTION", status, preview_url]]},
+            ).execute()
+            logger.info("Deploy status written: %s", status)
+        except Exception as e:
+            raise SheetsAPIError(f"Failed to write deploy status: {e}") from e
+
+    def read_deploy_status(self) -> str:
+        """
+        Read production deploy status from Weekly Review tab cell B4.
+
+        Returns:
+            str: "pending_review" or "approved".
+        """
+        try:
+            result = self.sheets.values().get(
+                spreadsheetId=self.sheet_id,
+                range=f"'{TAB_WEEKLY_REVIEW}'!B4",
+            ).execute()
+
+            values = result.get("values", [[]])
+            status = values[0][0] if values and values[0] else "pending_review"
+            logger.info("Deploy status: %s", status)
+            return status
+        except Exception as e:
+            logger.error("Failed to read deploy status: %s", e)
+            raise SheetsAPIError(f"Failed to read deploy status: {e}") from e
+
     def write_content_queue(
         self,
         blog_posts: list[dict],

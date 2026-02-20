@@ -135,7 +135,7 @@ class GitHubAPI:
         self,
         mdx_files: list[tuple[str, str]],
         images: Optional[list[tuple[str, bytes]]] = None,
-        branch: str = "main",
+        branch: str = "develop",
     ) -> str:
         """
         Commit multiple blog posts and images in a single commit.
@@ -282,6 +282,41 @@ class GitHubAPI:
         )
         return False
 
+    def merge_develop_to_main(self, commit_message: Optional[str] = None) -> str:
+        """
+        Merge the develop branch into main for production deployment.
+
+        Uses GitHub's merge API to create a merge commit.
+
+        Args:
+            commit_message: Custom merge commit message.
+
+        Returns:
+            str: The merge commit SHA.
+
+        Raises:
+            GitHubAPIError: If the merge fails (e.g., conflicts).
+        """
+        if not commit_message:
+            commit_message = "Merge develop into main (pinterest pipeline deploy)"
+
+        try:
+            merge_result = self.repo.merge(
+                base="main",
+                head="develop",
+                commit_message=commit_message,
+            )
+            if merge_result is None:
+                # No merge needed — branches already in sync
+                logger.info("No merge needed, develop and main are already in sync.")
+                ref = self.repo.get_git_ref("heads/main")
+                return ref.object.sha
+
+            logger.info("Merged develop into main: SHA %s", merge_result.sha[:8])
+            return merge_result.sha
+        except Exception as e:
+            raise GitHubAPIError(f"Failed to merge develop into main: {e}") from e
+
     def create_branch(self, name: str, source_branch: str = "main") -> str:
         """
         Create a new branch from the specified source branch.
@@ -327,7 +362,7 @@ class GitHubAPI:
         self,
         files: list[dict],
         commit_message: str,
-        branch: str = "main",
+        branch: str = "develop",
     ) -> str:
         """
         Commit multiple files atomically using the Git Data API (tree + commit).

@@ -210,6 +210,230 @@ class BlogDeployer:
 
         return results
 
+    def deploy_to_preview(self) -> dict:
+        """
+        Deploy approved content to the develop branch for preview review.
+
+        This is Phase 1 of the two-phase deployment:
+        1. Commits blog posts to develop branch (Vercel preview deploy)
+        2. Saves approved pin data for later scheduling
+        3. Writes PRODUCTION status to Sheet for promotion approval
+        4. Sends Slack notification with review instructions
+
+        Returns:
+            dict: Deployment results.
+        """
+        logger.info("Starting preview deployment to develop branch")
+
+        results = {
+            "blog_deployed": [],
+            "blog_failed": [],
+            "pins_saved": 0,
+        }
+
+        # Read content approvals from Google Sheets
+        try:
+            approvals = self.sheets.read_content_approvals()
+        except Exception as e:
+            logger.error("Failed to read content approvals: %s", e)
+            approvals = _build_fallback_approvals()
+
+        approved_blogs = [
+            item for item in approvals
+            if item.get("type") == "blog" and item.get("status") == "approved"
+        ]
+        approved_pins = [
+            item for item in approvals
+            if item.get("type") == "pin" and item.get("status") == "approved"
+        ]
+
+        logger.info(
+            "Approved content: %d blog posts, %d pins",
+            len(approved_blogs), len(approved_pins),
+        )
+
+        # Deploy blog posts to develop branch
+        if approved_blogs:
+            deploy_result = self._deploy_blog_posts(approved_blogs)
+            results["blog_deployed"] = deploy_result["deployed"]
+            results["blog_failed"] = deploy_result["failed"]
+        else:
+            logger.info("No approved blog posts to deploy")
+
+        # Save approved pin count for reference
+        results["pins_saved"] = len(approved_pins)
+
+        # Write PRODUCTION status to Sheet for promotion approval
+        try:
+            self.sheets.write_deploy_status(
+                status="pending_review",
+                preview_url="Check Vercel dashboard for preview URL",
+            )
+        except Exception as e:
+            logger.error("Failed to write deploy status to Sheet: %s", e)
+
+        # Send Slack notification
+        try:
+            deployed_count = len(results["blog_deployed"])
+            failed_count = len(results["blog_failed"])
+            self.slack.notify(
+                f"Preview deploy complete: {deployed_count} blog posts on develop branch, "
+                f"{results['pins_saved']} pins ready to schedule.\n"
+                f"Review the blog posts on your Vercel preview deployment.\n"
+                f"When ready, go to the Google Sheet > Weekly Review tab > "
+                f"change cell B4 from 'pending_review' to 'approved' to push to production.",
+                level="success" if failed_count == 0 else "warning",
+            )
+        except Exception as e:
+            logger.error("Failed to send Slack notification: %s", e)
+
+        logger.info(
+            "Preview deploy complete: %d blogs deployed, %d failed, %d pins saved",
+            len(results["blog_deployed"]),
+            len(results["blog_failed"]),
+            results["pins_saved"],
+        )
+
+        return results
+
+    def promote_to_production(self) -> dict:
+        """
+        Merge develop to main, verify URLs, and schedule pins.
+
+        This is Phase 2 of the two-phase deployment:
+        1. Merges develop into main (triggers Vercel production deploy)
+        2. Verifies blog post URLs are live on production
+        3. Creates pin posting schedule
+        4. Appends entries to content-log.jsonl
+        5. Updates Sheet and sends Slack notification
+
+        Returns:
+            dict: Promotion results.
+        """
+        logger.info("Starting production promotion: merging develop -> main")
+
+        results = {
+            "merge_sha": "",
+            "verification_results": {},
+            "pins_scheduled": 0,
+            "content_log_entries": 0,
+        }
+
+        # Step 1: Merge develop into main
+        try:
+            merge_sha = self.github.merge_develop_to_main(
+                commit_message=f"Deploy blog posts to production ({date.today().isoformat()})"
+            )
+            results["merge_sha"] = merge_sha
+            logger.info("Merged develop -> main: %s", merge_sha[:8] if merge_sha else "already in sync")
+        except Exception as e:
+            logger.error("Failed to merge develop into main: %s", e)
+            try:
+                self.slack.notify_failure(
+                    "promote_to_production",
+                    f"Merge develop -> main failed: {e}",
+                )
+            except Exception:
+                pass
+            raise
+
+        # Step 2: Read approvals to get blog slugs and pin data
+        try:
+            approvals = self.sheets.read_content_approvals()
+        except Exception as e:
+            logger.error("Failed to read content approvals: %s", e)
+            approvals = _build_fallback_approvals()
+
+        approved_blogs = [
+            item for item in approvals
+            if item.get("type") == "blog" and item.get("status") == "approved"
+        ]
+        approved_pins = [
+            item for item in approvals
+            if item.get("type") == "pin" and item.get("status") == "approved"
+        ]
+
+        # Step 3: Verify blog post URLs on production
+        deployed_slugs = [
+            b.get("slug") or b.get("id", "") for b in approved_blogs
+        ]
+        if deployed_slugs:
+            results["verification_results"] = self.verify_urls(
+                deployed_slugs, max_wait=DEPLOY_VERIFY_TIMEOUT
+            )
+
+            failed_verifications = [
+                slug for slug, ok in results["verification_results"].items()
+                if not ok
+            ]
+            if failed_verifications:
+                logger.warning("URLs failed verification: %s", failed_verifications)
+                retry_results = self.verify_urls(failed_verifications, max_wait=60)
+                results["verification_results"].update(retry_results)
+
+                still_failed = [s for s, ok in retry_results.items() if not ok]
+                if still_failed:
+                    logger.error("URLs still failing after retry: %s", still_failed)
+                    try:
+                        self.slack.notify_failure(
+                            "promote_to_production",
+                            f"Blog post URLs failed to resolve: {still_failed}",
+                        )
+                    except Exception:
+                        pass
+
+        # Step 4: Update Sheet with live URLs
+        try:
+            for slug in deployed_slugs:
+                if results["verification_results"].get(slug, False):
+                    live_url = f"{BLOG_BASE_URL}/{slug}"
+                    self.sheets.update_pin_status(
+                        pin_id=slug,
+                        status="deployed",
+                        pinterest_pin_id=live_url,
+                    )
+        except Exception as e:
+            logger.error("Failed to update Sheet with live URLs: %s", e)
+
+        # Step 5: Create pin schedule
+        if approved_pins:
+            results["pins_scheduled"] = self._create_pin_schedule(
+                approved_pins, plan_path=None
+            )
+
+        # Step 6: Append to content log
+        results["content_log_entries"] = self._append_to_content_log(
+            blog_results=[{"slug": s} for s in deployed_slugs],
+            pin_data=approved_pins,
+        )
+
+        # Step 7: Update deploy status
+        try:
+            self.sheets.write_deploy_status(status="deployed")
+        except Exception as e:
+            logger.error("Failed to update deploy status: %s", e)
+
+        # Step 8: Slack notification
+        try:
+            verified_count = sum(1 for ok in results["verification_results"].values() if ok)
+            self.slack.notify(
+                f"Content is live on goslated.com! "
+                f"{verified_count} blog posts verified, "
+                f"{results['pins_scheduled']} pins scheduled for this week. "
+                f"First pins post tomorrow.",
+                level="success",
+            )
+        except Exception as e:
+            logger.error("Failed to send Slack notification: %s", e)
+
+        logger.info(
+            "Production promotion complete: merge=%s, %d pins scheduled",
+            results["merge_sha"][:8] if results["merge_sha"] else "n/a",
+            results["pins_scheduled"],
+        )
+
+        return results
+
     def deploy_approved_posts(self, posts_dir: Path) -> dict:
         """
         Deploy all approved blog posts from a specific directory.
@@ -609,14 +833,30 @@ def _build_topic_summary(pin_data: dict) -> str:
 
 
 if __name__ == "__main__":
+    import sys
+
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
+
+    mode = sys.argv[1] if len(sys.argv) > 1 else "preview"
     deployer = BlogDeployer()
-    print("Blog deployer initialized")
-    results = deployer.deploy_approved_content()
-    print(
-        f"Deployed: {len(results.get('blog_deployed', []))} blog posts, "
-        f"Scheduled: {results.get('pins_scheduled', 0)} pins"
-    )
+
+    if mode == "preview":
+        print("Deploying approved content to preview (develop branch)...")
+        results = deployer.deploy_to_preview()
+        print(
+            f"Preview deploy: {len(results.get('blog_deployed', []))} blog posts to develop, "
+            f"{results.get('pins_saved', 0)} pins saved for scheduling"
+        )
+    elif mode == "promote":
+        print("Promoting content to production (main branch)...")
+        results = deployer.promote_to_production()
+        print(
+            f"Production: merged develop -> main, "
+            f"{results.get('pins_scheduled', 0)} pins scheduled"
+        )
+    else:
+        print(f"Unknown mode: {mode}. Use 'preview' or 'promote'.")
+        sys.exit(1)

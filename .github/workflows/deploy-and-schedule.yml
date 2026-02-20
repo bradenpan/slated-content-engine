@@ -1,10 +1,11 @@
-name: Deploy & Schedule
+name: Deploy to Preview
 
 # Triggered by content approval in Google Sheet (via Apps Script -> repository_dispatch)
-# Deploys blog posts to goslated.com (Vercel) + loads pin posting schedule
+# Deploys blog posts to goslated.com DEVELOP branch (Vercel preview deployment)
+# Does NOT push to production — that requires separate promotion approval
 on:
   repository_dispatch:
-    types: [deploy-and-schedule]
+    types: [deploy-to-preview]
   workflow_dispatch:  # Manual fallback trigger
 
 concurrency:
@@ -12,23 +13,15 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  PINTEREST_APP_ID: ${{ secrets.PINTEREST_APP_ID }}
-  PINTEREST_APP_SECRET: ${{ secrets.PINTEREST_APP_SECRET }}
-  PINTEREST_ACCESS_TOKEN: ${{ secrets.PINTEREST_ACCESS_TOKEN }}
-  PINTEREST_REFRESH_TOKEN: ${{ secrets.PINTEREST_REFRESH_TOKEN }}
-  PINTEREST_ENVIRONMENT: production
-  ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+  GOOGLE_SHEETS_CREDENTIALS_JSON: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS_JSON }}
   GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
   GOOGLE_SHEET_URL: ${{ secrets.GOOGLE_SHEET_URL }}
   SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
   GOSLATED_REPO: ${{ secrets.GOSLATED_REPO }}
   GOSLATED_GITHUB_TOKEN: ${{ secrets.GOSLATED_GITHUB_TOKEN }}
-  UNSPLASH_API_KEY: ${{ secrets.UNSPLASH_API_KEY }}
-  PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
-  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
 jobs:
-  deploy-and-schedule:
+  deploy-to-preview:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -47,29 +40,19 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Set up Google credentials
-        run: |
-          echo "${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}" | base64 -d > /tmp/google-credentials.json
-          echo "GOOGLE_APPLICATION_CREDENTIALS=/tmp/google-credentials.json" >> $GITHUB_ENV
-
-      - name: Refresh Pinterest token
-        run: python -m src.token_manager
-
-      - name: Deploy blog posts and load pin schedule
-        # Commits approved MDX files + hero images to goslated.com repo
-        # Vercel auto-deploys within ~60 seconds
-        # Verifies blog post URLs are live (retry with backoff)
-        # Loads approved pins into posting schedule
-        # Updates content-log.jsonl with new entries and pin schedule
-        # Handles Sheet updates and Slack notifications internally
-        run: python -m src.blog_deployer
+      - name: Deploy blog posts to develop branch
+        # Commits approved MDX files + hero images to goslated.com develop branch
+        # Vercel auto-creates a preview deployment for the develop branch
+        # Writes PRODUCTION status to Sheet for promotion approval
+        # Sends Slack notification with review instructions
+        run: python -m src.blog_deployer preview
 
       - name: Commit updated data files
         run: |
           git config user.name "pinterest-pipeline-bot"
           git config user.email "bot@pinterest-pipeline.local"
           git add data/ analysis/
-          git diff --staged --quiet || git commit -m "chore: update analytics and data files [skip ci]"
+          git diff --staged --quiet || git commit -m "chore: preview deploy data [skip ci]"
           git push
 
       - name: Notify failure
@@ -78,5 +61,5 @@ jobs:
           python -c "
           from src.apis.slack_notify import SlackNotify
           notifier = SlackNotify()
-          notifier.notify_failure('${{ github.workflow }}', 'Workflow failed. Check: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}')
+          notifier.notify_failure('${{ github.workflow }}', 'Preview deploy failed. Check: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}')
           "

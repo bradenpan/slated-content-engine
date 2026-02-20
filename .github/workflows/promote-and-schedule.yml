@@ -1,0 +1,76 @@
+name: Promote to Production & Schedule Pins
+
+# Triggered by production approval in Google Sheet (via Apps Script -> repository_dispatch)
+# Merges develop -> main on goslated.com, verifies URLs, schedules pins
+on:
+  repository_dispatch:
+    types: [promote-and-schedule]
+  workflow_dispatch:  # Manual fallback trigger
+
+concurrency:
+  group: pinterest-pipeline
+  cancel-in-progress: false
+
+env:
+  PINTEREST_APP_ID: ${{ secrets.PINTEREST_APP_ID }}
+  PINTEREST_APP_SECRET: ${{ secrets.PINTEREST_APP_SECRET }}
+  PINTEREST_ACCESS_TOKEN: ${{ secrets.PINTEREST_ACCESS_TOKEN }}
+  PINTEREST_REFRESH_TOKEN: ${{ secrets.PINTEREST_REFRESH_TOKEN }}
+  PINTEREST_ENVIRONMENT: production
+  GOOGLE_SHEETS_CREDENTIALS_JSON: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS_JSON }}
+  GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+  GOOGLE_SHEET_URL: ${{ secrets.GOOGLE_SHEET_URL }}
+  SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+  GOSLATED_REPO: ${{ secrets.GOSLATED_REPO }}
+  GOSLATED_GITHUB_TOKEN: ${{ secrets.GOSLATED_GITHUB_TOKEN }}
+  UNSPLASH_API_KEY: ${{ secrets.UNSPLASH_API_KEY }}
+  PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+jobs:
+  promote-and-schedule:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Refresh Pinterest token
+        run: python -m src.token_manager
+
+      - name: Merge develop to main, verify, and schedule pins
+        # Merges develop -> main on goslated.com (triggers Vercel production deploy)
+        # Verifies blog post URLs are live on production
+        # Creates pin posting schedule (data/pin-schedule.json)
+        # Appends entries to content-log.jsonl
+        # Updates Sheet and sends Slack notification
+        run: python -m src.blog_deployer promote
+
+      - name: Commit updated data files
+        run: |
+          git config user.name "pinterest-pipeline-bot"
+          git config user.email "bot@pinterest-pipeline.local"
+          git add data/ analysis/
+          git diff --staged --quiet || git commit -m "chore: production deploy + pin schedule [skip ci]"
+          git push
+
+      - name: Notify failure
+        if: failure()
+        run: |
+          python -c "
+          from src.apis.slack_notify import SlackNotify
+          notifier = SlackNotify()
+          notifier.notify_failure('${{ github.workflow }}', 'Production promotion failed. Check: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}')
+          "
