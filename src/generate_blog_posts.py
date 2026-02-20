@@ -157,33 +157,9 @@ def generate_blog_posts(plan_path: Optional[str] = None) -> dict:
     # Save generation results metadata to a JSON file for downstream steps
     _save_generation_metadata(results)
 
-    # Write blog posts to Content Queue sheet for review
-    try:
-        sheets = SheetsAPI()
-        blog_queue_items = [
-            {
-                "post_id": pid,
-                "title": r.get("title", ""),
-                "content_type": r.get("content_type", ""),
-                "pillar": r.get("pillar", ""),
-                "summary": (r.get("mdx_content", "") or "")[:200],
-                "url": "",  # URL assigned after deploy
-            }
-            for pid, r in results.items()
-            if r["status"] == "success"
-        ]
-        # Write blog posts now; pins will be appended by generate_pin_content
-        sheets.write_content_queue(blog_posts=blog_queue_items, pins=[])
-        logger.info("Wrote %d blog posts to Content Queue sheet", len(blog_queue_items))
-    except Exception as e:
-        logger.error("Failed to write Content Queue: %s", e)
-
-    # Send Slack notification
-    try:
-        slack = SlackNotify()
-        slack.notify_content_ready(num_pins=0, num_blog_posts=succeeded)
-    except Exception as e:
-        logger.error("Failed to send Slack notification: %s", e)
+    # Content Queue sheet write and Slack notification are handled by
+    # generate_pin_content.py, which runs after this step and writes
+    # both blog posts and pins together.
 
     return results
 

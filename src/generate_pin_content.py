@@ -765,4 +765,6 @@ if __name__ == "__main__":
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
-    print("Pin content generator - run via generate-content.yml workflow")
+    print("Starting pin content generation...")
+    results = generate_pin_content()
+    print(f"Generated {len(results)} pins")
