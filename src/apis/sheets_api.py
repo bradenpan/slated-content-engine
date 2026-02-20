@@ -181,7 +181,7 @@ class SheetsAPI:
                     str(post.get("content_type", "")),
                     str(post.get("topic", "")),
                     str(post.get("pillar", "")),
-                    str(post.get("keywords", "")),
+                    ", ".join([post.get("primary_keyword", "")] + post.get("secondary_keywords", [])),
                 ])
 
         # Pins section
@@ -195,7 +195,7 @@ class SheetsAPI:
                     str(pin.get("pin_id", "")),
                     str(pin.get("pin_type", "")),
                     str(pin.get("target_board", "")),
-                    str(pin.get("schedule", "")),
+                    f"{pin.get('scheduled_date', '')} / {pin.get('scheduled_slot', '')}",
                     str(pin.get("source_post_id", "")),
                 ])
 
