@@ -430,19 +430,19 @@ def generate_content_memory_summary() -> str:
     # -------------------------------------------------------
     recent_entries = [
         e for e in content_log
-        if _parse_date(e.get("date")) and _parse_date(e.get("date")) >= four_weeks_ago
+        if _parse_date(_get_entry_date(e)) and _parse_date(_get_entry_date(e)) >= four_weeks_ago
     ]
 
     section_lines = ["## 1. RECENT TOPICS (Last 4 Weeks)\n"]
     if recent_entries:
         # Deduplicate by blog_slug to show unique blog posts
         seen_slugs: set = set()
-        for entry in sorted(recent_entries, key=lambda e: e.get("date", ""), reverse=True):
+        for entry in sorted(recent_entries, key=lambda e: _get_entry_date(e), reverse=True):
             slug = entry.get("blog_slug", "")
             if slug and slug not in seen_slugs:
                 seen_slugs.add(slug)
                 section_lines.append(
-                    f"- [{entry.get('date')}] P{entry.get('pillar', '?')}: "
+                    f"- [{_get_entry_date(entry)}] P{entry.get('pillar', '?')}: "
                     f"{entry.get('blog_title', slug)} "
                     f"({entry.get('content_type', 'unknown')})"
                 )
@@ -549,7 +549,7 @@ def generate_content_memory_summary() -> str:
         pk = entry.get("primary_keyword", "")
         if pk:
             keyword_counts[pk] += 1
-            entry_date = entry.get("date", "")
+            entry_date = _get_entry_date(entry)
             if entry_date > keyword_last_used.get(pk, ""):
                 keyword_last_used[pk] = entry_date
             keyword_performance[pk]["impressions"] += entry.get("impressions", 0)
@@ -559,7 +559,7 @@ def generate_content_memory_summary() -> str:
         # Also count secondary keywords
         for sk in entry.get("secondary_keywords", []):
             keyword_counts[sk] += 1
-            entry_date = entry.get("date", "")
+            entry_date = _get_entry_date(entry)
             if entry_date > keyword_last_used.get(sk, ""):
                 keyword_last_used[sk] = entry_date
 
@@ -590,7 +590,7 @@ def generate_content_memory_summary() -> str:
 
     recent_image_entries = [
         e for e in content_log
-        if _parse_date(e.get("date")) and _parse_date(e.get("date")) >= ninety_days_ago
+        if _parse_date(_get_entry_date(e)) and _parse_date(_get_entry_date(e)) >= ninety_days_ago
     ]
 
     image_ids = []
@@ -621,7 +621,7 @@ def generate_content_memory_summary() -> str:
         if not slug:
             continue
 
-        entry_date = entry.get("date", "")
+        entry_date = _get_entry_date(entry)
         if slug not in slug_data:
             slug_data[slug] = {
                 "title": entry.get("blog_title", slug),
@@ -673,7 +673,7 @@ def generate_content_memory_summary() -> str:
 
     recent_60d_entries = [
         e for e in content_log
-        if _parse_date(e.get("date")) and _parse_date(e.get("date")) >= sixty_days_ago
+        if _parse_date(_get_entry_date(e)) and _parse_date(_get_entry_date(e)) >= sixty_days_ago
     ]
 
     # Count treatments per URL in the last 60 days
@@ -690,7 +690,7 @@ def generate_content_memory_summary() -> str:
             }
         url_treatments[slug]["treatment_count"] += 1
         url_treatments[slug]["treatments"].append({
-            "date": entry.get("date"),
+            "date": _get_entry_date(entry),
             "treatment_number": entry.get("treatment_number", 1),
         })
 
@@ -802,7 +802,7 @@ def validate_plan(
     recent_topics = set()
     recent_slugs = set()
     for entry in content_log:
-        entry_date = _parse_date(entry.get("date"))
+        entry_date = _parse_date(_get_entry_date(entry))
         if entry_date and entry_date >= four_weeks_ago:
             topic = entry.get("topic_summary", "").lower()
             if topic:
@@ -952,6 +952,23 @@ def _load_content_log() -> list[dict]:
         pass
 
     return entries
+
+
+def _get_entry_date(entry: dict) -> str:
+    """
+    Get the date string from a content log entry.
+
+    Content log entries may have the date under "date" (written by
+    blog_deployer at schedule time) or "posted_date" (written by
+    post_pins at posting time). This helper checks both fields.
+
+    Args:
+        entry: Content log entry dict.
+
+    Returns:
+        Date string (YYYY-MM-DD) or empty string if neither field exists.
+    """
+    return entry.get("date") or entry.get("posted_date", "")
 
 
 def _parse_date(date_str: Optional[str]) -> Optional[date]:
