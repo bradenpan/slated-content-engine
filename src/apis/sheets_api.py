@@ -189,14 +189,14 @@ class SheetsAPI:
         if pins:
             rows.append([""])
             rows.append(["Pins Planned:", str(len(pins))])
-            rows.append(["ID", "Type", "Board", "Schedule", "Source Post"])
+            rows.append(["ID", "Topic", "Board", "Schedule", "Type"])
             for pin in pins:
                 rows.append([
                     str(pin.get("pin_id", "")),
-                    str(pin.get("pin_type", "")),
+                    str(pin.get("pin_topic", "")),
                     str(pin.get("target_board", "")),
                     f"{pin.get('scheduled_date', '')} / {pin.get('scheduled_slot', '')}",
-                    str(pin.get("source_post_id", "")),
+                    str(pin.get("pin_type", "")),
                 ])
 
         self._clear_and_write(TAB_WEEKLY_REVIEW, rows)

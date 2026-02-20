@@ -169,11 +169,13 @@ class ClaudeAPI:
 
         system = (
             "You are a Pinterest content strategist for Slated, a family meal planning app. "
-            "Generate a detailed weekly content plan in valid JSON format. "
+            "Generate a detailed weekly content plan. "
             "The plan must include 'blog_posts' (array of 8-10 blog post specs) and "
             "'pins' (array of 28 pin specs derived from those posts). "
             "Follow the strategy document precisely for pillar mix, funnel layers, "
-            "and board distribution constraints."
+            "and board distribution constraints. "
+            "IMPORTANT: Output ONLY valid JSON. No explanations, reasoning, or text before or after the JSON. "
+            "Your response must start with { and end with }."
         )
 
         logger.info("Generating weekly content plan...")
@@ -606,8 +608,8 @@ class ClaudeAPI:
         """
         Parse a JSON response from Claude, handling common formatting issues.
 
-        Claude sometimes wraps JSON in markdown code fences. This method
-        strips those before parsing.
+        Claude sometimes wraps JSON in markdown code fences or prefixes it
+        with reasoning text. This method handles both cases.
 
         Args:
             response_text: Raw response text from Claude.
@@ -622,25 +624,55 @@ class ClaudeAPI:
         text = response_text.strip()
 
         # Strip markdown code fences if present
-        if text.startswith("```json"):
-            text = text[7:]
-        elif text.startswith("```"):
-            text = text[3:]
-        if text.endswith("```"):
-            text = text[:-3]
-        text = text.strip()
+        if "```json" in text:
+            start = text.index("```json") + 7
+            end = text.index("```", start) if "```" in text[start:] else len(text)
+            text = text[start:end].strip()
+        elif "```" in text and (text.startswith("```") or "{" not in text.split("```")[0]):
+            parts = text.split("```")
+            if len(parts) >= 3:
+                text = parts[1].strip()
+            elif text.startswith("```"):
+                text = text[3:]
+                if text.endswith("```"):
+                    text = text[:-3]
+                text = text.strip()
 
+        # Try direct parse first
         try:
             return json.loads(text)
-        except json.JSONDecodeError as e:
-            logger.error(
-                "Failed to parse %s JSON response. First 500 chars: %s",
-                context_label, text[:500],
-            )
-            raise ClaudeAPIError(
-                f"Failed to parse {context_label} response as JSON: {e}. "
-                f"Response starts with: {text[:200]}"
-            ) from e
+        except json.JSONDecodeError:
+            pass
+
+        # Claude sometimes prefixes JSON with reasoning text.
+        # Find the first { or [ that starts valid JSON.
+        for i, ch in enumerate(text):
+            if ch == '{':
+                # Find matching closing brace from the end
+                for j in range(len(text) - 1, i, -1):
+                    if text[j] == '}':
+                        try:
+                            return json.loads(text[i:j + 1])
+                        except json.JSONDecodeError:
+                            break
+                break
+            elif ch == '[':
+                for j in range(len(text) - 1, i, -1):
+                    if text[j] == ']':
+                        try:
+                            return json.loads(text[i:j + 1])
+                        except json.JSONDecodeError:
+                            break
+                break
+
+        logger.error(
+            "Failed to parse %s JSON response. First 500 chars: %s",
+            context_label, text[:500],
+        )
+        raise ClaudeAPIError(
+            f"Failed to parse {context_label} response as JSON. "
+            f"Response starts with: {text[:200]}"
+        )
 
 
 if __name__ == "__main__":
