@@ -8,7 +8,7 @@ on:
   workflow_dispatch:       # Manual fallback trigger
 
 concurrency:
-  group: pinterest-pipeline
+  group: pinterest-posting
   cancel-in-progress: false
 
 env:
@@ -17,15 +17,12 @@ env:
   PINTEREST_ACCESS_TOKEN: ${{ secrets.PINTEREST_ACCESS_TOKEN }}
   PINTEREST_REFRESH_TOKEN: ${{ secrets.PINTEREST_REFRESH_TOKEN }}
   PINTEREST_ENVIRONMENT: production
-  ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+  GOOGLE_SHEETS_CREDENTIALS_JSON: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS_JSON }}
   GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
   GOOGLE_SHEET_URL: ${{ secrets.GOOGLE_SHEET_URL }}
   SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
   GOSLATED_REPO: ${{ secrets.GOSLATED_REPO }}
   GOSLATED_GITHUB_TOKEN: ${{ secrets.GOSLATED_GITHUB_TOKEN }}
-  UNSPLASH_API_KEY: ${{ secrets.UNSPLASH_API_KEY }}
-  PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
-  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
 jobs:
   post-afternoon:
@@ -47,20 +44,10 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Set up Google credentials
-        run: |
-          echo "${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}" | base64 -d > /tmp/google-credentials.json
-          echo "GOOGLE_APPLICATION_CREDENTIALS=/tmp/google-credentials.json" >> $GITHUB_ENV
-
       - name: Refresh Pinterest token
         run: python -m src.token_manager
 
       - name: Post pins for afternoon slot
-        # 1. Applies random jitter (0-90 min sleep)
-        # 2. Reads approved pins for today's afternoon slot from Sheet
-        # 3. Posts 1 pin via Pinterest API
-        # 4. Updates content-log.jsonl + Google Sheet
-        # 5. Sends Slack notification internally
         run: python -m src.post_pins afternoon
 
       - name: Commit updated data files
@@ -68,7 +55,7 @@ jobs:
           git config user.name "pinterest-pipeline-bot"
           git config user.email "bot@pinterest-pipeline.local"
           git add data/ analysis/
-          git diff --staged --quiet || git commit -m "chore: update analytics and data files [skip ci]"
+          git diff --staged --quiet || git commit -m "chore: update post log [skip ci]"
           git push
 
       - name: Notify failure

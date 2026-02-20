@@ -18,6 +18,7 @@ env:
   PINTEREST_REFRESH_TOKEN: ${{ secrets.PINTEREST_REFRESH_TOKEN }}
   PINTEREST_ENVIRONMENT: production
   ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+  GOOGLE_SHEETS_CREDENTIALS_JSON: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS_JSON }}
   GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
   GOOGLE_SHEET_URL: ${{ secrets.GOOGLE_SHEET_URL }}
   SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
@@ -46,17 +47,6 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r requirements.txt
-
-      - name: Install Playwright browsers
-        run: |
-          pip install playwright
-          playwright install chromium
-          playwright install-deps
-
-      - name: Set up Google credentials
-        run: |
-          echo "${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}" | base64 -d > /tmp/google-credentials.json
-          echo "GOOGLE_APPLICATION_CREDENTIALS=/tmp/google-credentials.json" >> $GITHUB_ENV
 
       - name: Refresh Pinterest token
         run: python -m src.token_manager
