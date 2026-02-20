@@ -2,8 +2,8 @@
 Pin Image Assembler — HTML/CSS Template to Rendered PNG
 
 Takes an HTML/CSS pin template, injects dynamic content (hero image, title
-text, branding), and renders it to a 1000x1500px PNG image using Playwright
-(headless Chromium).
+text, branding), and renders it to a 1000x1500px PNG image using Puppeteer
+(headless Chromium) via a Node.js subprocess (render_pin.js).
 
 Pin templates are in templates/pins/ with subdirectories per template type:
 - recipe-pin/ — Food photo top 60-70%, overlay bar bottom 30-40%
@@ -14,19 +14,20 @@ Pin templates are in templates/pins/ with subdirectories per template type:
 
 Each template has 3 visual variants (A, B, C) in a single HTML file.
 The assembler selects the active variant, injects content, inlines CSS,
-and renders via Playwright screenshot.
+and renders via Puppeteer screenshot.
 
 All pins are 1000x1500px (2:3 ratio) with text in the center 80%
 safe zone. Text must be readable at ~300px thumbnail width.
 """
 
-import asyncio
 import base64
 import html as html_module
 import json
 import logging
 import os
 import random
+import subprocess
+import tempfile
 from pathlib import Path
 from typing import Any, Optional
 
@@ -39,12 +40,18 @@ TEMPLATES_DIR = _PROJECT_ROOT / "templates" / "pins"
 SHARED_DIR = TEMPLATES_DIR / "shared"
 DEFAULT_OUTPUT_DIR = _PROJECT_ROOT / "test_output"
 
+# Path to the Node.js render script
+RENDER_SCRIPT = _PROJECT_ROOT / "render_pin.js"
+
 # Pin canvas dimensions
 PIN_WIDTH = 1000
 PIN_HEIGHT = 1500
 
 # Maximum output PNG file size target (bytes)
 MAX_PNG_SIZE = 500 * 1024  # 500 KB
+
+# Variant number-to-letter mapping (callers may pass int or str)
+_VARIANT_MAP = {1: "A", 2: "B", 3: "C", "1": "A", "2": "B", "3": "C"}
 
 # Valid template names and their variant labels
 TEMPLATE_CONFIGS = {
@@ -84,7 +91,7 @@ class PinAssemblerError(Exception):
 def _image_to_data_uri(image_path: str) -> str:
     """Convert a local image file path to a base64 data URI.
 
-    This is critical for Playwright rendering — external file:// URLs
+    This is critical for headless rendering — external file:// URLs
     and network requests may not work reliably in headless mode.
     """
     path = Path(image_path)
@@ -171,12 +178,21 @@ def _build_infographic_steps_html(steps: list[dict], variant: str) -> str:
     return "\n".join(html_parts)
 
 
+def _normalize_variant(variant) -> str:
+    """Normalize variant to a letter (A, B, C). Accepts int, str int, or letter."""
+    if variant in _VARIANT_MAP:
+        return _VARIANT_MAP[variant]
+    if isinstance(variant, str) and variant.upper() in ("A", "B", "C"):
+        return variant.upper()
+    return "A"
+
+
 class PinAssembler:
     """Assembles pin images from HTML/CSS templates + dynamic content.
 
-    Uses Playwright (headless Chromium) to render HTML templates to PNG.
-    Templates are loaded from the templates/pins/ directory, CSS is inlined,
-    and variables are injected before rendering.
+    Uses Puppeteer (headless Chromium) via Node.js subprocess to render
+    HTML templates to PNG. Templates are loaded from the templates/pins/
+    directory, CSS is inlined, and variables are injected before rendering.
     """
 
     def __init__(self, templates_dir: Optional[Path] = None):
@@ -188,34 +204,6 @@ class PinAssembler:
         """
         self.templates_dir = templates_dir or TEMPLATES_DIR
         self.shared_dir = self.templates_dir / "shared"
-        self._browser = None
-        self._playwright = None
-
-    async def _ensure_browser(self):
-        """Lazily initialize Playwright browser."""
-        if self._browser is None:
-            from playwright.async_api import async_playwright
-
-            self._playwright = await async_playwright().start()
-            self._browser = await self._playwright.chromium.launch(
-                headless=True,
-                args=[
-                    "--no-sandbox",
-                    "--disable-setuid-sandbox",
-                    "--disable-dev-shm-usage",
-                    "--disable-gpu",
-                    "--font-render-hinting=none",
-                ]
-            )
-
-    async def _close_browser(self):
-        """Close browser and Playwright."""
-        if self._browser:
-            await self._browser.close()
-            self._browser = None
-        if self._playwright:
-            await self._playwright.stop()
-            self._playwright = None
 
     def _load_css(self, template_name: str) -> tuple[str, str]:
         """Load base CSS and template-specific CSS.
@@ -363,7 +351,56 @@ class PinAssembler:
 
         return result
 
-    async def render_pin(
+    def _prepare_html(
+        self,
+        template_name: str,
+        variant: str,
+        context: dict[str, Any],
+    ) -> str:
+        """Prepare final HTML string from template + context (no rendering).
+
+        Loads template, inlines CSS, activates variant, injects variables.
+        """
+        raw_html = self._load_template_html(template_name)
+        base_css, template_css = self._load_css(template_name)
+        html_with_css = self._inline_css(raw_html, base_css, template_css)
+        html_active = self._activate_variant(html_with_css, variant)
+        return self._inject_variables(html_active, template_name, variant, context)
+
+    def _render_via_puppeteer(self, html_file: str, output_file: str) -> None:
+        """Call render_pin.js to render a single HTML file to PNG."""
+        result = subprocess.run(
+            [
+                "node", str(RENDER_SCRIPT),
+                "--html-file", html_file,
+                "--output", output_file,
+                "--width", str(PIN_WIDTH),
+                "--height", str(PIN_HEIGHT),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+
+        # Parse JSON output from render_pin.js
+        stdout = result.stdout.strip()
+        if not stdout:
+            raise PinAssemblerError(
+                f"render_pin.js produced no output. stderr: {result.stderr}"
+            )
+
+        try:
+            response = json.loads(stdout)
+        except json.JSONDecodeError:
+            raise PinAssemblerError(
+                f"render_pin.js returned invalid JSON: {stdout}. stderr: {result.stderr}"
+            )
+
+        if not response.get("ok"):
+            errors = response.get("errors", response.get("error", "unknown error"))
+            raise PinAssemblerError(f"render_pin.js failed: {errors}")
+
+    def render_pin(
         self,
         template_name: str,
         variant: str,
@@ -374,7 +411,7 @@ class PinAssembler:
 
         Args:
             template_name: One of the TEMPLATE_CONFIGS keys.
-            variant: "A", "B", or "C".
+            variant: "A", "B", or "C" (also accepts 1, 2, 3).
             context: Dictionary of template variables.
             output_path: Where to save the PNG. Auto-generated if None.
 
@@ -384,6 +421,8 @@ class PinAssembler:
         Raises:
             PinAssemblerError: If template not found or rendering fails.
         """
+        variant = _normalize_variant(variant)
+
         # Validate template and variant
         if template_name not in TEMPLATE_CONFIGS:
             raise PinAssemblerError(
@@ -409,41 +448,20 @@ class PinAssembler:
         logger.info("Rendering %s variant %s -> %s", template_name, variant, output_path)
 
         try:
-            # Step 1: Load HTML and CSS
-            raw_html = self._load_template_html(template_name)
-            base_css, template_css = self._load_css(template_name)
+            # Step 1-4: Prepare final HTML
+            final_html = self._prepare_html(template_name, variant, context)
 
-            # Step 2: Inline CSS
-            html_with_css = self._inline_css(raw_html, base_css, template_css)
+            # Step 5: Write HTML to temp file, render via Puppeteer
+            with tempfile.NamedTemporaryFile(
+                mode="w", suffix=".html", encoding="utf-8", delete=False
+            ) as f:
+                f.write(final_html)
+                temp_html_path = f.name
 
-            # Step 3: Activate the selected variant
-            html_active = self._activate_variant(html_with_css, variant)
-
-            # Step 4: Inject template variables
-            final_html = self._inject_variables(html_active, template_name, variant, context)
-
-            # Step 5: Render to PNG via Playwright
-            await self._ensure_browser()
-            page = await self._browser.new_page(
-                viewport={"width": PIN_WIDTH, "height": PIN_HEIGHT},
-                device_scale_factor=1,
-            )
-
-            # Set the HTML content with a file:// base URL so local resources
-            # can be resolved, but images should already be data URIs
-            await page.set_content(final_html, wait_until="networkidle")
-
-            # Wait a brief moment for fonts to load
-            await page.wait_for_timeout(500)
-
-            # Screenshot the full page at pin dimensions
-            await page.screenshot(
-                path=str(output_path),
-                clip={"x": 0, "y": 0, "width": PIN_WIDTH, "height": PIN_HEIGHT},
-                type="png",
-            )
-
-            await page.close()
+            try:
+                self._render_via_puppeteer(temp_html_path, str(output_path))
+            finally:
+                os.unlink(temp_html_path)
 
             # Step 6: Optimize file size
             self._optimize_image(output_path)
@@ -455,6 +473,33 @@ class PinAssembler:
             raise
         except Exception as e:
             raise PinAssemblerError(f"Failed to render {template_name} variant {variant}: {e}") from e
+
+    def assemble_pin(
+        self,
+        template_type: str,
+        hero_image_path: Optional[str],
+        headline: str,
+        subtitle: str = "",
+        variant: int | str = 1,
+        output_path: Optional[Path] = None,
+    ) -> Path:
+        """Convenience method matching the caller interface in generate_pin_content.py.
+
+        Maps positional arguments to the context dict expected by render_pin().
+        """
+        context = {
+            "headline": headline,
+            "subtitle": subtitle,
+        }
+        if hero_image_path:
+            context["hero_image_url"] = str(hero_image_path)
+
+        return self.render_pin(
+            template_name=template_type,
+            variant=variant,
+            context=context,
+            output_path=output_path,
+        )
 
     def _optimize_image(self, image_path: Path) -> None:
         """Optimize PNG file size. Target: <500KB per pin.
@@ -506,12 +551,15 @@ class PinAssembler:
         except Exception as e:
             logger.warning("Image optimization failed: %s", e)
 
-    async def render_batch(
+    def render_batch(
         self,
         pin_specs: list[dict[str, Any]],
         output_dir: Optional[Path] = None,
     ) -> list[Path]:
-        """Render multiple pins in batch.
+        """Render multiple pins in a single Puppeteer browser session.
+
+        Uses a manifest file to pass all jobs to render_pin.js at once,
+        so only one browser instance is launched for the entire batch.
 
         Args:
             pin_specs: List of dicts, each containing:
@@ -522,16 +570,19 @@ class PinAssembler:
             output_dir: Directory for all output files.
 
         Returns:
-            List of Paths to rendered images.
+            List of Paths to rendered images (None for failures).
         """
         if output_dir is None:
             output_dir = DEFAULT_OUTPUT_DIR
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        results = []
+        # Prepare all HTML files and build manifest
+        manifest = []
+        temp_files = []
+
         for i, spec in enumerate(pin_specs):
             template_name = spec["template_name"]
-            variant = spec["variant"]
+            variant = _normalize_variant(spec["variant"])
             context = spec.get("context", {})
             filename = spec.get(
                 "output_filename",
@@ -540,15 +591,82 @@ class PinAssembler:
             output_path = output_dir / filename
 
             try:
-                path = await self.render_pin(
-                    template_name=template_name,
-                    variant=variant,
-                    context=context,
-                    output_path=output_path,
+                final_html = self._prepare_html(template_name, variant, context)
+
+                tmp = tempfile.NamedTemporaryFile(
+                    mode="w", suffix=".html", encoding="utf-8", delete=False
                 )
-                results.append(path)
+                tmp.write(final_html)
+                tmp.close()
+                temp_files.append(tmp.name)
+
+                manifest.append({
+                    "html_file": tmp.name,
+                    "output_file": str(output_path),
+                    "width": PIN_WIDTH,
+                    "height": PIN_HEIGHT,
+                })
             except PinAssemblerError as e:
-                logger.error("Failed to render pin %d (%s): %s", i, template_name, e)
+                logger.error("Failed to prepare pin %d (%s): %s", i, template_name, e)
+                manifest.append(None)
+                temp_files.append(None)
+
+        # Filter out failed preparations
+        valid_manifest = [m for m in manifest if m is not None]
+
+        if not valid_manifest:
+            return [None] * len(pin_specs)
+
+        # Write manifest and call render_pin.js once
+        manifest_file = tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", encoding="utf-8", delete=False
+        )
+        json.dump(valid_manifest, manifest_file)
+        manifest_file.close()
+
+        try:
+            result = subprocess.run(
+                ["node", str(RENDER_SCRIPT), "--manifest", manifest_file.name],
+                capture_output=True,
+                text=True,
+                timeout=300,  # 5 minutes for large batches
+            )
+
+            stdout = result.stdout.strip()
+            if stdout:
+                try:
+                    response = json.loads(stdout)
+                except json.JSONDecodeError:
+                    logger.error("render_pin.js returned invalid JSON: %s", stdout)
+                    response = {"ok": False}
+            else:
+                logger.error("render_pin.js produced no output. stderr: %s", result.stderr)
+                response = {"ok": False}
+
+            if not response.get("ok") and response.get("errors"):
+                for err in response["errors"]:
+                    logger.error("Render error: %s — %s", err.get("file"), err.get("error"))
+
+        finally:
+            # Clean up temp files
+            os.unlink(manifest_file.name)
+            for tf in temp_files:
+                if tf and os.path.exists(tf):
+                    os.unlink(tf)
+
+        # Build results list, optimizing each rendered image
+        results = []
+        for i, spec in enumerate(pin_specs):
+            filename = spec.get(
+                "output_filename",
+                f"{spec['template_name']}_{_normalize_variant(spec['variant'])}_{i:03d}.png"
+            )
+            output_path = output_dir / filename
+
+            if output_path.exists():
+                self._optimize_image(output_path)
+                results.append(output_path)
+            else:
                 results.append(None)
 
         return results
@@ -614,13 +732,9 @@ class PinAssembler:
             })
         return result
 
-    async def close(self):
-        """Clean up Playwright resources."""
-        await self._close_browser()
-
 
 # ============================================================================
-# Synchronous wrapper for non-async callers
+# Synchronous convenience function (kept for backward compat)
 # ============================================================================
 
 def render_pin_sync(
@@ -629,35 +743,16 @@ def render_pin_sync(
     context: dict[str, Any],
     output_path: Optional[Path] = None,
 ) -> Path:
-    """Synchronous wrapper around PinAssembler.render_pin().
-
-    Convenience function for callers that don't use async/await.
-    """
+    """Render a single pin (synchronous). Kept for backward compatibility."""
     assembler = PinAssembler()
-    try:
-        result = asyncio.run(_render_and_close(assembler, template_name, variant, context, output_path))
-        return result
-    except RuntimeError:
-        # If an event loop is already running (e.g., Jupyter), use nest_asyncio
-        loop = asyncio.get_event_loop()
-        return loop.run_until_complete(
-            _render_and_close(assembler, template_name, variant, context, output_path)
-        )
-
-
-async def _render_and_close(assembler, template_name, variant, context, output_path):
-    """Helper to render then close."""
-    try:
-        return await assembler.render_pin(template_name, variant, context, output_path)
-    finally:
-        await assembler.close()
+    return assembler.render_pin(template_name, variant, context, output_path)
 
 
 # ============================================================================
 # Standalone test — render one example pin per template with sample data
 # ============================================================================
 
-async def _run_test_renders():
+def _run_test_renders():
     """Render one example pin per template variant for testing."""
     output_dir = _PROJECT_ROOT / "test_output"
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -850,25 +945,20 @@ async def _run_test_renders():
 
     print(f"\nRendering {len(test_specs)} test pins to {output_dir}/\n")
 
-    for spec in test_specs:
+    # Use batch rendering (single browser instance for all pins)
+    results = assembler.render_batch(test_specs, output_dir=output_dir)
+
+    for spec, result_path in zip(test_specs, results):
         tname = spec["template_name"]
         var = spec["variant"]
         filename = f"{tname}_{var}.png"
-        output_path = output_dir / filename
 
-        try:
-            path = await assembler.render_pin(
-                template_name=tname,
-                variant=var,
-                context=spec["context"],
-                output_path=output_path,
-            )
-            size_kb = path.stat().st_size / 1024
+        if result_path and result_path.exists():
+            size_kb = result_path.stat().st_size / 1024
             print(f"  [OK] {filename} ({size_kb:.1f} KB)")
-        except Exception as e:
-            print(f"  [FAIL] {filename}: {e}")
+        else:
+            print(f"  [FAIL] {filename}")
 
-    await assembler.close()
     print(f"\nDone. Output in: {output_dir}")
 
 
@@ -889,10 +979,10 @@ if __name__ == "__main__":
 
     # Run test renders
     print("\nStarting test renders...")
-    print("(Requires playwright install: python -m playwright install chromium)\n")
+    print("(Requires: npm install puppeteer)\n")
 
     try:
-        asyncio.run(_run_test_renders())
+        _run_test_renders()
     except Exception as e:
         print(f"\nTest render failed: {e}")
-        print("Make sure Playwright is installed: pip install playwright && python -m playwright install chromium")
+        print("Make sure Puppeteer is installed: cd to project root && npm install puppeteer")

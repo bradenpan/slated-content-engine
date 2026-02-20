@@ -46,12 +46,14 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Install Playwright browsers
-        # NEEDED -- pin_assembler.py uses Playwright to render HTML/CSS templates to PNG
-        run: |
-          pip install playwright
-          playwright install chromium
-          playwright install-deps
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Puppeteer
+        # NEEDED -- pin_assembler.py calls render_pin.js (Puppeteer) to render HTML/CSS templates to PNG
+        run: npm install puppeteer
 
       - name: Set up Google credentials
         run: |
@@ -70,7 +72,7 @@ jobs:
       - name: Generate pin content (copy + images + rendered PNGs)
         # Step 2: Generate pin titles, descriptions, alt text, overlay text
         # Source images (stock / AI / template-only)
-        # Render final pin PNGs via Playwright
+        # Render final pin PNGs via Puppeteer
         # Handles Sheet updates and Slack notifications internally
         run: python -m src.generate_pin_content
 

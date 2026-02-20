@@ -22,7 +22,8 @@ google-auth-oauthlib>=1.2.0        # OAuth helpers
 PyGithub>=2.1.0                # GitHub API for committing blog posts
 
 # --- Pin Rendering ---
-playwright>=1.40.0             # HTML/CSS to PNG rendering (pin assembly)
+# Rendering uses Node.js Puppeteer (render_pin.js), not a Python package.
+# Install via: npm install puppeteer
 # Alternative: htmlcsstoimage via requests (no extra dependency)
 
 # --- Utilities ---

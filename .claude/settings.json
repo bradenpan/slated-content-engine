@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(.env)",
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Read(data/token-store.json)",
+      "Read(**/token-store.json)",
+      "Read(**/*credentials*.json)",
+      "Bash(cat *.env*)",
+      "Bash(cat *token-store*)",
+      "Bash(cat *credentials*)",
+      "Bash(base64 *)",
+      "Bash(python* *base64* *env*)",
+      "Bash(python* *base64* *credentials*)",
+      "Bash(python* *base64* *token*)",
+      "Bash(python* *read_bytes* *)",
+      "Bash(python* *read_text* *.env*)",
+      "Bash(python* *.env*)",
+      "Bash(python* *token-store*)"
+    ]
+  }
+}

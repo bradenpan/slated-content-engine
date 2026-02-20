@@ -37,8 +37,9 @@ data/generated_pins/
 *.png
 !templates/pins/shared/brand-elements/*.png
 
-# Playwright browsers
-playwright/
+# Node.js (Puppeteer)
+node_modules/
+package-lock.json
 
 # Distribution
 *.tar.gz
