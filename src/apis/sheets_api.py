@@ -304,12 +304,12 @@ class SheetsAPI:
                 str(post.get("post_id", "")),
                 "blog",
                 str(post.get("title", "")),
-                str(post.get("summary", post.get("description", "")))[:200],
+                str(post.get("content_type", "")),
                 "",  # No board for blog posts
-                str(post.get("url", "")),
+                str(post.get("slug", "")),  # Slug stored in Blog URL column; deployer needs it
                 "",  # No schedule for blog posts
                 str(post.get("pillar", "")),
-                str(post.get("thumbnail_url", "")),
+                "",  # No thumbnail for blog posts
                 "pending_review",
                 "",
             ])
@@ -321,11 +321,11 @@ class SheetsAPI:
                 "pin",
                 str(pin.get("title", "")),
                 str(pin.get("description", ""))[:200],
-                str(pin.get("board", pin.get("target_board", ""))),
-                str(pin.get("blog_url", pin.get("link", ""))),
-                str(pin.get("schedule", "")),
+                str(pin.get("board_name", pin.get("target_board", ""))),
+                str(pin.get("link", "")),
+                f"{pin.get('scheduled_date', '')} / {pin.get('scheduled_slot', '')}",
                 str(pin.get("pillar", "")),
-                str(pin.get("thumbnail_url", "")),
+                str(pin.get("image_path", "")),
                 "pending_review",
                 "",
             ])
@@ -358,6 +358,10 @@ class SheetsAPI:
                     "id": row[CQ_COL_ID] if len(row) > CQ_COL_ID else "",
                     "type": row[CQ_COL_TYPE] if len(row) > CQ_COL_TYPE else "",
                     "title": row[CQ_COL_TITLE] if len(row) > CQ_COL_TITLE else "",
+                    "slug": row[CQ_COL_BLOG_URL] if len(row) > CQ_COL_BLOG_URL else "",
+                    "board": row[CQ_COL_BOARD] if len(row) > CQ_COL_BOARD else "",
+                    "schedule": row[CQ_COL_SCHEDULE] if len(row) > CQ_COL_SCHEDULE else "",
+                    "pillar": row[CQ_COL_PILLAR] if len(row) > CQ_COL_PILLAR else "",
                     "status": row[CQ_COL_STATUS] if len(row) > CQ_COL_STATUS else "pending_review",
                     "notes": row[CQ_COL_NOTES] if len(row) > CQ_COL_NOTES else "",
                 })

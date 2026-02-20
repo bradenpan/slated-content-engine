@@ -217,11 +217,11 @@ def generate_pin_content(
                 "post_id": pid,
                 "title": pdata.get("title", ""),
                 "slug": pdata.get("slug", ""),
-                "pillar": pdata.get("pillar"),
-                "content_type": pdata.get("content_type"),
-                "status": pdata.get("status"),
+                "pillar": str(pdata.get("pillar", "")),
+                "content_type": pdata.get("content_type", ""),
             }
             for pid, pdata in (blog_posts or {}).items()
+            if pdata.get("status") == "success"
         ]
         sheets.write_content_queue(
             blog_posts=blog_post_entries,
