@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment & secrets
+.env
+data/token-store.json
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Generated content (large files, don't commit rendered PNGs)
+data/generated_posts/
+data/generated_pins/
+*.png
+!templates/pins/shared/brand-elements/*.png
+
+# Playwright browsers
+playwright/
+
+# Distribution
+*.tar.gz
+*.whl

@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=1000">
+    <title>Problem-Solution Pin</title>
+    {{styles}}
+</head>
+<body>
+    <!--
+    Problem-Solution Pin Template
+    =============================
+    Text-forward, less photography. Split design creates visual tension
+    between the problem and the solution.
+
+    Variables:
+      {{problem_text}}         - Problem statement, short and relatable
+      {{solution_text}}        - Solution/answer, confident and clear
+      {{background_image_url}} - Optional background image
+      {{logo_url}}             - Brand logo placeholder
+      {{variant}}              - A, B, or C
+
+    Variants:
+      A — Top/bottom split with contrasting colors (dark top, warm bottom)
+      B — Diagonal split with image background
+      C — Single color with problem/solution separated by accent line
+    -->
+
+    <!-- ==================== VARIANT A: Top/Bottom Contrasting Split ==================== -->
+    <div class="pin-canvas variant-a" data-variant="A" style="display: none;">
+        <div class="ps-a-problem">
+            <div class="ps-a-problem-inner safe-zone">
+                <div class="text-label" style="color: rgba(255,255,255,0.45); margin-bottom: 24px;">The Problem</div>
+                <h2 class="text-headline color-light text-center">{{problem_text}}</h2>
+            </div>
+        </div>
+        <div class="ps-a-divider">
+            <div class="ps-a-divider-accent"></div>
+        </div>
+        <div class="ps-a-solution">
+            <div class="ps-a-solution-inner safe-zone">
+                <div class="text-label color-primary" style="margin-bottom: 24px;">The Answer</div>
+                <h2 class="text-headline color-dark text-center">{{solution_text}}</h2>
+                <div class="brand-logo" style="margin-top: 40px;">
+                    <span class="brand-logo-icon" style="width: 22px; height: 22px;"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 16c0-5 4-9 10-9s10 4 10 9v2H2v-2z" fill="none" stroke="#D97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 7c1-1.5 3-1.5 4 0" stroke="#D97706" stroke-width="2.5" stroke-linecap="round"/><path d="M12 3v2" stroke="#D97706" stroke-width="2" stroke-linecap="round"/><path d="M15 3.5v1" stroke="#D97706" stroke-width="2" stroke-linecap="round"/><path d="M9 3.5v1" stroke="#D97706" stroke-width="2" stroke-linecap="round"/></svg></span>
+                    <span class="brand-logo-text logo-primary" style="font-size: 26px; opacity: 0.55;">Slated.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== VARIANT B: Diagonal Split with Background ==================== -->
+    <div class="pin-canvas variant-b" data-variant="B" style="display: none;">
+        <div class="ps-b-bg bg-image-cover" style="background-image: url('{{background_image_url}}');"></div>
+        <div class="ps-b-overlay"></div>
+        <div class="ps-b-content safe-zone z-2">
+            <div class="ps-b-problem-area">
+                <div class="text-label" style="color: rgba(255,255,255,0.5); margin-bottom: 20px;">The Problem</div>
+                <h2 class="text-headline color-light shadow-text">{{problem_text}}</h2>
+            </div>
+            <div class="ps-b-arrow">
+                <div class="ps-b-arrow-line"></div>
+                <div class="ps-b-arrow-circle">
+                    <span style="font-size: 28px; color: var(--brand-text-light);">&#8595;</span>
+                </div>
+                <div class="ps-b-arrow-line"></div>
+            </div>
+            <div class="ps-b-solution-area">
+                <div class="ps-b-solution-card">
+                    <div class="text-label color-accent" style="margin-bottom: 16px;">The Answer</div>
+                    <h2 class="text-headline color-light">{{solution_text}}</h2>
+                </div>
+            </div>
+            <div class="brand-logo" style="margin-top: auto; padding-top: 20px;">
+                <span class="brand-logo-icon" style="width: 20px; height: 20px;"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 16c0-5 4-9 10-9s10 4 10 9v2H2v-2z" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 7c1-1.5 3-1.5 4 0" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round"/><path d="M12 3v2" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/><path d="M15 3.5v1" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/><path d="M9 3.5v1" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/></svg></span>
+                <span class="brand-logo-text logo-light" style="font-size: 24px; opacity: 0.55;">Slated.</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== VARIANT C: Single Color with Accent Line ==================== -->
+    <div class="pin-canvas variant-c" data-variant="C" style="display: none;">
+        <div class="ps-c-bg"></div>
+        <div class="ps-c-content safe-zone z-2">
+            <div class="ps-c-problem-area">
+                <div class="ps-c-icon">?</div>
+                <h2 class="text-headline color-light text-center" style="opacity: 0.85;">{{problem_text}}</h2>
+            </div>
+            <div class="ps-c-separator">
+                <div class="ps-c-sep-line"></div>
+                <div class="ps-c-sep-dot"></div>
+                <div class="ps-c-sep-line"></div>
+            </div>
+            <div class="ps-c-solution-area">
+                <h2 class="text-display color-accent text-center">{{solution_text}}</h2>
+            </div>
+            <div class="brand-logo" style="margin-top: auto;">
+                <span class="brand-logo-icon" style="width: 22px; height: 22px;"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 16c0-5 4-9 10-9s10 4 10 9v2H2v-2z" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 7c1-1.5 3-1.5 4 0" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round"/><path d="M12 3v2" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/><path d="M15 3.5v1" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/><path d="M9 3.5v1" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/></svg></span>
+                <span class="brand-logo-text logo-light" style="font-size: 26px; opacity: 0.5;">Slated.</span>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

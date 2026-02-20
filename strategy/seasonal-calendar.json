@@ -1,0 +1,69 @@
+{
+  "seasons": [
+    {
+      "name": "New Year / Eat Healthier",
+      "peak_search_months": [1],
+      "publish_window_months": [11, 12],
+      "relevant_pillars": [1, 5],
+      "content_angle": "Start the year with dinner on autopilot \u2014 resolution content framed as a system, not willpower. Healthy meal plans, high protein, anti-inflammatory.",
+      "keywords": ["healthy meal plan", "new year meal plan", "healthy dinner ideas", "high protein meal plan"]
+    },
+    {
+      "name": "Spring / Lighter Meals",
+      "peak_search_months": [3, 4, 5],
+      "publish_window_months": [1, 2, 3],
+      "relevant_pillars": [1, 3, 5],
+      "content_angle": "Seasonal recipe refreshes. Refresh your meal plan for spring. Light, fresh dinner ideas.",
+      "keywords": ["spring dinner ideas", "light dinner recipes", "fresh spring meals"]
+    },
+    {
+      "name": "Summer / Grilling",
+      "peak_search_months": [6, 7, 8],
+      "publish_window_months": [4, 5, 6],
+      "relevant_pillars": [1, 3, 5],
+      "content_angle": "Too hot to think about dinner. Easy summer meals, grilling, no-cook dinners.",
+      "keywords": ["summer dinner ideas", "easy grilling recipes", "no cook dinner ideas", "summer meal plan"]
+    },
+    {
+      "name": "Back to School",
+      "peak_search_months": [8, 9],
+      "publish_window_months": [6, 7],
+      "relevant_pillars": [1, 2],
+      "content_angle": "HIGH VALUE. Parents re-entering structured schedules need meal plans. Back to school meal plan content. Peacekeeper pain intensifies as school schedules compress weeknight windows.",
+      "keywords": ["back to school meal plan", "back to school dinner ideas", "easy school night dinners", "weeknight meal plan for school"],
+      "priority": "high",
+      "extra_pins": "6-8 additional pins during publish window"
+    },
+    {
+      "name": "Fall / Comfort Food",
+      "peak_search_months": [9, 10, 11],
+      "publish_window_months": [7, 8, 9],
+      "relevant_pillars": [1, 3, 5],
+      "content_angle": "Comfort food, crockpot meals, soup season, one-pot meals. Align with seasonal ingredient preferences.",
+      "keywords": ["fall dinner ideas", "comfort food recipes", "crockpot meals", "soup recipes for family", "one pot fall meals"]
+    },
+    {
+      "name": "Thanksgiving",
+      "peak_search_months": [11],
+      "publish_window_months": [9, 10],
+      "relevant_pillars": [3],
+      "content_angle": "Massive Pinterest volume but lower relevance for weekly planning. Minimal investment \u2014 maybe one post-Thanksgiving meal plan piece.",
+      "keywords": ["post thanksgiving meal plan", "thanksgiving leftovers recipes"],
+      "priority": "low"
+    },
+    {
+      "name": "Holiday Season",
+      "peak_search_months": [12],
+      "publish_window_months": [10, 11],
+      "relevant_pillars": [1, 3],
+      "content_angle": "Survive the holidays with a plan. Holiday meal planning, entertaining without stress.",
+      "keywords": ["holiday meal plan", "christmas dinner ideas", "holiday dinner recipes", "easy holiday meals"]
+    }
+  ],
+  "rules": {
+    "publish_lead_time_days": "60-90 days before peak search",
+    "seasonal_content_is_additive": true,
+    "back_to_school_is_highest_priority": true,
+    "existing_seasonal_pins_resurface_annually": true
+  }
+}

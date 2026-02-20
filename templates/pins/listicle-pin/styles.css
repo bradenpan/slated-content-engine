@@ -1,0 +1,208 @@
+/* =============================================================================
+ * Listicle Pin Template Styles
+ * =============================================================================
+ *
+ * Layout: Number-prominent, list-forward design
+ * Use case: Roundup content across all pillars ("7 Easy Weeknight Dinners")
+ * Dimensions: 1000x1500px (2:3 ratio)
+ *
+ * Variant A — Large number with subtle background, centered composition
+ * Variant B — Image top 42% with number badge overlay, list below on cream
+ * Variant C — Clean branded graphic with numbered list items (no photo)
+ * ========================================================================== */
+
+/* === Shared list item styles === */
+.list-item-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 10px;
+}
+
+.list-item-number {
+    font-family: var(--font-display);
+    font-size: 24px;
+    color: var(--brand-accent);
+    flex-shrink: 0;
+    width: 28px;
+    text-align: right;
+}
+
+.list-item-text {
+    font-family: var(--font-primary);
+    font-size: 26px;
+    font-weight: 400;
+    line-height: 1.35;
+}
+
+/* === VARIANT A: Large Number, Subtle Background === */
+.variant-a .list-a-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.variant-a .list-a-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(28, 25, 23, 0.68);
+}
+
+.variant-a .list-a-content {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 80px;
+    padding-bottom: 60px;
+}
+
+.variant-a .list-a-number-wrap {
+    margin-bottom: 8px;
+}
+
+.variant-a .list-a-number-wrap .text-number {
+    font-size: 140px;
+    text-shadow: 0 4px 20px rgba(5, 150, 105, 0.3);
+}
+
+.variant-a .list-a-items {
+    width: 100%;
+    margin-top: 20px;
+}
+
+.variant-a .list-item-text {
+    color: var(--brand-text-light);
+    opacity: 0.9;
+}
+
+/* === VARIANT B: Image Top with Number Badge === */
+.variant-b .list-b-image-section {
+    width: 100%;
+    height: 42%;
+    position: relative;
+}
+
+.variant-b .list-b-badge {
+    position: absolute;
+    bottom: -45px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    background: var(--brand-accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 5;
+    box-shadow: 0 4px 16px rgba(5, 150, 105, 0.4);
+}
+
+.variant-b .list-b-badge-number {
+    font-family: var(--font-display);
+    font-size: 48px;
+    color: var(--brand-text-light);
+}
+
+.variant-b .list-b-text-section {
+    width: 100%;
+    height: 58%;
+    background-color: var(--brand-secondary);
+}
+
+.variant-b .list-b-text-inner {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding-top: 60px;
+    padding-bottom: 40px;
+}
+
+.variant-b .list-b-items {
+    margin-top: 16px;
+    width: 100%;
+}
+
+.variant-b .list-item-text {
+    color: var(--brand-text-dark);
+}
+
+/* === VARIANT C: Clean Branded Numbered List (No Photo) === */
+.variant-c .list-c-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        165deg,
+        #78350F 0%,
+        var(--brand-primary) 35%,
+        #B45309 65%,
+        #92400E 100%
+    );
+}
+
+/* Decorative accent circle */
+.variant-c .list-c-bg::after {
+    content: '';
+    position: absolute;
+    top: -100px;
+    right: -100px;
+    width: 400px;
+    height: 400px;
+    border-radius: 50%;
+    background: rgba(5, 150, 105, 0.06);
+}
+
+.variant-c .list-c-content {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding-top: 100px;
+    padding-bottom: 60px;
+}
+
+.variant-c .list-c-header {
+    text-align: center;
+}
+
+.variant-c .list-c-number-inline {
+    font-family: var(--font-display);
+    font-size: 100px;
+    color: var(--brand-accent);
+    display: block;
+    line-height: 1;
+    margin-bottom: 12px;
+}
+
+.variant-c .list-c-items {
+    width: 100%;
+}
+
+.variant-c .list-c-items .list-item-row {
+    background: rgba(255, 255, 255, 0.06);
+    padding: 14px 20px;
+    border-radius: 6px;
+    margin-bottom: 8px;
+}
+
+.variant-c .list-item-text {
+    color: var(--brand-text-light);
+    opacity: 0.92;
+}
+
+.variant-c .list-item-number {
+    color: var(--brand-accent);
+    font-size: 28px;
+}

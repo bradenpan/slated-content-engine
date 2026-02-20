@@ -1,0 +1,220 @@
+/* =============================================================================
+ * Problem-Solution Pin Template Styles
+ * =============================================================================
+ *
+ * Layout: Split design with problem/solution tension
+ * Use case: Pain point to answer (Pillars 2, 4 — family dynamics, meal kit alt)
+ * Dimensions: 1000x1500px (2:3 ratio)
+ *
+ * Variant A — Top/bottom split: dark top (problem), warm cream bottom (solution)
+ * Variant B — Full background image with overlay, arrow connecting sections
+ * Variant C — Single dark color with problem/solution separated by accent line
+ * ========================================================================== */
+
+/* === VARIANT A: Top/Bottom Contrasting Split === */
+.variant-a .ps-a-problem {
+    width: 100%;
+    height: 45%;
+    background: linear-gradient(
+        160deg,
+        #1C1917 0%,
+        #292524 100%
+    );
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.variant-a .ps-a-problem-inner {
+    text-align: center;
+}
+
+.variant-a .ps-a-divider {
+    width: 100%;
+    height: 10px;
+    position: relative;
+    z-index: 3;
+}
+
+.variant-a .ps-a-divider-accent {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        var(--brand-accent) 0%,
+        #10B981 50%,
+        var(--brand-accent) 100%
+    );
+}
+
+.variant-a .ps-a-solution {
+    width: 100%;
+    height: calc(55% - 10px);
+    background: var(--brand-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.variant-a .ps-a-solution-inner {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* === VARIANT B: Background Image with Arrow === */
+.variant-b .ps-b-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.variant-b .ps-b-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        to bottom,
+        rgba(28, 25, 23, 0.78) 0%,
+        rgba(28, 25, 23, 0.55) 40%,
+        rgba(217, 119, 6, 0.75) 70%,
+        rgba(217, 119, 6, 0.90) 100%
+    );
+}
+
+.variant-b .ps-b-content {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 100px;
+    padding-bottom: 60px;
+}
+
+.variant-b .ps-b-problem-area {
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.variant-b .ps-b-arrow {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 36px 0;
+    flex-shrink: 0;
+}
+
+.variant-b .ps-b-arrow-line {
+    width: 2px;
+    height: 30px;
+    background: rgba(255, 255, 255, 0.25);
+}
+
+.variant-b .ps-b-arrow-circle {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: var(--brand-accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 8px 0;
+}
+
+.variant-b .ps-b-solution-area {
+    width: 100%;
+    flex-shrink: 0;
+}
+
+.variant-b .ps-b-solution-card {
+    background: rgba(255, 255, 255, 0.08);
+    border-left: 5px solid var(--brand-accent);
+    padding: 32px 36px;
+    border-radius: 0 12px 12px 0;
+    text-align: left;
+}
+
+/* === VARIANT C: Single Color with Accent Separator === */
+.variant-c .ps-c-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        170deg,
+        #78350F 0%,
+        var(--brand-primary) 40%,
+        #92400E 100%
+    );
+}
+
+.variant-c .ps-c-content {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 120px;
+    padding-bottom: 70px;
+}
+
+.variant-c .ps-c-problem-area {
+    text-align: center;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.variant-c .ps-c-icon {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    border: 3px solid rgba(255, 255, 255, 0.25);
+    font-family: var(--font-display);
+    font-size: 40px;
+    color: rgba(255, 255, 255, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 28px;
+}
+
+.variant-c .ps-c-separator {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    width: 70%;
+    margin: 40px auto;
+}
+
+.variant-c .ps-c-sep-line {
+    flex: 1;
+    height: 2px;
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.variant-c .ps-c-sep-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--brand-accent);
+}
+
+.variant-c .ps-c-solution-area {
+    text-align: center;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}

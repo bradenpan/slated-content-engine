@@ -1,0 +1,126 @@
+/* =============================================================================
+ * Recipe Pin Template Styles
+ * =============================================================================
+ *
+ * Layout: Food photo dominant with text overlay
+ * Use case: Individual recipe content across all pillars (most common template)
+ * Dimensions: 1000x1500px (2:3 ratio)
+ *
+ * Variant A — Bottom bar overlay: photo top 65%, warm overlay bar bottom 35%
+ * Variant B — Side panel: text panel left 45%, image right 55%
+ * Variant C — Full bleed: full-frame image with gradient text at bottom
+ * ========================================================================== */
+
+/* === VARIANT A: Bottom Bar Overlay === */
+.variant-a .recipe-a-hero {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 68%;
+}
+
+.variant-a .recipe-a-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 38%;
+    background: linear-gradient(
+        to bottom,
+        rgba(217, 119, 6, 0.92) 0%,
+        rgba(180, 83, 9, 0.97) 100%
+    );
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.variant-a .recipe-a-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    width: 100%;
+}
+
+/* Small visual bridge between photo and overlay */
+.variant-a .recipe-a-overlay::before {
+    content: '';
+    position: absolute;
+    top: -40px;
+    left: 0;
+    width: 100%;
+    height: 40px;
+    background: linear-gradient(
+        to bottom,
+        rgba(217, 119, 6, 0) 0%,
+        rgba(217, 119, 6, 0.92) 100%
+    );
+}
+
+/* === VARIANT B: Side Panel === */
+.variant-b .recipe-b-layout {
+    display: flex;
+    width: 1000px;
+    height: 1500px;
+}
+
+.variant-b .recipe-b-panel {
+    width: 45%;
+    height: 100%;
+    background-color: var(--brand-secondary);
+    display: flex;
+    align-items: center;
+}
+
+.variant-b .recipe-b-panel-inner {
+    padding: 80px 50px 60px 60px;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    justify-content: center;
+}
+
+.variant-b .recipe-b-image {
+    width: 55%;
+    height: 100%;
+}
+
+/* === VARIANT C: Full Bleed with Gradient === */
+.variant-c .recipe-c-hero {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.variant-c .recipe-c-gradient {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 55%;
+    background: linear-gradient(
+        to bottom,
+        rgba(28, 25, 23, 0) 0%,
+        rgba(28, 25, 23, 0.45) 35%,
+        rgba(28, 25, 23, 0.88) 100%
+    );
+}
+
+.variant-c .recipe-c-content {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    padding-bottom: 60px;
+    padding-top: 40px;
+    z-index: 2;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}

@@ -1,0 +1,92 @@
+name: Generate Content
+
+# Triggered by plan approval in Google Sheet (via Apps Script -> repository_dispatch)
+on:
+  repository_dispatch:
+    types: [generate-content]
+  workflow_dispatch:  # Manual fallback trigger
+
+concurrency:
+  group: pinterest-pipeline
+  cancel-in-progress: false
+
+env:
+  PINTEREST_APP_ID: ${{ secrets.PINTEREST_APP_ID }}
+  PINTEREST_APP_SECRET: ${{ secrets.PINTEREST_APP_SECRET }}
+  PINTEREST_ACCESS_TOKEN: ${{ secrets.PINTEREST_ACCESS_TOKEN }}
+  PINTEREST_REFRESH_TOKEN: ${{ secrets.PINTEREST_REFRESH_TOKEN }}
+  PINTEREST_ENVIRONMENT: production
+  ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+  GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+  GOOGLE_SHEET_URL: ${{ secrets.GOOGLE_SHEET_URL }}
+  SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+  GOSLATED_REPO: ${{ secrets.GOSLATED_REPO }}
+  GOSLATED_GITHUB_TOKEN: ${{ secrets.GOSLATED_GITHUB_TOKEN }}
+  UNSPLASH_API_KEY: ${{ secrets.UNSPLASH_API_KEY }}
+  PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+jobs:
+  generate-content:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Install Playwright browsers
+        # NEEDED -- pin_assembler.py uses Playwright to render HTML/CSS templates to PNG
+        run: |
+          pip install playwright
+          playwright install chromium
+          playwright install-deps
+
+      - name: Set up Google credentials
+        run: |
+          echo "${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}" | base64 -d > /tmp/google-credentials.json
+          echo "GOOGLE_APPLICATION_CREDENTIALS=/tmp/google-credentials.json" >> $GITHUB_ENV
+
+      - name: Refresh Pinterest token
+        run: python -m src.token_manager
+
+      - name: Generate blog posts (blog-first workflow)
+        # Step 1: Generate all blog posts from approved plan
+        # Must complete before pin generation (pins reference blog content)
+        # Handles Sheet updates and Slack notifications internally
+        run: python -m src.generate_blog_posts
+
+      - name: Generate pin content (copy + images + rendered PNGs)
+        # Step 2: Generate pin titles, descriptions, alt text, overlay text
+        # Source images (stock / AI / template-only)
+        # Render final pin PNGs via Playwright
+        # Handles Sheet updates and Slack notifications internally
+        run: python -m src.generate_pin_content
+
+      - name: Commit generated content
+        run: |
+          git config user.name "pinterest-pipeline-bot"
+          git config user.email "bot@pinterest-pipeline.local"
+          git add data/ analysis/
+          git diff --staged --quiet || git commit -m "chore: update analytics and data files [skip ci]"
+          git push
+
+      - name: Notify failure
+        if: failure()
+        run: |
+          python -c "
+          from src.apis.slack_notify import SlackNotify
+          notifier = SlackNotify()
+          notifier.notify_failure('${{ github.workflow }}', 'Workflow failed. Check: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}')
+          "

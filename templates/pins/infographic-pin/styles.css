@@ -1,0 +1,257 @@
+/* =============================================================================
+ * Infographic Pin Template Styles
+ * =============================================================================
+ *
+ * Layout: Structured information design with minimal photography
+ * Use case: Step-by-step guides (Pillars 1, 2)
+ * Dimensions: 1000x1500px (2:3 ratio)
+ *
+ * Variant A — Vertical numbered steps on light background with accent lines
+ * Variant B — Number grid (2-column) on dark brand background
+ * Variant C — Flowchart/timeline with vertical connector on gradient background
+ * ========================================================================== */
+
+/* === VARIANT A: Vertical Numbered Steps (Light) === */
+.variant-a .info-a-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--brand-secondary);
+}
+
+/* Subtle top accent stripe */
+.variant-a .info-a-bg::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 8px;
+    background: var(--brand-accent);
+}
+
+.variant-a .info-a-content {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding-top: 80px;
+    padding-bottom: 50px;
+}
+
+.variant-a .info-a-header {
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.variant-a .info-a-steps {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-top: 20px;
+}
+
+/* Step row used by assembler */
+.variant-a .info-step-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+}
+
+.variant-a .info-step-row .step-circle {
+    flex-shrink: 0;
+}
+
+.variant-a .info-step-text {
+    font-family: var(--font-primary);
+    font-size: 28px;
+    font-weight: 400;
+    line-height: 1.4;
+    color: var(--brand-text-dark);
+    padding-top: 10px;
+}
+
+.variant-a .info-a-footer {
+    flex-shrink: 0;
+    margin-top: auto;
+    padding-top: 20px;
+}
+
+/* === VARIANT B: Number Grid (Dark) === */
+.variant-b .info-b-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        160deg,
+        #78350F 0%,
+        var(--brand-primary) 45%,
+        #92400E 100%
+    );
+}
+
+.variant-b .info-b-content {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding-top: 80px;
+    padding-bottom: 50px;
+}
+
+.variant-b .info-b-header {
+    text-align: center;
+    flex-shrink: 0;
+    margin-bottom: 32px;
+}
+
+.variant-b .info-b-grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+/* Grid cell used by assembler */
+.variant-b .info-grid-cell {
+    background: rgba(255, 255, 255, 0.07);
+    border-radius: 12px;
+    padding: 24px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.variant-b .info-grid-number {
+    font-family: var(--font-display);
+    font-size: 42px;
+    color: var(--brand-accent);
+    margin-bottom: 10px;
+}
+
+.variant-b .info-grid-text {
+    font-family: var(--font-primary);
+    font-size: 24px;
+    font-weight: 400;
+    line-height: 1.35;
+    color: var(--brand-text-light);
+    opacity: 0.9;
+}
+
+.variant-b .info-b-footer {
+    flex-shrink: 0;
+    margin-top: auto;
+    padding-top: 24px;
+}
+
+/* === VARIANT C: Flowchart / Timeline === */
+.variant-c .info-c-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        175deg,
+        #1C1917 0%,
+        #292524 30%,
+        var(--brand-primary) 60%,
+        #78350F 100%
+    );
+}
+
+.variant-c .info-c-content {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding-top: 80px;
+    padding-bottom: 50px;
+}
+
+.variant-c .info-c-header {
+    text-align: center;
+    flex-shrink: 0;
+    margin-bottom: 40px;
+}
+
+.variant-c .info-c-timeline {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    padding-left: 50px;
+}
+
+/* Vertical connector line */
+.variant-c .info-c-timeline::before {
+    content: '';
+    position: absolute;
+    left: 27px;
+    top: 10px;
+    bottom: 10px;
+    width: 3px;
+    background: linear-gradient(
+        to bottom,
+        var(--brand-accent),
+        rgba(5, 150, 105, 0.3)
+    );
+    border-radius: 2px;
+}
+
+/* Timeline node used by assembler */
+.variant-c .info-timeline-node {
+    display: flex;
+    align-items: flex-start;
+    gap: 24px;
+    margin-bottom: 20px;
+    position: relative;
+}
+
+.variant-c .info-timeline-dot {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--brand-accent);
+    flex-shrink: 0;
+    margin-top: 6px;
+    margin-left: -22px;
+    box-shadow: 0 0 0 4px rgba(5, 150, 105, 0.2);
+    position: relative;
+    z-index: 2;
+}
+
+.variant-c .info-timeline-content {
+    flex: 1;
+}
+
+.variant-c .info-timeline-step-num {
+    font-family: var(--font-display);
+    font-size: 20px;
+    color: var(--brand-accent);
+    margin-bottom: 4px;
+}
+
+.variant-c .info-timeline-text {
+    font-family: var(--font-primary);
+    font-size: 26px;
+    font-weight: 400;
+    line-height: 1.4;
+    color: var(--brand-text-light);
+    opacity: 0.9;
+}
+
+.variant-c .info-c-footer {
+    flex-shrink: 0;
+    margin-top: auto;
+    padding-top: 20px;
+}

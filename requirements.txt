@@ -1,0 +1,34 @@
+# Pinterest Pipeline Dependencies
+
+# --- LLM ---
+anthropic>=0.40.0              # Claude API client
+
+# --- Pinterest API ---
+requests>=2.31.0               # HTTP client for Pinterest v5 API
+
+# --- Image Processing ---
+Pillow>=10.0.0                 # Image manipulation, validation, optimization
+
+# --- Image Generation ---
+openai>=1.30.0                 # OpenAI API (DALL-E image generation)
+replicate>=0.25.0              # Replicate API (Flux Pro image generation)
+
+# --- Google APIs ---
+google-api-python-client>=2.100.0  # Google Sheets API
+google-auth>=2.25.0                # Google service account authentication
+google-auth-oauthlib>=1.2.0        # OAuth helpers
+
+# --- Blog Deployment ---
+PyGithub>=2.1.0                # GitHub API for committing blog posts
+
+# --- Pin Rendering ---
+playwright>=1.40.0             # HTML/CSS to PNG rendering (pin assembly)
+# Alternative: htmlcsstoimage via requests (no extra dependency)
+
+# --- Utilities ---
+python-slugify>=8.0.0          # URL slug generation from titles
+python-dotenv>=1.0.0           # Load .env files for local development
+pyyaml>=6.0                    # YAML parsing (for MDX frontmatter)
+
+# --- Notifications ---
+# Slack webhook uses requests (already included above)

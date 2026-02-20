@@ -1,0 +1,30 @@
+{
+  "pillars": {
+    "1": {
+      "name": "Your Whole Week, Planned",
+      "mid_post_cta": "This plan took us 20 minutes to build. Slated does it in 2 \u2014 personalized for your family's dietary needs, preferences, and schedule. Your family can even vote on the plan before you buy a single grocery.",
+      "end_post_cta": "Slated: Your whole week of dinners, planned in minutes. Personalized meal plans, family voting, and one-tap Instacart ordering. [Try it free for 14 days.]"
+    },
+    "2": {
+      "name": "Everyone Eats, Nobody Argues",
+      "mid_post_cta": "What if your family could vote on the meal plan before you cook? Slated's Dinner Draft generates recipe options based on your family's preferences, sends them to everyone to vote on, and builds the winning plan automatically. No spreadsheet required.",
+      "end_post_cta": "Your family's input before dinner. Not their complaints after. Slated's Dinner Draft lets everyone vote on the meal plan \u2014 then builds your grocery list and sends it to Instacart. [Try it free.]"
+    },
+    "3": {
+      "name": "Dinner, Decided",
+      "mid_post_cta": "This is one dinner. Want the other four nights handled too? Slated builds a personalized weekly plan around your family's preferences \u2014 and everyone gets to vote on it before you buy the groceries.",
+      "end_post_cta": "Slated: Dinner on Autopilot. A full week of dinners like this one, built for your family. [Try it free for 14 days.]"
+    },
+    "4": {
+      "name": "Smarter Than a Meal Kit",
+      "mid_post_cta": "Slated builds weekly meal plans around your family's actual preferences \u2014 dietary restrictions, picky eaters, cooking time, all of it. Then your family votes on the plan via Dinner Draft. No box decides for you.",
+      "end_post_cta": "Better than a meal kit. Personalized weekly plans, family voting, and one-tap Instacart grocery ordering. [Try Slated free for 14 days.]"
+    },
+    "5": {
+      "name": "Your Kitchen, Your Rules",
+      "mid_post_cta": "Slated handles [dietary need] automatically \u2014 combined with kid-friendly, time limits, or whatever other constraints your family needs. Your family votes on the plan, and the grocery list goes straight to Instacart.",
+      "end_post_cta": "16 dietary restrictions. 12 nutritional focus options. Built for your family, voted on by your family. [Try Slated free for 14 days.]"
+    }
+  },
+  "dinner_draft_theme": "Dinner Draft is a strategic theme across all pillars. It serves the HVP as a delegation feature and the Peacekeeper as a consensus feature. It appears in blog post CTAs, NOT on pins themselves."
+}

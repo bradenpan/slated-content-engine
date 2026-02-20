@@ -1,0 +1,171 @@
+/* =============================================================================
+ * Tip/How-To Pin Template Styles
+ * =============================================================================
+ *
+ * Layout: Text-heavier design for informational content
+ * Use case: Meal planning tips, weekly plans, guides (Pillars 1, 2, 5)
+ * Dimensions: 1000x1500px (2:3 ratio)
+ *
+ * Variant A — Centered text over dimmed background image
+ * Variant B — Top/bottom split: image top 40%, branded text section bottom 60%
+ * Variant C — Full branded graphic (no photo) with large typography
+ * ========================================================================== */
+
+/* === Shared bullet row styling === */
+.tip-bullet-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 18px;
+    margin-bottom: 18px;
+}
+
+/* Hide optional third bullet if it's empty (assembler adds .hidden class) */
+.tip-bullet-optional.hidden {
+    display: none;
+}
+
+/* === VARIANT A: Centered Over Dimmed Background === */
+.variant-a .tip-a-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.variant-a .tip-a-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(28, 25, 23, 0.62);
+}
+
+.variant-a .tip-a-content {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding-top: 100px;
+    padding-bottom: 80px;
+}
+
+.variant-a .tip-a-top {
+    text-align: center;
+    margin-bottom: 36px;
+}
+
+.variant-a .tip-a-bullets {
+    width: 100%;
+    text-align: left;
+}
+
+.variant-a .tip-a-bottom {
+    margin-top: auto;
+    padding-top: 36px;
+}
+
+/* === VARIANT B: Top/Bottom Split === */
+.variant-b .tip-b-image-section {
+    width: 100%;
+    height: 40%;
+}
+
+.variant-b .tip-b-text-section {
+    width: 100%;
+    height: 60%;
+    background: linear-gradient(
+        160deg,
+        var(--brand-primary) 0%,
+        #B45309 60%,
+        #92400E 100%
+    );
+    display: flex;
+    align-items: center;
+}
+
+.variant-b .tip-b-text-inner {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    padding-top: 50px;
+    padding-bottom: 40px;
+}
+
+.variant-b .tip-b-bullets {
+    margin-top: 28px;
+    width: 100%;
+}
+
+/* === VARIANT C: Full Branded Graphic (No Photo) === */
+.variant-c .tip-c-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        155deg,
+        #78350F 0%,
+        var(--brand-primary) 40%,
+        #B45309 70%,
+        #92400E 100%
+    );
+}
+
+/* Subtle pattern overlay for visual interest */
+.variant-c .tip-c-bg::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background:
+        radial-gradient(circle at 20% 30%, rgba(5, 150, 105, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 80% 70%, rgba(255, 251, 235, 0.06) 0%, transparent 50%);
+}
+
+.variant-c .tip-c-content {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 120px;
+    padding-bottom: 80px;
+}
+
+.variant-c .tip-c-top {
+    text-align: center;
+}
+
+.variant-c .tip-c-bullets {
+    margin-top: 40px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.variant-c .tip-c-bullet-card {
+    background: rgba(255, 255, 255, 0.08);
+    border-left: 4px solid var(--brand-accent);
+    padding: 22px 28px;
+    border-radius: 0 8px 8px 0;
+}
+
+.variant-c .tip-c-bottom {
+    margin-top: auto;
+    padding-top: 40px;
+}
+
+.brand-logo-text.logo-secondary {
+    color: var(--brand-secondary);
+}

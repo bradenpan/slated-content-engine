@@ -1,0 +1,57 @@
+{
+  "negative_keywords": [
+    {
+      "term": "cheap meals",
+      "reason": "Attracts Budget Optimizer persona — will not convert"
+    },
+    {
+      "term": "budget meals",
+      "reason": "Attracts Budget Optimizer persona — will not convert"
+    },
+    {
+      "term": "save money on food",
+      "reason": "Attracts Budget Optimizer persona — will not convert"
+    },
+    {
+      "term": "frugal meal planning",
+      "reason": "Attracts Budget Optimizer persona — will not convert"
+    },
+    {
+      "term": "gourmet recipes",
+      "reason": "Attracts Perfectionist persona — will not convert"
+    },
+    {
+      "term": "authentic recipes",
+      "reason": "Attracts Perfectionist persona — will not convert"
+    },
+    {
+      "term": "from scratch",
+      "reason": "Attracts Perfectionist persona — will not convert"
+    },
+    {
+      "term": "restaurant quality",
+      "reason": "Attracts Perfectionist persona — will not convert"
+    },
+    {
+      "term": "weight loss meal plan",
+      "reason": "Weight loss positioning misaligns with Slated's value prop (cognitive relief, not diet compliance)"
+    },
+    {
+      "term": "diet meal plan",
+      "reason": "Weight loss positioning misaligns with Slated's value prop"
+    },
+    {
+      "term": "calorie counting",
+      "reason": "Weight loss positioning misaligns with Slated's value prop"
+    },
+    {
+      "term": "baby food",
+      "reason": "Too young for Slated's family planning use case"
+    },
+    {
+      "term": "baby led weaning",
+      "reason": "Too young for Slated's family planning use case"
+    }
+  ],
+  "caveat": "Some budget-adjacent terms are acceptable when the primary intent is convenience, not savings. 'Pantry meal ideas' (use what you have = less shopping = convenience) is fine. 'Cheapest meals to feed a family' (cost-primary) is not."
+}

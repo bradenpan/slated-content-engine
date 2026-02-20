@@ -1,0 +1,364 @@
+/* =============================================================================
+ * Slated Pinterest Pin Templates — Shared Base Styles
+ * =============================================================================
+ *
+ * Brand-consistent typography, colors, and layout primitives shared across
+ * all pin template types. Individual template styles.css files build on top
+ * of these base styles.
+ *
+ * Design constraints:
+ * - All pins are 1000x1500px (2:3 ratio)
+ * - Text must be readable at ~300px thumbnail width (mobile feed)
+ * - Content should stay within center 80% (100px margin each side = safe zone)
+ * - Maximum 6-8 words for headlines, minimum 36-48px font size
+ *
+ * Brand colors follow Slated Brand Guidelines v2.2 (Persona-Aesthetic Alignment).
+ * Primary: Amber 600 (#D97706), Secondary: Amber 50 (#FFFBEB), Accent: Emerald 600 (#059669)
+ * Typography: Manrope (headlines) + Inter (body)
+ * Logo: Cloche icon (inline SVG) + "Slated." wordmark (Manrope Bold)
+ * ========================================================================== */
+
+/* === Google Fonts Import === */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
+
+/* === Brand Color Palette — Slated Brand Guidelines v2.2 === */
+:root {
+    /* Primary brand colors */
+    --brand-primary: #D97706;          /* Amber 600 — Brand / Hearth */
+    --brand-secondary: #FFFBEB;        /* Amber 50 — Brand Surface */
+    --brand-accent: #059669;           /* Emerald 600 — Action / Go */
+
+    /* Text colors */
+    --brand-text-light: #FFFFFF;
+    --brand-text-dark: #1C1917;        /* Stone 900 */
+    --brand-text-muted: #78716C;       /* Stone 500 */
+
+    /* Background */
+    --brand-bg: #FAFAF9;              /* Stone 50 — warm stone countertop */
+
+    /* Derived overlay colors */
+    --overlay-dark: rgba(28, 25, 23, 0.60);
+    --overlay-dark-heavy: rgba(28, 25, 23, 0.75);
+    --overlay-light: rgba(255, 251, 235, 0.92);
+    --overlay-primary: rgba(217, 119, 6, 0.88);
+    --overlay-accent-subtle: rgba(5, 150, 105, 0.12);
+
+    /* Gradients */
+    --gradient-dark-bottom: linear-gradient(
+        to bottom,
+        rgba(28, 25, 23, 0) 0%,
+        rgba(28, 25, 23, 0.3) 40%,
+        rgba(28, 25, 23, 0.85) 100%
+    );
+    --gradient-primary-bottom: linear-gradient(
+        to bottom,
+        rgba(217, 119, 6, 0) 0%,
+        rgba(217, 119, 6, 0.7) 50%,
+        rgba(217, 119, 6, 0.95) 100%
+    );
+    --gradient-warm: linear-gradient(
+        135deg,
+        var(--brand-primary) 0%,
+        #B45309 50%,
+        var(--brand-accent) 100%
+    );
+
+    /* Typography — Manrope (headlines) + Inter (body) */
+    --font-primary: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+    --font-display: 'Manrope', 'Helvetica Neue', Arial, sans-serif;
+
+    /* Spacing */
+    --safe-zone-margin: 100px;         /* 10% of 1000px width */
+    --safe-zone-margin-top: 80px;
+    --safe-zone-margin-bottom: 60px;
+
+    /* Shadows */
+    --text-shadow-strong: 0 2px 8px rgba(0, 0, 0, 0.5);
+    --text-shadow-subtle: 0 1px 4px rgba(0, 0, 0, 0.3);
+    --box-shadow-card: 0 4px 20px rgba(0, 0, 0, 0.05);
+}
+
+/* === Reset === */
+*, *::before, *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 1000px;
+    height: 1500px;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* === Pin Canvas Base === */
+.pin-canvas {
+    width: 1000px;
+    height: 1500px;
+    position: relative;
+    overflow: hidden;
+    background-color: var(--brand-bg);
+}
+
+/* === Safe Zone Container === */
+.safe-zone {
+    padding-left: var(--safe-zone-margin);
+    padding-right: var(--safe-zone-margin);
+}
+
+.safe-zone-full {
+    padding: var(--safe-zone-margin-top) var(--safe-zone-margin) var(--safe-zone-margin-bottom);
+}
+
+/* === Typography Scale ===
+ * Designed to be readable at 300px thumbnail width (0.3x scale)
+ * At 300px: 48px headline renders as ~14.4px — minimum for legibility
+ */
+
+/* Display headline — used for large impact numbers and primary headlines */
+.text-display {
+    font-family: var(--font-display);
+    font-size: 72px;
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.5px;
+}
+
+/* Primary headline — main text on most pins */
+.text-headline {
+    font-family: var(--font-display);
+    font-size: 56px;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.025em;
+}
+
+/* Secondary headline — subtitles and supporting text */
+.text-subheadline {
+    font-family: var(--font-primary);
+    font-size: 36px;
+    font-weight: 500;
+    line-height: 1.35;
+}
+
+/* Body text — bullet points, descriptions */
+.text-body {
+    font-family: var(--font-primary);
+    font-size: 30px;
+    font-weight: 400;
+    line-height: 1.45;
+}
+
+/* Small text — captions, footer text */
+.text-caption {
+    font-family: var(--font-primary);
+    font-size: 24px;
+    font-weight: 400;
+    line-height: 1.4;
+    letter-spacing: 0.3px;
+}
+
+/* Accent text — labels, tags, small uppercase */
+.text-label {
+    font-family: var(--font-primary);
+    font-size: 22px;
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+/* Large number — for listicle counts */
+.text-number {
+    font-family: var(--font-display);
+    font-size: 160px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+/* === Color Utilities === */
+.color-light { color: var(--brand-text-light); }
+.color-dark { color: var(--brand-text-dark); }
+.color-primary { color: var(--brand-primary); }
+.color-accent { color: var(--brand-accent); }
+.color-secondary { color: var(--brand-secondary); }
+
+.bg-primary { background-color: var(--brand-primary); }
+.bg-secondary { background-color: var(--brand-secondary); }
+.bg-accent { background-color: var(--brand-accent); }
+.bg-dark { background-color: var(--brand-text-dark); }
+.bg-light { background-color: var(--brand-text-light); }
+.bg-surface { background-color: var(--brand-bg); }
+
+/* === Overlay Utilities === */
+.overlay-dark {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: var(--overlay-dark);
+}
+
+.overlay-dark-heavy {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: var(--overlay-dark-heavy);
+}
+
+.overlay-gradient-bottom {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: var(--gradient-dark-bottom);
+}
+
+.overlay-gradient-primary {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: var(--gradient-primary-bottom);
+}
+
+/* === Layout Utilities === */
+.flex-center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.flex-column {
+    display: flex;
+    flex-direction: column;
+}
+
+.flex-column-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.text-center { text-align: center; }
+.text-left { text-align: left; }
+
+.relative { position: relative; }
+.absolute { position: absolute; }
+.z-1 { z-index: 1; }
+.z-2 { z-index: 2; }
+.z-10 { z-index: 10; }
+
+/* === Brand Logo / Wordmark ===
+ * Logo: Cloche SVG icon + "Slated." text wordmark (Manrope Bold).
+ * The period is an essential part of the brand identity.
+ */
+.brand-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.brand-logo-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.brand-logo-text {
+    font-family: var(--font-display);
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+}
+
+.brand-logo-text.logo-light {
+    color: var(--brand-text-light);
+}
+
+.brand-logo-text.logo-dark {
+    color: var(--brand-text-dark);
+}
+
+.brand-logo-text.logo-primary {
+    color: var(--brand-primary);
+}
+
+.brand-logo-text.logo-accent {
+    color: var(--brand-accent);
+}
+
+/* Small dot separator used in brand mark */
+.brand-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+/* === Decorative Elements === */
+.divider-line {
+    height: 3px;
+    border-radius: 2px;
+    background-color: var(--brand-accent);
+}
+
+.divider-line-light {
+    height: 2px;
+    border-radius: 1px;
+    background-color: rgba(255, 255, 255, 0.3);
+}
+
+.accent-bar {
+    width: 60px;
+    height: 5px;
+    border-radius: 3px;
+    background-color: var(--brand-accent);
+}
+
+/* Step number circle used in infographic pins */
+.step-circle {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background-color: var(--brand-accent);
+    color: var(--brand-text-light);
+    font-family: var(--font-display);
+    font-size: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+/* Bullet point marker */
+.bullet-marker {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: var(--brand-accent);
+    flex-shrink: 0;
+    margin-top: 12px;
+}
+
+/* === Background Image Utilities === */
+.bg-image-cover {
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.bg-image-contain {
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+/* === Text Shadow for Readability Over Images === */
+.shadow-text {
+    text-shadow: var(--text-shadow-strong);
+}
+
+.shadow-text-subtle {
+    text-shadow: var(--text-shadow-subtle);
+}
