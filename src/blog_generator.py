@@ -92,6 +92,7 @@ class BlogGenerator:
         self.claude = claude or ClaudeAPI()
         self._cta_cache: Optional[dict] = None
         self._brand_voice_cache: Optional[str] = None
+        self._product_overview_cache: Optional[str] = None
 
     def generate(self, post_spec: dict) -> tuple[str, dict]:
         """
@@ -235,6 +236,7 @@ class BlogGenerator:
         pillar = spec.get("pillar", 3)
         cta_copy = self._load_cta_copy(pillar)
         brand_voice = self._load_brand_voice()
+        product_overview = self._load_product_overview()
         example = self._load_example_post("recipe")
 
         mdx_content = self.claude.generate_blog_post(
@@ -243,6 +245,7 @@ class BlogGenerator:
             brand_voice=brand_voice,
             cta_copy=cta_copy,
             examples=example,
+            product_overview=product_overview,
         )
 
         # Validate the output
@@ -267,6 +270,7 @@ class BlogGenerator:
         pillar = spec.get("pillar", 1)
         cta_copy = self._load_cta_copy(pillar)
         brand_voice = self._load_brand_voice()
+        product_overview = self._load_product_overview()
         example = self._load_example_post("weekly-plan")
 
         mdx_content = self.claude.generate_blog_post(
@@ -275,6 +279,7 @@ class BlogGenerator:
             brand_voice=brand_voice,
             cta_copy=cta_copy,
             examples=example,
+            product_overview=product_overview,
         )
 
         self._validate_generated_post(mdx_content, "weekly-plan", spec)
@@ -296,6 +301,7 @@ class BlogGenerator:
         pillar = spec.get("pillar", 2)
         cta_copy = self._load_cta_copy(pillar)
         brand_voice = self._load_brand_voice()
+        product_overview = self._load_product_overview()
         example = self._load_example_post("guide")
 
         mdx_content = self.claude.generate_blog_post(
@@ -304,6 +310,7 @@ class BlogGenerator:
             brand_voice=brand_voice,
             cta_copy=cta_copy,
             examples=example,
+            product_overview=product_overview,
         )
 
         self._validate_generated_post(mdx_content, "guide", spec)
@@ -325,6 +332,7 @@ class BlogGenerator:
         pillar = spec.get("pillar", 3)
         cta_copy = self._load_cta_copy(pillar)
         brand_voice = self._load_brand_voice()
+        product_overview = self._load_product_overview()
         example = self._load_example_post("listicle")
 
         mdx_content = self.claude.generate_blog_post(
@@ -333,6 +341,7 @@ class BlogGenerator:
             brand_voice=brand_voice,
             cta_copy=cta_copy,
             examples=example,
+            product_overview=product_overview,
         )
 
         self._validate_generated_post(mdx_content, "listicle", spec)
@@ -622,6 +631,20 @@ class BlogGenerator:
             self._brand_voice_cache = ""
 
         return self._brand_voice_cache
+
+    def _load_product_overview(self) -> str:
+        """Load Slated product overview from strategy/product-overview.md."""
+        if self._product_overview_cache is not None:
+            return self._product_overview_cache
+
+        overview_path = STRATEGY_DIR / "product-overview.md"
+        try:
+            self._product_overview_cache = overview_path.read_text(encoding="utf-8")
+        except FileNotFoundError:
+            logger.warning("product-overview.md not found, using empty string")
+            self._product_overview_cache = ""
+
+        return self._product_overview_cache
 
     def _load_cta_copy(self, pillar: int) -> dict:
         """

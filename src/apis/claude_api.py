@@ -151,15 +151,18 @@ class ClaudeAPI:
         Returns:
             dict: Structured weekly plan with blog_posts and pins arrays.
         """
+        from datetime import date as _date
         template = self.load_prompt_template("weekly_plan.md")
 
+        today = _date.today()
         context = {
-            "STRATEGY_DOC": strategy_doc,
-            "WEEKLY_ANALYSIS": weekly_analysis,
-            "CONTENT_MEMORY": content_memory,
-            "SEASONAL_CONTEXT": seasonal_context,
-            "KEYWORD_DATA": keyword_data,
-            "NEGATIVE_KEYWORDS": negative_keywords,
+            "current_date": today.isoformat(),
+            "week_number": str(today.isocalendar()[1]),
+            "strategy_summary": strategy_doc,
+            "last_week_analysis": weekly_analysis or "No previous analysis available (first run).",
+            "content_memory_summary": content_memory or "No content history yet (first run).",
+            "seasonal_window": seasonal_context,
+            "keyword_performance": keyword_data,
         }
 
         prompt = self._render_template(template, context)
@@ -214,9 +217,10 @@ class ClaudeAPI:
             batch = pin_specs[i:i + batch_size]
 
             context = {
-                "PIN_SPECS": batch,
-                "BRAND_VOICE": brand_voice,
-                "KEYWORD_TARGETS": keyword_targets,
+                "pin_specs": batch,
+                "blog_post_content": "",
+                "pillar": "See individual pin specs above",
+                "funnel_layer": "See individual pin specs above",
             }
 
             prompt = self._render_template(template, context)
@@ -256,6 +260,7 @@ class ClaudeAPI:
         brand_voice: str,
         cta_copy: dict,
         examples: str,
+        product_overview: str = "",
     ) -> str:
         """
         Generate a complete blog post as MDX with frontmatter.
@@ -269,10 +274,12 @@ class ClaudeAPI:
             brand_voice: Brand voice guidelines.
             cta_copy: Pillar-specific CTA copy variants.
             examples: Example blog post content for few-shot learning.
+            product_overview: Slated product overview for CTA context.
 
         Returns:
             str: Complete MDX file content (frontmatter + body).
         """
+        from datetime import date as _date
         # Map post type to template file
         template_map = {
             "recipe": "blog_post_recipe.md",
@@ -288,10 +295,19 @@ class ClaudeAPI:
         template = self.load_prompt_template(template_name)
 
         context = {
-            "POST_SPEC": post_spec,
-            "BRAND_VOICE": brand_voice,
-            "CTA_COPY": cta_copy,
-            "EXAMPLES": examples,
+            "topic": post_spec.get("topic", ""),
+            "plan_theme": post_spec.get("topic", ""),  # alias for weekly-plan template
+            "primary_keyword": post_spec.get("primary_keyword", ""),
+            "secondary_keywords": post_spec.get("secondary_keywords", []),
+            "recipes": post_spec.get("recipes", "See topic description"),
+            "include_recipes": str(post_spec.get("include_recipes", False)),
+            "pillar": str(post_spec.get("pillar", "")),
+            "current_date": _date.today().isoformat(),
+            "post_spec": post_spec,
+            "brand_voice": brand_voice,
+            "cta_copy": cta_copy,
+            "examples": examples,
+            "product_overview": product_overview,
         }
 
         prompt = self._render_template(template, context)

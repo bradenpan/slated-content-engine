@@ -20,6 +20,9 @@ Write in Slated's brand voice: warm, practical, confident, solution-oriented. Yo
 - **Pillar:** {{pillar}}
 - **Publication Date:** {{current_date}}
 
+### Slated Product Overview (for CTA context)
+{{product_overview}}
+
 ### CTA Notes
 Mid-post and end-of-post CTAs are handled by the `<BlogCTA />` component, which renders pillar-specific and post-type-specific copy automatically. You just place the component — do NOT write CTA copy in the body text.
 

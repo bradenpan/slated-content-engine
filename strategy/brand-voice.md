@@ -1,8 +1,5 @@
 # Slated Brand Voice on Pinterest
 
-> This file is derived from the Pinterest Content Strategy Section 6.
-> Copy the brand voice guidelines here once the strategy is finalized.
-
 ## Voice Principles
 
 Slated's Pinterest voice is the voice of a friend who has already figured out
