@@ -189,7 +189,7 @@ def main():
     board = api_call("POST", "/boards", token, json_body={
         "name": "API Demo — Weeknight Dinners",
         "description": "Demo board created by the Slated Pinterest automation pipeline to demonstrate API integration.",
-        "privacy": "SECRET",
+        "privacy": "PUBLIC",
     })
     if board.get("error"):
         print("  Failed to create board.")

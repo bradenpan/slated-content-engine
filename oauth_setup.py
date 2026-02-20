@@ -50,7 +50,7 @@ logger = logging.getLogger(__name__)
 # --- Configuration ---
 REDIRECT_URI = "http://localhost:8085/"
 CALLBACK_PORT = 8085
-SCOPES = "boards:read,boards:write,pins:read,pins:write,user_accounts:read"
+SCOPES = "boards:read,boards:write,boards:read_secret,boards:write_secret,pins:read,pins:write,pins:read_secret,pins:write_secret,user_accounts:read"
 PINTEREST_AUTH_BASE = "https://www.pinterest.com/oauth/"
 
 # Global to capture the auth code from the callback
