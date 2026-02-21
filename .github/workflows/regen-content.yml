@@ -1,9 +1,9 @@
-name: Generate Content
+name: Regenerate Content
 
-# Triggered by plan approval in Google Sheet (via Apps Script -> repository_dispatch)
+# Triggered by regen button in Google Sheet (via Apps Script -> repository_dispatch)
 on:
   repository_dispatch:
-    types: [generate-content]
+    types: [regen-content]
   workflow_dispatch:  # Manual fallback trigger
 
 concurrency:
@@ -28,9 +28,9 @@ env:
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
 jobs:
-  generate-content:
+  regen-content:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
 
     steps:
       - name: Checkout repository
@@ -56,33 +56,16 @@ jobs:
         # NEEDED -- pin_assembler.py calls render_pin.js (Puppeteer) to render HTML/CSS templates to PNG
         run: npm install puppeteer
 
-      - name: Refresh Pinterest token
-        run: python -m src.token_manager
+      - name: Regenerate flagged content
+        run: python -m src.regen_content
 
-      - name: Generate blog posts (blog-first workflow)
-        # Step 1: Generate all blog posts from approved plan
-        # Must complete before pin generation (pins reference blog content)
-        run: python -m src.generate_blog_posts
-
-      - name: Generate pin content (copy + images + rendered PNGs)
-        # Step 2: Generate pin titles, descriptions, alt text, overlay text
-        # Source images (stock / AI / template-only)
-        # Render final pin PNGs via Puppeteer
-        run: python -m src.generate_pin_content
-
-      - name: Commit generated content
+      - name: Commit regenerated content
         run: |
           git config user.name "pinterest-pipeline-bot"
           git config user.email "bot@pinterest-pipeline.local"
-          git add data/ analysis/
-          git diff --staged --quiet || git commit -m "chore: generated content [skip ci]"
+          git add data/
+          git diff --staged --quiet || git commit -m "chore: regenerated content [skip ci]"
           git push
-
-      - name: Publish Content Queue for review
-        # Uploads pin images to Google Drive for inline Sheet preview
-        # Writes Content Queue with IMAGE() formulas and blog summaries
-        # Sends Slack notification that content is ready for review
-        run: python -m src.publish_content_queue
 
       - name: Notify failure
         if: failure()

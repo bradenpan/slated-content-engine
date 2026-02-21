@@ -238,6 +238,16 @@ class ClaudeAPI:
                 "Follow Pinterest SEO best practices: keywords early, natural language, no hashtags."
             )
 
+            # If any pin in the batch has reviewer feedback, add guidance to system message
+            has_feedback = any(spec.get("_copy_feedback") for spec in batch)
+            if has_feedback:
+                system += (
+                    " IMPORTANT: One or more pins have a '_copy_feedback' field containing "
+                    "reviewer feedback on the previous version. Read each pin's _copy_feedback "
+                    "carefully and address the feedback specifically in the new copy. "
+                    "The previous version was rejected for the stated reason."
+                )
+
             logger.info("Generating pin copy batch %d-%d of %d...", i + 1, i + len(batch), len(pin_specs))
             response_text = self._call_api(
                 prompt=prompt,
@@ -344,7 +354,12 @@ class ClaudeAPI:
 
         return response_text
 
-    def generate_image_prompt(self, pin_spec: dict, image_source: str) -> str:
+    def generate_image_prompt(
+        self,
+        pin_spec: dict,
+        image_source: str,
+        regen_feedback: str = "",
+    ) -> str:
         """
         Generate either an AI image prompt or stock photo search queries.
 
@@ -353,6 +368,9 @@ class ClaudeAPI:
             image_source: "ai" for AI image prompt, "stock" for search queries,
                           "stock_retry" for broader/alternative stock queries
                           when initial search scored poorly.
+            regen_feedback: Optional reviewer feedback from a regen request.
+                            When provided, guides image selection/generation
+                            toward what the reviewer wants.
 
         Returns:
             str: AI image generation prompt or stock photo search query.
@@ -386,6 +404,13 @@ class ClaudeAPI:
                 "optimized for Pinterest pin images at 1000x1500px (2:3 ratio). "
                 "For food: prefer overhead/flat-lay compositions, warm lighting, rustic surfaces. "
                 "Return only the prompt/query text, no explanation."
+            )
+
+        if regen_feedback:
+            system_msg += (
+                f" IMPORTANT: The previous image was rejected by the reviewer with this "
+                f"feedback: {regen_feedback}. Generate a search query that specifically "
+                f"addresses this feedback."
             )
 
         logger.info("Generating %s image prompt for: %s", image_source, pin_spec.get("topic", "unknown")[:50])

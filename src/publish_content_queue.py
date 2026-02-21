@@ -57,6 +57,23 @@ def publish() -> None:
     try:
         drive = DriveAPI()
         pin_image_urls = drive.upload_pin_images(generated_pins, PIN_OUTPUT_DIR)
+
+        # Save Drive URLs back to pin-generation-results.json so the regen
+        # workflow can download hero images on a fresh runner
+        if pin_image_urls:
+            for pin in generated_pins:
+                pid = pin.get("pin_id", "")
+                if pid in pin_image_urls:
+                    pin["_drive_image_url"] = pin_image_urls[pid]
+            try:
+                pin_results_path.write_text(
+                    json.dumps(pin_data, indent=2, ensure_ascii=False),
+                    encoding="utf-8",
+                )
+                logger.info("Saved Drive URLs back to pin-generation-results.json")
+            except OSError as e:
+                logger.error("Failed to save Drive URLs to pin results: %s", e)
+
     except DriveAPIError as e:
         logger.error(
             "Drive upload failed, Content Queue will not have image previews: %s", e
@@ -124,6 +141,17 @@ def publish() -> None:
                 num_rows=len(generated_pins),
                 height_px=200,
             )
+
+        # Write regen trigger cells: M1 = label, N1 = trigger value
+        try:
+            sheets.sheets.values().update(
+                spreadsheetId=sheets.sheet_id,
+                range=f"'{TAB_CONTENT_QUEUE}'!M1:N1",
+                valueInputOption="RAW",
+                body={"values": [["Regen \u2192", "idle"]]},
+            ).execute()
+        except Exception as e:
+            logger.warning("Failed to write regen trigger cells: %s", e)
 
     except Exception as e:
         logger.error("Failed to write Content Queue to Google Sheets: %s", e)

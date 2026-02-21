@@ -203,12 +203,79 @@ class DriveAPI:
                 body={"type": "anyone", "role": "reader"},
             ).execute()
 
-            url = f"https://drive.google.com/uc?export=view&id={file_id}"
+            url = f"https://drive.google.com/thumbnail?id={file_id}&sz=w400"
             logger.debug("Uploaded %s -> %s", name, url)
             return url
 
         except Exception as e:
             raise DriveAPIError(f"Failed to upload {name}: {e}") from e
+
+    def download_image(self, file_id: str, output_path: Path) -> Path:
+        """
+        Download an image from Drive by file ID.
+
+        Args:
+            file_id: The Drive file ID.
+            output_path: Local path to save the downloaded file.
+
+        Returns:
+            Path: The output path.
+        """
+        try:
+            from googleapiclient.http import MediaIoBaseDownload
+            import io
+
+            request = self.drive.files().get_media(fileId=file_id)
+            fh = io.BytesIO()
+            downloader = MediaIoBaseDownload(fh, request)
+
+            done = False
+            while not done:
+                _, done = downloader.next_chunk()
+
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_bytes(fh.getvalue())
+            logger.debug("Downloaded Drive file %s -> %s", file_id, output_path)
+            return output_path
+
+        except Exception as e:
+            raise DriveAPIError(f"Failed to download file {file_id}: {e}") from e
+
+    def delete_image_by_name(self, filename: str) -> bool:
+        """
+        Delete an image from the pins folder by filename.
+
+        Args:
+            filename: The file name to search for and delete.
+
+        Returns:
+            bool: True if a file was deleted, False if not found.
+        """
+        folder_id = self._get_or_create_folder()
+        try:
+            results = self.drive.files().list(
+                q=(
+                    f"'{folder_id}' in parents "
+                    f"and name='{filename}' "
+                    f"and trashed=false"
+                ),
+                fields="files(id)",
+                spaces="drive",
+            ).execute()
+
+            files = results.get("files", [])
+            if not files:
+                return False
+
+            for f in files:
+                self.drive.files().delete(fileId=f["id"]).execute()
+
+            logger.debug("Deleted %d file(s) named '%s' from Drive", len(files), filename)
+            return True
+
+        except Exception as e:
+            logger.warning("Failed to delete '%s' from Drive: %s", filename, e)
+            return False
 
     def upload_pin_images(self, generated_pins: list[dict], pins_dir: Path) -> dict[str, str]:
         """

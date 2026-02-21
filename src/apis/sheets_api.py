@@ -55,6 +55,7 @@ CQ_COL_PILLAR = 7       # H: Content pillar (1-5)
 CQ_COL_THUMBNAIL = 8    # I: Thumbnail URL or image reference
 CQ_COL_STATUS = 9       # J: content_status
 CQ_COL_NOTES = 10       # K: Reviewer notes
+CQ_COL_FEEDBACK = 11    # L: Reviewer feedback for regen
 
 # Column indices for the Post Log tab
 PL_COL_PIN_ID = 0       # A: Internal pin ID
@@ -311,7 +312,7 @@ class SheetsAPI:
         # Header row
         rows = [
             ["ID", "Type", "Title", "Description", "Board", "Blog URL",
-             "Schedule", "Pillar", "Thumbnail", "Status", "Notes"],
+             "Schedule", "Pillar", "Thumbnail", "Status", "Notes", "Feedback"],
         ]
 
         # Blog posts
@@ -330,7 +331,8 @@ class SheetsAPI:
                 str(post.get("pillar", "")),
                 "",  # No thumbnail for blog posts
                 "pending_review",
-                "",
+                "",  # Notes
+                "",  # Feedback
             ])
 
         # Pins
@@ -365,6 +367,7 @@ class SheetsAPI:
                 thumbnail,
                 "pending_review",
                 quality_note,
+                "",  # Feedback
             ])
 
         # Quality gate summary row at the bottom
@@ -375,7 +378,7 @@ class SheetsAPI:
                 "",
                 quality_gate_stats.get("stock_summary", ""),
                 quality_gate_stats.get("ai_summary", ""),
-                "", "", "", "", "", "", "",
+                "", "", "", "", "", "", "", "",
             ])
 
         # Use USER_ENTERED so =IMAGE() formulas are interpreted
@@ -392,7 +395,7 @@ class SheetsAPI:
         try:
             result = self.sheets.values().get(
                 spreadsheetId=self.sheet_id,
-                range=f"'{TAB_CONTENT_QUEUE}'!A:K",
+                range=f"'{TAB_CONTENT_QUEUE}'!A:L",
             ).execute()
 
             values = result.get("values", [])
@@ -413,6 +416,7 @@ class SheetsAPI:
                     "pillar": row[CQ_COL_PILLAR] if len(row) > CQ_COL_PILLAR else "",
                     "status": row[CQ_COL_STATUS] if len(row) > CQ_COL_STATUS else "pending_review",
                     "notes": row[CQ_COL_NOTES] if len(row) > CQ_COL_NOTES else "",
+                    "feedback": row[CQ_COL_FEEDBACK] if len(row) > CQ_COL_FEEDBACK else "",
                 })
 
             approved = sum(1 for i in items if i["status"] == "approved")
@@ -431,6 +435,130 @@ class SheetsAPI:
     def read_content_statuses(self) -> list[dict]:
         """Alias for read_content_approvals."""
         return self.read_content_approvals()
+
+    def read_regen_requests(self) -> list[dict]:
+        """
+        Read Content Queue rows flagged for regeneration.
+
+        Returns items where column J (status) starts with 'regen'.
+        Each item includes the 1-based row index for in-place updates.
+
+        Returns:
+            list[dict]: Regen request items with row_index, id, type, title,
+                        description, board, slug, schedule, pillar, status,
+                        feedback, and notes.
+        """
+        try:
+            result = self.sheets.values().get(
+                spreadsheetId=self.sheet_id,
+                range=f"'{TAB_CONTENT_QUEUE}'!A:L",
+            ).execute()
+
+            values = result.get("values", [])
+            if len(values) < 2:
+                return []
+
+            items = []
+            for i, row in enumerate(values[1:], start=2):  # row 2 = first data row
+                if not row or len(row) <= CQ_COL_STATUS:
+                    continue
+                status = row[CQ_COL_STATUS].strip()
+                if not status.startswith("regen"):
+                    continue
+                items.append({
+                    "row_index": i,
+                    "id": row[CQ_COL_ID] if len(row) > CQ_COL_ID else "",
+                    "type": row[CQ_COL_TYPE] if len(row) > CQ_COL_TYPE else "",
+                    "title": row[CQ_COL_TITLE] if len(row) > CQ_COL_TITLE else "",
+                    "description": row[CQ_COL_DESCRIPTION] if len(row) > CQ_COL_DESCRIPTION else "",
+                    "board": row[CQ_COL_BOARD] if len(row) > CQ_COL_BOARD else "",
+                    "slug": row[CQ_COL_BLOG_URL] if len(row) > CQ_COL_BLOG_URL else "",
+                    "schedule": row[CQ_COL_SCHEDULE] if len(row) > CQ_COL_SCHEDULE else "",
+                    "pillar": row[CQ_COL_PILLAR] if len(row) > CQ_COL_PILLAR else "",
+                    "status": status,
+                    "notes": row[CQ_COL_NOTES] if len(row) > CQ_COL_NOTES else "",
+                    "feedback": row[CQ_COL_FEEDBACK] if len(row) > CQ_COL_FEEDBACK else "",
+                })
+
+            logger.info("Found %d regen requests in Content Queue.", len(items))
+            return items
+
+        except Exception as e:
+            logger.error("Failed to read regen requests: %s", e)
+            raise SheetsAPIError(f"Failed to read regen requests: {e}") from e
+
+    def update_content_row(
+        self,
+        row_index: int,
+        thumbnail: Optional[str] = None,
+        title: Optional[str] = None,
+        description: Optional[str] = None,
+        status: Optional[str] = None,
+        notes: Optional[str] = None,
+        feedback: Optional[str] = None,
+    ) -> None:
+        """
+        Update specific cells in a Content Queue row by row index.
+
+        Only writes cells for which a value is provided. Uses USER_ENTERED
+        so =IMAGE() formulas render.
+
+        Args:
+            row_index: 1-based row index in the Content Queue tab.
+            thumbnail: New value for column I (e.g., '=IMAGE("url")').
+            title: New value for column C.
+            description: New value for column D.
+            status: New value for column J.
+            notes: New value for column K.
+            feedback: New value for column L (typically cleared after regen).
+        """
+        updates: list[dict] = []
+        col_map = {
+            CQ_COL_TITLE: title,
+            CQ_COL_DESCRIPTION: description,
+            CQ_COL_THUMBNAIL: thumbnail,
+            CQ_COL_STATUS: status,
+            CQ_COL_NOTES: notes,
+            CQ_COL_FEEDBACK: feedback,
+        }
+
+        for col_index, value in col_map.items():
+            if value is None:
+                continue
+            col_letter = chr(65 + col_index)
+            cell_range = f"'{TAB_CONTENT_QUEUE}'!{col_letter}{row_index}"
+            updates.append({
+                "range": cell_range,
+                "values": [[value]],
+            })
+
+        if not updates:
+            return
+
+        try:
+            self.sheets.values().batchUpdate(
+                spreadsheetId=self.sheet_id,
+                body={
+                    "valueInputOption": "USER_ENTERED",
+                    "data": updates,
+                },
+            ).execute()
+            logger.info("Updated Content Queue row %d (%d cells).", row_index, len(updates))
+        except Exception as e:
+            raise SheetsAPIError(f"Failed to update content row {row_index}: {e}") from e
+
+    def reset_regen_trigger(self) -> None:
+        """Write 'idle' to cell N1 of Content Queue to reset the regen trigger."""
+        try:
+            self.sheets.values().update(
+                spreadsheetId=self.sheet_id,
+                range=f"'{TAB_CONTENT_QUEUE}'!N1",
+                valueInputOption="RAW",
+                body={"values": [["idle"]]},
+            ).execute()
+            logger.info("Reset regen trigger to 'idle'.")
+        except Exception as e:
+            raise SheetsAPIError(f"Failed to reset regen trigger: {e}") from e
 
     def update_content_status(self, row_index: int, status: str) -> None:
         """

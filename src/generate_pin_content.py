@@ -604,6 +604,7 @@ def _source_stock_image(
         tuple: (image_path, source_name, image_id, quality_meta)
     """
     pin_id = pin_spec.get("pin_id", "unknown")
+    regen_feedback = pin_spec.get("_regen_feedback", "")
     quality_meta = {
         "image_quality_score": None,
         "image_retries": 0,
@@ -613,7 +614,9 @@ def _source_stock_image(
     }
 
     # Generate search query
-    search_query = claude.generate_image_prompt(pin_spec, image_source="stock")
+    search_query = claude.generate_image_prompt(
+        pin_spec, image_source="stock", regen_feedback=regen_feedback,
+    )
     logger.info("Stock search query for %s: '%s'", pin_id, search_query[:80])
 
     # Search for candidates
@@ -787,7 +790,17 @@ def _source_ai_image(
         }
 
     # Generate image prompt
-    image_prompt = claude.generate_image_prompt(pin_spec, image_source="ai")
+    regen_feedback = pin_spec.get("_regen_feedback", "")
+    image_prompt = claude.generate_image_prompt(
+        pin_spec, image_source="ai", regen_feedback=regen_feedback,
+    )
+
+    # If reviewer feedback exists, append it as critical guidance
+    if regen_feedback:
+        image_prompt = (
+            f"{image_prompt}\n\nCRITICAL — previous image was rejected: {regen_feedback}"
+        )
+
     logger.info("AI image prompt for %s: '%s'", pin_id, image_prompt[:100])
 
     # Generate the image

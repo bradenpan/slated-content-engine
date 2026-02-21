@@ -299,6 +299,89 @@ class SlackNotify:
             color=COLOR_WARNING,
         )
 
+    def notify_regen_complete(self, regen_results: list[dict]) -> None:
+        """
+        Send notification after content regeneration completes.
+
+        Args:
+            regen_results: List of dicts with keys: pin_id, type, regen_type,
+                           old_score, new_score, and optional error.
+        """
+        sheet_link = (
+            f"<{self.sheet_url}|Open Google Sheet>"
+            if self.sheet_url
+            else "(Sheet URL not configured)"
+        )
+
+        succeeded = [r for r in regen_results if not r.get("error")]
+        failed = [r for r in regen_results if r.get("error")]
+
+        item_lines = []
+        for r in succeeded:
+            pin_id = r.get("pin_id", "?")
+            item_type = r.get("type", "pin")
+            regen_type = r.get("regen_type", "regen")
+
+            label_map = {
+                "regen_image": "new image",
+                "regen_copy": "new copy",
+                "regen": "full regen",
+            }
+            label = label_map.get(regen_type, regen_type)
+
+            old_score = r.get("old_score")
+            new_score = r.get("new_score")
+            if old_score is not None and new_score is not None:
+                score_text = f" (score: {new_score}, was {old_score})"
+            elif new_score is not None:
+                score_text = f" (score: {new_score})"
+            else:
+                score_text = ""
+
+            item_lines.append(f"\u2022 {pin_id} ({item_type}) \u2014 {label}{score_text}")
+
+        for r in failed:
+            pin_id = r.get("pin_id", "?")
+            item_type = r.get("type", "pin")
+            error = r.get("error", "unknown error")
+            item_lines.append(f"\u2022 {pin_id} ({item_type}) \u2014 FAILED: {error}")
+
+        items_text = "\n".join(item_lines) if item_lines else "No items processed."
+
+        # Build summary line
+        parts = []
+        if succeeded:
+            parts.append(f"*{len(succeeded)}* regenerated")
+        if failed:
+            parts.append(f"*{len(failed)}* failed")
+        summary = ", ".join(parts) + " \u2014 ready for re-review"
+
+        color = COLOR_NEUTRAL if not failed else COLOR_WARNING
+
+        blocks = [
+            {
+                "type": "header",
+                "text": {"type": "plain_text", "text": "Regen Complete"},
+            },
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": (
+                        f"{summary}:\n\n"
+                        f"{items_text}\n\n"
+                        f":point_right: {sheet_link}"
+                    ),
+                },
+            },
+        ]
+
+        self._send_message(
+            text=f"{len(succeeded)} regenerated, {len(failed)} failed -- ready for re-review.",
+            blocks=blocks,
+            color=color,
+        )
+
     def notify(self, message: str, level: str = "info") -> None:
         """
         Send a generic notification message.
