@@ -29,8 +29,6 @@ from urllib.parse import quote_plus
 from src.apis.claude_api import ClaudeAPI
 from src.apis.image_stock import ImageStockAPI
 from src.apis.image_gen import ImageGenAPI
-from src.apis.sheets_api import SheetsAPI
-from src.apis.slack_notify import SlackNotify
 from src.pin_assembler import PinAssembler
 
 logger = logging.getLogger(__name__)
@@ -208,42 +206,8 @@ def generate_pin_content(
         len(generated_pins), len(failures), len(pins_specs),
     )
 
-    # Step 3: Write to Google Sheets Content Queue
-    try:
-        sheets = SheetsAPI()
-        # Load blog post metadata for the sheet
-        blog_post_entries = [
-            {
-                "post_id": pid,
-                "title": pdata.get("title", ""),
-                "slug": pdata.get("slug", ""),
-                "pillar": str(pdata.get("pillar", "")),
-                "content_type": pdata.get("content_type", ""),
-            }
-            for pid, pdata in (blog_posts or {}).items()
-            if pdata.get("status") == "success"
-        ]
-        sheets.write_content_queue(
-            blog_posts=blog_post_entries,
-            pins=generated_pins,
-        )
-        logger.info("Written %d pins to Content Queue", len(generated_pins))
-    except Exception as e:
-        logger.error("Failed to write to Google Sheets: %s", e)
-
-    # Step 4: Send Slack notification
-    try:
-        slack = SlackNotify()
-        num_blog_posts = sum(
-            1 for p in (blog_posts or {}).values()
-            if p.get("status") == "success"
-        )
-        slack.notify_content_ready(
-            num_pins=len(generated_pins),
-            num_blog_posts=num_blog_posts,
-        )
-    except Exception as e:
-        logger.error("Failed to send Slack notification: %s", e)
+    # Content Queue sheet write and Slack notification handled by
+    # publish_content_queue.py (runs after git commit so image URLs resolve)
 
     # Save pin generation results for downstream steps
     _save_pin_results(generated_pins, failures)

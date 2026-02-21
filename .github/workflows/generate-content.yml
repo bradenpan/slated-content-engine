@@ -62,14 +62,12 @@ jobs:
       - name: Generate blog posts (blog-first workflow)
         # Step 1: Generate all blog posts from approved plan
         # Must complete before pin generation (pins reference blog content)
-        # Handles Sheet updates and Slack notifications internally
         run: python -m src.generate_blog_posts
 
       - name: Generate pin content (copy + images + rendered PNGs)
         # Step 2: Generate pin titles, descriptions, alt text, overlay text
         # Source images (stock / AI / template-only)
         # Render final pin PNGs via Puppeteer
-        # Handles Sheet updates and Slack notifications internally
         run: python -m src.generate_pin_content
 
       - name: Commit generated content
@@ -77,8 +75,14 @@ jobs:
           git config user.name "pinterest-pipeline-bot"
           git config user.email "bot@pinterest-pipeline.local"
           git add data/ analysis/
-          git diff --staged --quiet || git commit -m "chore: update analytics and data files [skip ci]"
+          git diff --staged --quiet || git commit -m "chore: generated content [skip ci]"
           git push
+
+      - name: Publish Content Queue for review
+        # Uploads pin images to Google Drive for inline Sheet preview
+        # Writes Content Queue with IMAGE() formulas and blog summaries
+        # Sends Slack notification that content is ready for review
+        run: python -m src.publish_content_queue
 
       - name: Notify failure
         if: failure()

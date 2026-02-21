@@ -277,19 +277,30 @@ class SheetsAPI:
         self,
         blog_posts: list[dict],
         pins: list[dict],
+        pin_image_urls: dict = None,
+        blog_previews: dict = None,
     ) -> None:
         """
         Write generated blog posts and pins to the "Content Queue" tab.
 
         Each row includes metadata and content_status = "pending_review".
+        When pin_image_urls is provided, writes =IMAGE() formulas for inline
+        pin image previews. Uses USER_ENTERED so formulas render.
 
         Args:
             blog_posts: List of generated blog post metadata dicts.
-                Keys: post_id, title, content_type, pillar, summary, url
+                Keys: post_id, title, content_type, pillar, slug
             pins: List of generated pin metadata dicts.
-                Keys: pin_id, title, description, board, blog_url, schedule,
-                      pillar, thumbnail_url
+                Keys: pin_id, title, description, board_name, link, scheduled_date,
+                      scheduled_slot, pillar, image_path, alt_text
+            pin_image_urls: Optional dict of pin_id -> public image URL.
+                When provided, writes =IMAGE(url) in thumbnail column.
+            blog_previews: Optional dict of post_id -> blog description text.
+                When provided, writes preview in description column for blogs.
         """
+        pin_image_urls = pin_image_urls or {}
+        blog_previews = blog_previews or {}
+
         logger.info("Writing content queue: %d blog posts, %d pins...", len(blog_posts), len(pins))
 
         # Header row
@@ -300,11 +311,14 @@ class SheetsAPI:
 
         # Blog posts
         for post in blog_posts:
+            post_id = str(post.get("post_id", ""))
+            description = blog_previews.get(post_id, str(post.get("content_type", "")))
+
             rows.append([
-                str(post.get("post_id", "")),
+                post_id,
                 "blog",
                 str(post.get("title", "")),
-                str(post.get("content_type", "")),
+                description,
                 "",  # No board for blog posts
                 str(post.get("slug", "")),  # Slug stored in Blog URL column; deployer needs it
                 "",  # No schedule for blog posts
@@ -316,21 +330,37 @@ class SheetsAPI:
 
         # Pins
         for pin in pins:
+            pin_id = str(pin.get("pin_id", ""))
+
+            # Build description with alt text
+            desc = str(pin.get("description", ""))
+            alt_text = pin.get("alt_text", "")
+            if alt_text:
+                desc = f"{desc}\n\nAlt: {alt_text}"
+
+            # Use IMAGE() formula if we have a public URL
+            image_url = pin_image_urls.get(pin_id)
+            if image_url:
+                thumbnail = f'=IMAGE("{image_url}")'
+            else:
+                thumbnail = str(pin.get("image_path", ""))
+
             rows.append([
-                str(pin.get("pin_id", "")),
+                pin_id,
                 "pin",
                 str(pin.get("title", "")),
-                str(pin.get("description", ""))[:200],
+                desc,
                 str(pin.get("board_name", pin.get("target_board", ""))),
                 str(pin.get("link", "")),
                 f"{pin.get('scheduled_date', '')} / {pin.get('scheduled_slot', '')}",
                 str(pin.get("pillar", "")),
-                str(pin.get("image_path", "")),
+                thumbnail,
                 "pending_review",
                 "",
             ])
 
-        self._clear_and_write(TAB_CONTENT_QUEUE, rows)
+        # Use USER_ENTERED so =IMAGE() formulas are interpreted
+        self._clear_and_write(TAB_CONTENT_QUEUE, rows, value_input_option="USER_ENTERED")
         logger.info("Content queue written: %d total items.", len(rows) - 1)
 
     def read_content_approvals(self) -> list[dict]:
@@ -604,13 +634,20 @@ class SheetsAPI:
         """Alias for update_dashboard to match requirement naming."""
         self.update_dashboard(metrics)
 
-    def _clear_and_write(self, tab_name: str, rows: list[list]) -> None:
+    def _clear_and_write(
+        self,
+        tab_name: str,
+        rows: list[list],
+        value_input_option: str = "RAW",
+    ) -> None:
         """
         Clear a tab and write new data.
 
         Args:
             tab_name: Sheet tab name.
             rows: List of row data (each row is a list of cell values).
+            value_input_option: "RAW" for literal values, "USER_ENTERED"
+                to interpret formulas like =IMAGE().
         """
         range_str = f"'{tab_name}'"
 
@@ -627,7 +664,7 @@ class SheetsAPI:
                 self.sheets.values().update(
                     spreadsheetId=self.sheet_id,
                     range=f"'{tab_name}'!A1",
-                    valueInputOption="RAW",
+                    valueInputOption=value_input_option,
                     body={"values": rows},
                 ).execute()
 
@@ -635,6 +672,82 @@ class SheetsAPI:
 
         except Exception as e:
             raise SheetsAPIError(f"Failed to write to '{tab_name}': {e}") from e
+
+    def _get_sheet_id(self, tab_name: str) -> int:
+        """
+        Get the numeric sheet ID for a tab by name.
+
+        Args:
+            tab_name: Sheet tab name (e.g., "Content Queue").
+
+        Returns:
+            int: The sheet ID used in batchUpdate requests.
+
+        Raises:
+            SheetsAPIError: If tab not found.
+        """
+        try:
+            spreadsheet = self.sheets.get(
+                spreadsheetId=self.sheet_id,
+            ).execute()
+
+            for sheet in spreadsheet.get("sheets", []):
+                props = sheet.get("properties", {})
+                if props.get("title") == tab_name:
+                    return props["sheetId"]
+
+            raise SheetsAPIError(f"Tab '{tab_name}' not found in spreadsheet")
+        except SheetsAPIError:
+            raise
+        except Exception as e:
+            raise SheetsAPIError(f"Failed to get sheet ID for '{tab_name}': {e}") from e
+
+    def set_row_heights(
+        self,
+        tab_name: str,
+        start_row: int,
+        num_rows: int,
+        height_px: int,
+    ) -> None:
+        """
+        Set row heights for a range of rows.
+
+        Args:
+            tab_name: Sheet tab name.
+            start_row: First row (1-based, data rows start at 2).
+            num_rows: Number of rows to resize.
+            height_px: Height in pixels.
+        """
+        sheet_id = self._get_sheet_id(tab_name)
+
+        try:
+            self.service.spreadsheets().batchUpdate(
+                spreadsheetId=self.sheet_id,
+                body={
+                    "requests": [
+                        {
+                            "updateDimensionProperties": {
+                                "range": {
+                                    "sheetId": sheet_id,
+                                    "dimension": "ROWS",
+                                    "startIndex": start_row - 1,  # 0-based
+                                    "endIndex": start_row - 1 + num_rows,
+                                },
+                                "properties": {
+                                    "pixelSize": height_px,
+                                },
+                                "fields": "pixelSize",
+                            }
+                        }
+                    ]
+                },
+            ).execute()
+            logger.info(
+                "Set row heights %d-%d to %dpx in '%s'.",
+                start_row, start_row + num_rows - 1, height_px, tab_name,
+            )
+        except Exception as e:
+            logger.error("Failed to set row heights: %s", e)
 
 
 if __name__ == "__main__":

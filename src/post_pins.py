@@ -162,7 +162,7 @@ def post_pins(time_slot: str) -> dict:
                 apply_jitter(time_slot, pin_index=i)
 
             # Resolve board ID from board name
-            board_name = pin_data.get("target_board", "")
+            board_name = pin_data.get("board_name", pin_data.get("target_board", ""))
             board_id = board_map.get(board_name)
             if not board_id:
                 # Try fuzzy matching (case-insensitive, strip whitespace)
@@ -175,7 +175,7 @@ def post_pins(time_slot: str) -> dict:
                 )
 
             # Verify the blog post URL is live
-            blog_url = pin_data.get("blog_url", "")
+            blog_url = pin_data.get("link", pin_data.get("blog_url", ""))
             if blog_url and not verify_url_is_live(blog_url):
                 logger.warning("Blog URL not live: %s. Will proceed with posting anyway.", blog_url)
 
@@ -234,7 +234,7 @@ def post_pins(time_slot: str) -> dict:
                 "pillar": pin_data.get("pillar"),
                 "content_type": pin_data.get("content_type", ""),
                 "funnel_layer": pin_data.get("funnel_layer", ""),
-                "template": pin_data.get("pin_template", ""),
+                "template": pin_data.get("template", pin_data.get("pin_template", "")),
                 "primary_keyword": pin_data.get("primary_keyword", ""),
                 "secondary_keywords": pin_data.get("secondary_keywords", []),
                 "image_source": pin_data.get("image_source", ""),
