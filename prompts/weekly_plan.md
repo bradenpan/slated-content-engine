@@ -43,7 +43,7 @@ The plan must follow the blog-first workflow: define blog posts first, then deri
 Follow these steps in order. Do the analysis FIRST, then build the plan based on analysis.
 
 ### Step 1: Analyze Inputs
-- Review the content memory summary. Identify topics used in the last 4 weeks (these are off-limits).
+- Review the content memory summary. Identify topics used in the last 10 weeks (these are off-limits).
 - Review keyword performance data. Identify high-performing keywords to lean into and underperforming keywords to deprioritize or test differently.
 - Check the seasonal calendar. If the current date falls within a publish window, plan 2-4 seasonal-themed pieces within the existing pillar allocations.
 - Review last week's analysis recommendations. Incorporate specific tactical adjustments.
@@ -89,7 +89,7 @@ For each blog post (new and existing URLs), define the pins it generates. Fill a
 ### Step 6: Validate Constraints
 Before finalizing, verify ALL of these constraints are met:
 1. Pillar mix is within target ranges
-2. No topic from the content memory's "last 4 weeks" list is repeated
+2. No topic from the content memory's recent topics list is repeated (10-week lookback)
 3. No URL gets more than 2 fresh pin treatments this week (excluding Treatment 1 recipe pulls from plan posts)
 4. No board receives more than 5 pins this week
 5. No more than 3 consecutive pins use the same pin template (when sorted by scheduled_date + scheduled_slot)

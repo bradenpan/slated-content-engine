@@ -281,3 +281,69 @@ Pre-launch code review of the regen feature uncovered 5 bugs. Three independent 
 ### Status
 
 All 5 fixes implemented. No Google Apps Script changes required — all fixes are server-side Python.
+
+---
+
+## Phase 3: Topic Dedup Window Extension + Targeted Replacement
+
+**Date:** 2026-02-21
+
+### Problem
+
+Two issues with content plan deduplication:
+
+1. **Topic repetition window too short.** The pipeline checked only 4 weeks of history before allowing topic reuse. At 8-10 blog posts/week, that's only 32-40 posts before topics become eligible again — too soon given 96+ untargeted keywords remain available. By week 5, Claude could start recycling topics.
+
+2. **Full plan regeneration for single-post violations.** When `validate_plan()` caught a duplicate topic or negative keyword violation on even one blog post, the entire plan (10 blog posts + 28 pins) was regenerated from scratch. This wasted ~$0.10 in API costs and 15-25 seconds, and risked introducing new violations in the previously-clean posts.
+
+### What Was Changed
+
+#### Change 1: 10-Week Topic Repetition Window
+
+Extended the topic dedup lookback from 4 weeks to 10 weeks (~80-100 posts of history). This ensures topic uniqueness across a much larger content library before allowing reuse.
+
+- `TOPIC_REPETITION_WINDOW_WEEKS` constant: `4` → `10`
+- Fixed a hardcoded `timedelta(weeks=4)` that bypassed the constant
+- Separated the fresh pin treatment window (stays at 4 weeks) from the topic dedup window (now 10 weeks) — these are different concepts that were previously conflated in the same variable
+- Updated prompt template to reference "10 weeks" instead of "4 weeks"
+
+#### Change 2: Targeted Topic Replacement
+
+When only post-attributable violations are found (topic repetition, negative keyword on a specific post), the system now surgically replaces only the offending posts and their derived pins instead of regenerating the full plan.
+
+**How it works:**
+
+1. `validate_plan()` now returns structured violations with severity classification:
+   - `"targeted"` — attributable to a specific post (topic repetition, negative keyword on a blog post)
+   - `"structural"` — affects the whole plan (wrong pin count, pillar mix, board limits, etc.)
+
+2. If only targeted violations exist:
+   - `identify_replaceable_posts()` maps each offending post to its derived pins and their scheduled slots
+   - A focused Claude call (`generate_replacement_posts()`) generates replacement posts/pins using a new prompt template that preserves all slot assignments (same `post_id`, `pin_id`, `scheduled_date`, `scheduled_slot`, `target_board`, `funnel_layer`)
+   - `splice_replacements()` swaps the offending posts/pins in-place, keeping the rest of the plan untouched
+
+3. Falls back to full regeneration when:
+   - Any structural violations exist
+   - More than 50% of posts need replacement (surgical approach not worth it)
+   - Replacement returns wrong pin count
+   - Exception during replacement call
+
+**Cost impact for targeted replacement:**
+
+| Scenario | Full regen (before) | Targeted (1 post, ~3 pins) |
+|----------|--------------------|-----------------------------|
+| API cost | ~$0.09-0.12 | ~$0.015-0.025 |
+| Latency | ~15-25s | ~4-8s |
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `src/generate_weekly_plan.py` | `TOPIC_REPETITION_WINDOW_WEEKS` 4→10, separated `topic_window_start` from `fresh_pin_window_start`, refactored `validate_plan()` to return structured violations, added `identify_replaceable_posts()`, `splice_replacements()`, `_extract_recent_topics()`, `violation_messages()`, rewrote retry loop with two-tier targeted/structural logic |
+| `src/apis/claude_api.py` | Added `generate_replacement_posts()` method — loads replacement prompt template, formats context, calls Sonnet with dynamic max_tokens |
+| `prompts/weekly_plan.md` | Updated "4 weeks" → "10 weeks" in topic dedup references (3 lines); left fresh pin treatment "4+ weeks" unchanged |
+| `prompts/weekly_plan_replace.md` | **New** — Targeted replacement prompt template with constraints (recent topics, kept topics, negative keywords), exact pin slot assignments, and JSON output format matching the main plan schema |
+
+### Status
+
+Implemented, not yet tested in production. First live validation will occur during the next weekly plan generation cycle.

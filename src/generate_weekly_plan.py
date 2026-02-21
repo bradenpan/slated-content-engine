@@ -22,7 +22,7 @@ Output: Structured plan written to Google Sheet "Weekly Review" tab.
 
 Planning constraints enforced (from strategy Section 12.2):
 - Pillar mix percentages
-- No topic repetition within 4 weeks
+- No topic repetition within 10 weeks
 - Max 5 treatments per URL in 60 days
 - Max 5 pins per board per week
 - No more than 3 consecutive same-template pins
@@ -66,7 +66,7 @@ PINS_PER_DAY = 4
 MAX_PINS_PER_BOARD = 5
 MAX_CONSECUTIVE_SAME_TEMPLATE = 3
 MAX_FRESH_TREATMENTS_PER_URL_PER_WEEK = 2
-TOPIC_REPETITION_WINDOW_WEEKS = 4
+TOPIC_REPETITION_WINDOW_WEEKS = 10
 MAX_TREATMENTS_PER_URL_60_DAYS = 5
 
 # Days in the posting week: Tuesday through Monday
@@ -151,33 +151,169 @@ def generate_plan(week_start_date: Optional[str] = None) -> dict:
     board_structure = strategy_context.get("board_structure", {})
     violations = validate_plan(plan, content_memory, content_log, board_structure)
 
-    # Step 9: If validation fails, re-prompt with violations
+    # Step 9: Retry loop — targeted replacement first, full regen as fallback
     max_retries = 2
     retry_count = 0
     while violations and retry_count < max_retries:
+        targeted = [v for v in violations if v["severity"] == "targeted"]
+        structural = [v for v in violations if v["severity"] == "structural"]
+
         logger.warning(
-            "Plan validation found %d issues (retry %d/%d): %s",
-            len(violations), retry_count + 1, max_retries, violations,
+            "Plan validation found %d issues (retry %d/%d): "
+            "%d targeted, %d structural. %s",
+            len(violations), retry_count + 1, max_retries,
+            len(targeted), len(structural),
+            violation_messages(violations),
         )
 
-        # Build violation context for re-prompting
-        violation_text = "\n".join(f"- {v}" for v in violations)
-        reprompt_context = (
-            f"The generated plan has the following constraint violations that "
-            f"must be fixed:\n\n{violation_text}\n\n"
-            f"Please regenerate the plan, fixing these specific issues while "
-            f"keeping the rest of the plan intact."
-        )
+        if structural:
+            # Structural issues require full plan regeneration
+            logger.info("Structural violations present — full plan regeneration")
+            violation_text = "\n".join(f"- {v['message']}" for v in violations)
+            reprompt_context = (
+                f"The generated plan has the following constraint violations that "
+                f"must be fixed:\n\n{violation_text}\n\n"
+                f"Please regenerate the plan, fixing these specific issues while "
+                f"keeping the rest of the plan intact."
+            )
 
-        # Re-generate with violation feedback
-        plan = claude.generate_weekly_plan(
-            strategy_doc=strategy_context.get("strategy_doc", ""),
-            weekly_analysis=latest_analysis + "\n\n" + reprompt_context,
-            content_memory=content_memory,
-            seasonal_context=seasonal_context,
-            keyword_data=keyword_data,
-            negative_keywords=negative_keywords,
-        )
+            plan = claude.generate_weekly_plan(
+                strategy_doc=strategy_context.get("strategy_doc", ""),
+                weekly_analysis=latest_analysis + "\n\n" + reprompt_context,
+                content_memory=content_memory,
+                seasonal_context=seasonal_context,
+                keyword_data=keyword_data,
+                negative_keywords=negative_keywords,
+            )
+        else:
+            # Only targeted violations — attempt surgical replacement
+            replaceable = identify_replaceable_posts(plan, violations)
+
+            if not replaceable:
+                # Targeted violations but can't identify posts (e.g., pin neg-keyword
+                # on an existing: source) — fall back to full regen
+                logger.warning(
+                    "Targeted violations but no replaceable posts found. "
+                    "Falling back to full regeneration."
+                )
+                violation_text = "\n".join(f"- {v['message']}" for v in violations)
+                reprompt_context = (
+                    f"The generated plan has violations:\n\n{violation_text}\n\n"
+                    f"Please regenerate the plan fixing these issues."
+                )
+                plan = claude.generate_weekly_plan(
+                    strategy_doc=strategy_context.get("strategy_doc", ""),
+                    weekly_analysis=latest_analysis + "\n\n" + reprompt_context,
+                    content_memory=content_memory,
+                    seasonal_context=seasonal_context,
+                    keyword_data=keyword_data,
+                    negative_keywords=negative_keywords,
+                )
+            elif len(replaceable) > len(plan.get("blog_posts", [])) * 0.5:
+                # Too many posts need replacement — surgical fix is pointless
+                logger.info(
+                    "Too many posts need replacement (%d of %d). Full regeneration.",
+                    len(replaceable), len(plan.get("blog_posts", [])),
+                )
+                violation_text = "\n".join(f"- {v['message']}" for v in violations)
+                reprompt_context = (
+                    f"The generated plan has violations:\n\n{violation_text}\n\n"
+                    f"Please regenerate the plan fixing these issues."
+                )
+                plan = claude.generate_weekly_plan(
+                    strategy_doc=strategy_context.get("strategy_doc", ""),
+                    weekly_analysis=latest_analysis + "\n\n" + reprompt_context,
+                    content_memory=content_memory,
+                    seasonal_context=seasonal_context,
+                    keyword_data=keyword_data,
+                    negative_keywords=negative_keywords,
+                )
+            else:
+                # Surgical replacement of specific posts
+                logger.info(
+                    "Attempting targeted replacement of %d post(s): %s",
+                    len(replaceable), list(replaceable.keys()),
+                )
+
+                posts_to_replace = []
+                all_slots = []
+                all_offending_pin_ids: set[str] = set()
+                for info in replaceable.values():
+                    # Include violation reasons alongside the post for context
+                    post_with_violations = dict(info["post"])
+                    post_with_violations["_violations"] = [
+                        v["message"] for v in info["violations"]
+                    ]
+                    posts_to_replace.append(post_with_violations)
+                    all_slots.extend(info["slots"])
+                    all_offending_pin_ids.update(info["pin_ids"])
+
+                offending_post_ids = set(replaceable.keys())
+
+                # Build context about the rest of the plan
+                kept_posts = [
+                    p for p in plan.get("blog_posts", [])
+                    if p.get("post_id") not in offending_post_ids
+                ]
+                kept_pins = [
+                    p for p in plan.get("pins", [])
+                    if p.get("pin_id") not in all_offending_pin_ids
+                ]
+
+                plan_context = {
+                    "kept_post_topics": [p.get("topic", "") for p in kept_posts],
+                    "kept_pin_boards": dict(Counter(
+                        p.get("target_board", "") for p in kept_pins
+                    )),
+                    "kept_pin_pillars": dict(Counter(
+                        p.get("pillar", 0) for p in kept_pins
+                    )),
+                    "week_number": plan.get("week_number", ""),
+                    "date_range": plan.get("date_range", ""),
+                }
+
+                recent_topics_list = _extract_recent_topics(content_log)
+
+                try:
+                    replacements = claude.generate_replacement_posts(
+                        posts_to_replace=posts_to_replace,
+                        slots_to_fill=all_slots,
+                        plan_context=plan_context,
+                        content_memory=content_memory,
+                        negative_keywords=negative_keywords,
+                        recent_topics=recent_topics_list,
+                    )
+
+                    # Validate replacement pin count before splicing
+                    expected_pins = len(all_slots)
+                    actual_pins = len(replacements.get("pins", []))
+                    if actual_pins != expected_pins:
+                        logger.warning(
+                            "Replacement returned %d pins, expected %d. "
+                            "Falling back to full regen on next iteration.",
+                            actual_pins, expected_pins,
+                        )
+                        # Force structural path on next iteration
+                        violations = [
+                            {**v, "severity": "structural"} for v in violations
+                        ]
+                        retry_count += 1
+                        continue
+
+                    plan = splice_replacements(
+                        plan, replacements,
+                        offending_post_ids, all_offending_pin_ids,
+                    )
+                except Exception as e:
+                    logger.error(
+                        "Targeted replacement failed: %s. "
+                        "Falling back to full regen on next iteration.", e,
+                    )
+                    violations = [
+                        {**v, "severity": "structural"} for v in violations
+                    ]
+                    retry_count += 1
+                    continue
 
         violations = validate_plan(plan, content_memory, content_log, board_structure)
         retry_count += 1
@@ -185,7 +321,7 @@ def generate_plan(week_start_date: Optional[str] = None) -> dict:
     if violations:
         logger.warning(
             "Plan still has %d violations after %d retries. Proceeding with warnings: %s",
-            len(violations), max_retries, violations,
+            len(violations), max_retries, violation_messages(violations),
         )
 
     # Step 10: Write the approved plan to Google Sheets
@@ -407,7 +543,8 @@ def generate_content_memory_summary() -> str:
     today = date.today()
 
     # Date boundaries
-    four_weeks_ago = today - timedelta(weeks=4)
+    topic_window_start = today - timedelta(weeks=TOPIC_REPETITION_WINDOW_WEEKS)
+    fresh_pin_window_start = today - timedelta(weeks=4)  # Separate from topic dedup
     ninety_days_ago = today - timedelta(days=90)
     sixty_days_ago = today - timedelta(days=60)
 
@@ -426,14 +563,14 @@ def generate_content_memory_summary() -> str:
     sections = []
 
     # -------------------------------------------------------
-    # Section 1: RECENT TOPICS (last 4 weeks)
+    # Section 1: RECENT TOPICS (last N weeks — matches TOPIC_REPETITION_WINDOW_WEEKS)
     # -------------------------------------------------------
     recent_entries = [
         e for e in content_log
-        if _parse_date(_get_entry_date(e)) and _parse_date(_get_entry_date(e)) >= four_weeks_ago
+        if _parse_date(_get_entry_date(e)) and _parse_date(_get_entry_date(e)) >= topic_window_start
     ]
 
-    section_lines = ["## 1. RECENT TOPICS (Last 4 Weeks)\n"]
+    section_lines = [f"## 1. RECENT TOPICS (Last {TOPIC_REPETITION_WINDOW_WEEKS} Weeks)\n"]
     if recent_entries:
         # Deduplicate by blog_slug to show unique blog posts
         seen_slugs: set = set()
@@ -447,7 +584,7 @@ def generate_content_memory_summary() -> str:
                     f"({entry.get('content_type', 'unknown')})"
                 )
     else:
-        section_lines.append("No content in the last 4 weeks (first run).")
+        section_lines.append(f"No content in the last {TOPIC_REPETITION_WINDOW_WEEKS} weeks (first run).")
     sections.append("\n".join(section_lines))
 
     # -------------------------------------------------------
@@ -481,11 +618,11 @@ def generate_content_memory_summary() -> str:
     sections.append("\n".join(section_lines))
 
     # -------------------------------------------------------
-    # Section 3: PILLAR MIX (last 4 weeks vs. all time)
+    # Section 3: PILLAR MIX (recent window vs. all time)
     # -------------------------------------------------------
     section_lines = ["## 3. PILLAR MIX\n"]
 
-    # Last 4 weeks
+    # Recent window (matches topic repetition window)
     recent_pillar_counts = Counter(
         e.get("pillar", 0) for e in recent_entries
     )
@@ -493,7 +630,7 @@ def generate_content_memory_summary() -> str:
         e.get("pillar", 0) for e in content_log
     )
 
-    section_lines.append("### Last 4 Weeks")
+    section_lines.append(f"### Last {TOPIC_REPETITION_WINDOW_WEEKS} Weeks")
     for p in range(1, 6):
         count = recent_pillar_counts.get(p, 0)
         total_recent = sum(recent_pillar_counts.values()) or 1
@@ -511,7 +648,7 @@ def generate_content_memory_summary() -> str:
     recent_type_counts = Counter(
         e.get("content_type", "unknown") for e in recent_entries
     )
-    section_lines.append("\n### Content Type (Last 4 Weeks)")
+    section_lines.append(f"\n### Content Type (Last {TOPIC_REPETITION_WINDOW_WEEKS} Weeks)")
     for ctype, count in recent_type_counts.most_common():
         section_lines.append(f"  {ctype}: {count}")
 
@@ -519,7 +656,7 @@ def generate_content_memory_summary() -> str:
     recent_board_counts = Counter(
         e.get("board", "unknown") for e in recent_entries
     )
-    section_lines.append("\n### Board Distribution (Last 4 Weeks)")
+    section_lines.append(f"\n### Board Distribution (Last {TOPIC_REPETITION_WINDOW_WEEKS} Weeks)")
     for board, count in recent_board_counts.most_common():
         section_lines.append(f"  {board}: {count}")
 
@@ -527,7 +664,7 @@ def generate_content_memory_summary() -> str:
     recent_funnel_counts = Counter(
         e.get("funnel_layer", "unknown") for e in recent_entries
     )
-    section_lines.append("\n### Funnel Layer (Last 4 Weeks)")
+    section_lines.append(f"\n### Funnel Layer (Last {TOPIC_REPETITION_WINDOW_WEEKS} Weeks)")
     for layer, count in recent_funnel_counts.most_common():
         section_lines.append(f"  {layer}: {count}")
 
@@ -646,7 +783,7 @@ def generate_content_memory_summary() -> str:
     candidates = []
     for slug, data in slug_data.items():
         last_date = _parse_date(data["last_pin_date"])
-        if last_date and last_date < four_weeks_ago and data["treatment_count"] < MAX_TREATMENTS_PER_URL_60_DAYS:
+        if last_date and last_date < fresh_pin_window_start and data["treatment_count"] < MAX_TREATMENTS_PER_URL_60_DAYS:
             candidates.append((slug, data))
 
     # Sort by total_saves descending (best performers first)
@@ -735,14 +872,179 @@ def generate_content_memory_summary() -> str:
     return summary
 
 
+def identify_replaceable_posts(
+    plan: dict,
+    violations: list[dict],
+) -> dict:
+    """
+    Identify which blog posts need replacement and their derived pins.
+
+    Args:
+        plan: The current weekly plan.
+        violations: Structured violation list from validate_plan().
+
+    Returns:
+        dict: Mapping of post_id -> {post, pins, pin_ids, slots, violations}.
+              Only includes posts from targeted violations that can be replaced
+              (not existing/published posts).
+    """
+    pins = plan.get("pins", [])
+    blog_posts = plan.get("blog_posts", [])
+
+    # Build indexes
+    post_index = {p["post_id"]: p for p in blog_posts}
+    pins_by_source: dict[str, list] = defaultdict(list)
+    for pin in pins:
+        pins_by_source[pin.get("source_post_id", "")].append(pin)
+
+    # Trace pin-level violations to their source post
+    pin_to_source = {
+        pin.get("pin_id", ""): pin.get("source_post_id", "")
+        for pin in pins
+    }
+
+    # Collect targeted violations and resolve to post IDs
+    offending_post_ids: set[str] = set()
+    violations_by_post: dict[str, list] = defaultdict(list)
+
+    for v in violations:
+        if v["severity"] != "targeted":
+            continue
+        pid = v.get("post_id")
+        if pid:
+            offending_post_ids.add(pid)
+            violations_by_post[pid].append(v)
+        elif v.get("category") == "negative_keyword_pin":
+            # Extract pin_id from message and trace to source post
+            msg = v.get("message", "")
+            # Message format: "Pin 'W8-03' targets..."
+            if "'" in msg:
+                pin_id = msg.split("'")[1]
+                source_pid = pin_to_source.get(pin_id, "")
+                if source_pid and not source_pid.startswith("existing:"):
+                    offending_post_ids.add(source_pid)
+                    violations_by_post[source_pid].append(v)
+
+    # Build the result with post objects, derived pins, and slot info
+    result = {}
+    for pid in offending_post_ids:
+        post_obj = post_index.get(pid)
+        if not post_obj:
+            continue
+
+        derived_pins = pins_by_source.get(pid, [])
+        result[pid] = {
+            "post": post_obj,
+            "pins": derived_pins,
+            "pin_ids": {p["pin_id"] for p in derived_pins},
+            "slots": [
+                {
+                    "pin_id": p.get("pin_id"),
+                    "source_post_id": p.get("source_post_id"),
+                    "scheduled_date": p.get("scheduled_date"),
+                    "scheduled_slot": p.get("scheduled_slot"),
+                    "target_board": p.get("target_board"),
+                    "pin_template": p.get("pin_template"),
+                    "funnel_layer": p.get("funnel_layer"),
+                    "pin_type": p.get("pin_type"),
+                    "treatment_number": p.get("treatment_number"),
+                }
+                for p in derived_pins
+            ],
+            "violations": violations_by_post[pid],
+        }
+
+    return result
+
+
+def splice_replacements(
+    plan: dict,
+    replacements: dict,
+    offending_post_ids: set,
+    offending_pin_ids: set,
+) -> dict:
+    """
+    Splice replacement blog posts and pins into the existing plan by ID.
+
+    After splicing, the plan has the same number of posts and pins with
+    the same IDs and slot assignments — only content fields change.
+
+    Args:
+        plan: The original weekly plan.
+        replacements: Output from generate_replacement_posts() with
+                      "blog_posts" and "pins" arrays.
+        offending_post_ids: Set of post_ids being replaced.
+        offending_pin_ids: Set of pin_ids being replaced.
+
+    Returns:
+        dict: Updated plan with replacements spliced in.
+    """
+    new_plan = dict(plan)
+
+    replacement_posts = {
+        p["post_id"]: p for p in replacements.get("blog_posts", [])
+    }
+    replacement_pins = {
+        p["pin_id"]: p for p in replacements.get("pins", [])
+    }
+
+    new_plan["blog_posts"] = [
+        replacement_posts.get(post["post_id"], post)
+        if post.get("post_id") in offending_post_ids
+        else post
+        for post in plan.get("blog_posts", [])
+    ]
+
+    new_plan["pins"] = [
+        replacement_pins.get(pin["pin_id"], pin)
+        if pin.get("pin_id") in offending_pin_ids
+        else pin
+        for pin in plan.get("pins", [])
+    ]
+
+    return new_plan
+
+
+def _extract_recent_topics(content_log: list[dict]) -> list[str]:
+    """
+    Extract unique recent topic strings from the content log.
+
+    Uses the same window as TOPIC_REPETITION_WINDOW_WEEKS. Passed to
+    the replacement prompt so Claude knows what topics to avoid.
+
+    Returns:
+        list[str]: Unique topic strings from recent content.
+    """
+    topic_window = date.today() - timedelta(weeks=TOPIC_REPETITION_WINDOW_WEEKS)
+    topics = set()
+    for entry in content_log:
+        entry_date = _parse_date(_get_entry_date(entry))
+        if entry_date and entry_date >= topic_window:
+            topic = entry.get("topic_summary", "")
+            if topic:
+                topics.add(topic)
+    return list(topics)
+
+
+def violation_messages(violations: list[dict]) -> list[str]:
+    """Extract human-readable messages from structured violations for logging."""
+    return [v["message"] for v in violations]
+
+
 def validate_plan(
     plan: dict,
     content_memory: str,
     content_log: Optional[list[dict]] = None,
     board_structure: Optional[dict] = None,
-) -> list[str]:
+) -> list[dict]:
     """
     Validate a generated plan against all constraints.
+
+    Each violation is a dict with:
+        - category: str identifying the check type
+        - message: str human-readable violation description
+        - post_id: str or None (set for post-attributable violations)
+        - severity: "targeted" (can fix surgically) or "structural" (needs full regen)
 
     Args:
         plan: The generated weekly plan with blog_posts and pins arrays.
@@ -751,9 +1053,9 @@ def validate_plan(
         board_structure: Board structure from strategy. Loaded if None.
 
     Returns:
-        list[str]: List of validation violation messages (empty if all pass).
+        list[dict]: Structured violation objects (empty if all pass).
     """
-    violations = []
+    violations: list[dict] = []
     pins = plan.get("pins", [])
     blog_posts = plan.get("blog_posts", [])
 
@@ -782,28 +1084,35 @@ def validate_plan(
 
     # --- Check 1: Total pins = 28 ---
     if len(pins) != TOTAL_WEEKLY_PINS:
-        violations.append(
-            f"Total pins must be {TOTAL_WEEKLY_PINS}, got {len(pins)}"
-        )
+        violations.append({
+            "category": "pin_count",
+            "message": f"Total pins must be {TOTAL_WEEKLY_PINS}, got {len(pins)}",
+            "post_id": None,
+            "severity": "structural",
+        })
 
     # --- Check 2: Pillar mix within ranges (allow +/-1 pin tolerance) ---
     pillar_counts = Counter(pin.get("pillar", 0) for pin in pins)
     for pillar, (min_pins, max_pins) in PILLAR_MIX_TARGETS.items():
         count = pillar_counts.get(pillar, 0)
-        # Allow +/-1 tolerance as specified
         if count < min_pins - 1 or count > max_pins + 1:
-            violations.append(
-                f"Pillar {pillar} has {count} pins, target range is "
-                f"{min_pins}-{max_pins} (with +/-1 tolerance: {min_pins-1}-{max_pins+1})"
-            )
+            violations.append({
+                "category": "pillar_mix",
+                "message": (
+                    f"Pillar {pillar} has {count} pins, target range is "
+                    f"{min_pins}-{max_pins} (with +/-1 tolerance: {min_pins-1}-{max_pins+1})"
+                ),
+                "post_id": None,
+                "severity": "structural",
+            })
 
-    # --- Check 3: No topic repetition within 4 weeks ---
-    four_weeks_ago = date.today() - timedelta(weeks=TOPIC_REPETITION_WINDOW_WEEKS)
+    # --- Check 3: No topic repetition within the lookback window ---
+    topic_window = date.today() - timedelta(weeks=TOPIC_REPETITION_WINDOW_WEEKS)
     recent_topics = set()
     recent_slugs = set()
     for entry in content_log:
         entry_date = _parse_date(_get_entry_date(entry))
-        if entry_date and entry_date >= four_weeks_ago:
+        if entry_date and entry_date >= topic_window:
             topic = entry.get("topic_summary", "").lower()
             if topic:
                 recent_topics.add(topic)
@@ -813,18 +1122,21 @@ def validate_plan(
 
     for post in blog_posts:
         topic = post.get("topic", "").lower()
-        # Simple overlap check -- look for significant word overlap
         if topic:
             topic_words = set(topic.split())
             for recent_topic in recent_topics:
                 recent_words = set(recent_topic.split())
                 overlap = topic_words & recent_words
-                # If more than 60% of words overlap, flag it
                 if len(overlap) > 0.6 * max(len(topic_words), 1):
-                    violations.append(
-                        f"Topic '{post.get('topic')}' may repeat recent topic "
-                        f"'{recent_topic}' (shared words: {overlap})"
-                    )
+                    violations.append({
+                        "category": "topic_repetition",
+                        "message": (
+                            f"Topic '{post.get('topic')}' may repeat recent topic "
+                            f"'{recent_topic}' (shared words: {overlap})"
+                        ),
+                        "post_id": post.get("post_id"),
+                        "severity": "targeted",
+                    })
 
     # --- Check 4: Max 5 pins per board ---
     board_counts = Counter(pin.get("target_board", "") for pin in pins)
@@ -833,9 +1145,12 @@ def validate_plan(
     )
     for board, count in board_counts.items():
         if count > max_per_board:
-            violations.append(
-                f"Board '{board}' has {count} pins, max is {max_per_board}"
-            )
+            violations.append({
+                "category": "board_limit",
+                "message": f"Board '{board}' has {count} pins, max is {max_per_board}",
+                "post_id": None,
+                "severity": "structural",
+            })
 
     # --- Check 5: Max 2 fresh treatments per URL per week ---
     url_treatment_counts: Counter = Counter()
@@ -847,14 +1162,18 @@ def validate_plan(
 
     for url, count in url_treatment_counts.items():
         if count > MAX_FRESH_TREATMENTS_PER_URL_PER_WEEK:
-            violations.append(
-                f"URL '{url}' has {count} fresh treatments this week, "
-                f"max is {MAX_FRESH_TREATMENTS_PER_URL_PER_WEEK}"
-            )
+            violations.append({
+                "category": "treatment_limit",
+                "message": (
+                    f"URL '{url}' has {count} fresh treatments this week, "
+                    f"max is {MAX_FRESH_TREATMENTS_PER_URL_PER_WEEK}"
+                ),
+                "post_id": None,
+                "severity": "structural",
+            })
 
     # --- Check 6: No more than 3 consecutive same-template pins ---
     if len(pins) >= MAX_CONSECUTIVE_SAME_TEMPLATE + 1:
-        # Sort pins by scheduled day and slot for sequence checking
         sorted_pins = sorted(
             pins,
             key=lambda p: (
@@ -870,11 +1189,16 @@ def validate_plan(
                 for j in range(i, i + MAX_CONSECUTIVE_SAME_TEMPLATE + 1)
             ]
             if len(set(templates)) == 1 and templates[0]:
-                violations.append(
-                    f"More than {MAX_CONSECUTIVE_SAME_TEMPLATE} consecutive pins "
-                    f"use template '{templates[0]}' starting at position {i}"
-                )
-                break  # Only report the first occurrence
+                violations.append({
+                    "category": "consecutive_template",
+                    "message": (
+                        f"More than {MAX_CONSECUTIVE_SAME_TEMPLATE} consecutive pins "
+                        f"use template '{templates[0]}' starting at position {i}"
+                    ),
+                    "post_id": None,
+                    "severity": "structural",
+                })
+                break
 
     # --- Check 7: 4 pins per day, spread across Tue-Mon ---
     day_counts = Counter(
@@ -883,9 +1207,12 @@ def validate_plan(
     for day in POSTING_DAYS:
         count = day_counts.get(day, 0)
         if count != PINS_PER_DAY:
-            violations.append(
-                f"Day '{day}' has {count} pins, expected {PINS_PER_DAY}"
-            )
+            violations.append({
+                "category": "day_distribution",
+                "message": f"Day '{day}' has {count} pins, expected {PINS_PER_DAY}",
+                "post_id": None,
+                "severity": "structural",
+            })
 
     # --- Check 8: Negative keywords ---
     for pin in pins:
@@ -895,15 +1222,25 @@ def validate_plan(
             neg_kw_lower = neg_kw.lower()
             for kw in pin_keywords:
                 if neg_kw_lower in kw.lower():
-                    violations.append(
-                        f"Pin '{pin.get('pin_id')}' targets negative keyword: "
-                        f"'{kw}' matches '{neg_kw}'"
-                    )
+                    violations.append({
+                        "category": "negative_keyword_pin",
+                        "message": (
+                            f"Pin '{pin.get('pin_id')}' targets negative keyword: "
+                            f"'{kw}' matches '{neg_kw}'"
+                        ),
+                        "post_id": None,
+                        "severity": "targeted",
+                    })
             if neg_kw_lower in pin_topic:
-                violations.append(
-                    f"Pin '{pin.get('pin_id')}' topic contains negative keyword: "
-                    f"'{neg_kw}'"
-                )
+                violations.append({
+                    "category": "negative_keyword_pin",
+                    "message": (
+                        f"Pin '{pin.get('pin_id')}' topic contains negative keyword: "
+                        f"'{neg_kw}'"
+                    ),
+                    "post_id": None,
+                    "severity": "targeted",
+                })
 
     for post in blog_posts:
         post_keywords = [post.get("primary_keyword", "")] + post.get("secondary_keywords", [])
@@ -912,15 +1249,25 @@ def validate_plan(
             neg_kw_lower = neg_kw.lower()
             for kw in post_keywords:
                 if neg_kw_lower in kw.lower():
-                    violations.append(
-                        f"Blog post '{post.get('post_id')}' targets negative keyword: "
-                        f"'{kw}' matches '{neg_kw}'"
-                    )
+                    violations.append({
+                        "category": "negative_keyword_post",
+                        "message": (
+                            f"Blog post '{post.get('post_id')}' targets negative keyword: "
+                            f"'{kw}' matches '{neg_kw}'"
+                        ),
+                        "post_id": post.get("post_id"),
+                        "severity": "targeted",
+                    })
             if neg_kw_lower in post_topic:
-                violations.append(
-                    f"Blog post '{post.get('post_id')}' topic contains negative keyword: "
-                    f"'{neg_kw}'"
-                )
+                violations.append({
+                    "category": "negative_keyword_post",
+                    "message": (
+                        f"Blog post '{post.get('post_id')}' topic contains negative keyword: "
+                        f"'{neg_kw}'"
+                    ),
+                    "post_id": post.get("post_id"),
+                    "severity": "targeted",
+                })
 
     return violations
 

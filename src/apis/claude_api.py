@@ -436,6 +436,87 @@ class ClaudeAPI:
         """
         return self.generate_image_prompt(pin_spec, image_source="stock")
 
+    def generate_replacement_posts(
+        self,
+        posts_to_replace: list[dict],
+        slots_to_fill: list[dict],
+        plan_context: dict,
+        content_memory: str,
+        negative_keywords: list[str],
+        recent_topics: list[str],
+    ) -> dict:
+        """
+        Generate replacement blog posts and their derived pins for targeted
+        topic replacement. Called when validate_plan() finds topic repetition
+        or negative keyword violations on specific posts.
+
+        Args:
+            posts_to_replace: Blog post objects being replaced (with violations).
+            slots_to_fill: Pin slot dicts the replacements must fill. Each has
+                           pin_id, scheduled_date, scheduled_slot, target_board,
+                           funnel_layer.
+            plan_context: Summary of the kept plan for constraint awareness:
+                          kept_post_topics, kept_pin_boards, kept_pin_pillars,
+                          week_number, date_range.
+            content_memory: Content memory summary markdown.
+            negative_keywords: Keywords/topics to avoid.
+            recent_topics: Recent topic strings to avoid repeating.
+
+        Returns:
+            dict: {"blog_posts": [...], "pins": [...]} with replacement objects
+                  using the same post_id/pin_id values as the originals.
+        """
+        template = self.load_prompt_template("weekly_plan_replace.md")
+
+        # Format recent topics as a bullet list
+        recent_topics_text = "\n".join(f"- {t}" for t in recent_topics) if recent_topics else "None (first run)."
+        kept_topics_text = "\n".join(
+            f"- {t}" for t in plan_context.get("kept_post_topics", []) if t
+        ) or "None."
+        neg_kw_text = "\n".join(f"- {kw}" for kw in negative_keywords) if negative_keywords else "None."
+
+        context = {
+            "NUM_POSTS": str(len(posts_to_replace)),
+            "RECENT_TOPICS": recent_topics_text,
+            "KEPT_POST_TOPICS": kept_topics_text,
+            "NEGATIVE_KEYWORDS": neg_kw_text,
+            "POSTS_TO_REPLACE": json.dumps(posts_to_replace, indent=2),
+            "SLOTS_TO_FILL": json.dumps(slots_to_fill, indent=2),
+            "BOARD_COUNTS": json.dumps(plan_context.get("kept_pin_boards", {})),
+            "PILLAR_COUNTS": json.dumps(plan_context.get("kept_pin_pillars", {})),
+        }
+
+        prompt = self._render_template(template, context)
+
+        system = (
+            "You are a Pinterest content strategist for Slated, a family meal planning app. "
+            "You are replacing specific blog posts and their derived pins in an existing "
+            "weekly content plan. The posts were flagged for topic repetition or negative "
+            "keyword violations. Generate ONLY the replacement posts and pins. "
+            "Maintain the same pillar, content type, and pin slot assignments. "
+            "Choose completely different topics that avoid the flagged issues. "
+            "IMPORTANT: Output ONLY valid JSON. No explanations or text outside the JSON."
+        )
+
+        # Scale max_tokens to replacement size: ~300/post + ~150/pin + overhead
+        max_tokens = 200 + (300 * len(posts_to_replace)) + (150 * len(slots_to_fill))
+        max_tokens = min(max_tokens, 4096)
+
+        logger.info(
+            "Generating replacement for %d posts (%d pin slots)...",
+            len(posts_to_replace), len(slots_to_fill),
+        )
+
+        response_text = self._call_api(
+            prompt=prompt,
+            system=system,
+            model=MODEL_ROUTINE,
+            max_tokens=max_tokens,
+            temperature=0.7,
+        )
+
+        return self._parse_json_response(response_text, "topic replacement")
+
     def analyze_weekly_performance(
         self,
         performance_data: dict,
