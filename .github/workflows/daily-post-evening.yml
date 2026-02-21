@@ -29,7 +29,7 @@ env:
 jobs:
   post-evening:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - name: Checkout repository
@@ -58,6 +58,7 @@ jobs:
           git config user.email "bot@pinterest-pipeline.local"
           git add data/ analysis/
           git diff --staged --quiet || git commit -m "chore: update post log [skip ci]"
+          git pull --rebase
           git push
 
       - name: Notify failure

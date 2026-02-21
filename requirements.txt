@@ -26,6 +26,9 @@ PyGithub>=2.1.0                # GitHub API for committing blog posts
 # Install via: npm install puppeteer
 # Alternative: htmlcsstoimage via requests (no extra dependency)
 
+# --- Timezone Data ---
+tzdata>=2024.1                 # Timezone database fallback for zoneinfo
+
 # --- Utilities ---
 python-slugify>=8.0.0          # URL slug generation from titles
 python-dotenv>=1.0.0           # Load .env files for local development

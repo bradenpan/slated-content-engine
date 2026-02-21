@@ -202,6 +202,8 @@ def regen() -> None:
 
         # Build quality note for the Notes column
         quality_note = _build_regen_quality_note(new_pin_data)
+        if new_pin_data.get("_copy_regen_no_rerender"):
+            quality_note += " | WARNING: copy updated but pin image not re-rendered (hero unavailable)"
         update_kwargs["notes"] = quality_note
 
         if regen_type in ("regen_image", "regen") and new_image_url:
@@ -226,6 +228,10 @@ def regen() -> None:
             "regen_type": regen_type,
             "old_score": old_score,
             "new_score": new_score,
+            "warning": (
+                "Copy updated but pin image not re-rendered (hero unavailable)"
+                if new_pin_data.get("_copy_regen_no_rerender") else None
+            ),
         })
 
     # Step 6: Save updated pin results
@@ -418,16 +424,23 @@ def _regen_item(
 
             # Upload new rendered pin to Drive
             new_image_url = drive.upload_image(rendered_pin_path)
-            new_pin_data["_drive_image_url"] = (
-                f"https://drive.google.com/thumbnail?id="
-                f"{new_image_url.split('id=')[1].split('&')[0]}&sz=w400"
-                if "id=" in new_image_url else new_image_url
-            )
+            if "id=" in new_image_url:
+                _fid = new_image_url.split("id=")[1].split("&")[0]
+                new_pin_data["_drive_image_url"] = (
+                    f"https://drive.google.com/thumbnail?id={_fid}&sz=w400"
+                )
+                new_pin_data["_drive_download_url"] = (
+                    f"https://drive.google.com/uc?id={_fid}&export=download"
+                )
+            else:
+                new_pin_data["_drive_image_url"] = new_image_url
             logger.info("Uploaded regen pin %s to Drive: %s", pin_id, new_image_url)
         except Exception as e:
             logger.error("Pin assembly/upload failed for %s: %s", pin_id, e)
     else:
         logger.warning("No hero image available for %s, skipping re-render", pin_id)
+        if do_copy:
+            new_pin_data["_copy_regen_no_rerender"] = True
 
     return {"pin_data": new_pin_data, "image_url": new_image_url}
 
@@ -474,7 +487,7 @@ def _update_pin_results(
         "title", "description", "alt_text", "text_overlay",
         "image_path", "hero_image_path", "image_source", "image_id",
         "image_quality_score", "image_retries", "image_low_confidence",
-        "image_quality_issues", "_drive_image_url",
+        "image_quality_issues", "_drive_image_url", "_drive_download_url",
     ]
     for key in keys_to_update:
         if key in new_pin_data:

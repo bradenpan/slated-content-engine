@@ -76,6 +76,7 @@ jobs:
           git config user.email "bot@pinterest-pipeline.local"
           git add data/ analysis/
           git diff --staged --quiet || git commit -m "chore: generated content [skip ci]"
+          git pull --rebase
           git push
 
       - name: Publish Content Queue for review
@@ -83,6 +84,13 @@ jobs:
         # Writes Content Queue with IMAGE() formulas and blog summaries
         # Sends Slack notification that content is ready for review
         run: python -m src.publish_content_queue
+
+      - name: Commit Drive URLs and publish metadata
+        run: |
+          git add data/
+          git diff --staged --quiet || git commit -m "chore: update Drive URLs [skip ci]"
+          git pull --rebase
+          git push
 
       - name: Notify failure
         if: failure()

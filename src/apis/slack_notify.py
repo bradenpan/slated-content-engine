@@ -339,6 +339,9 @@ class SlackNotify:
                 score_text = ""
 
             item_lines.append(f"\u2022 {pin_id} ({item_type}) \u2014 {label}{score_text}")
+            warning = r.get("warning")
+            if warning:
+                item_lines.append(f"  :warning: {warning}")
 
         for r in failed:
             pin_id = r.get("pin_id", "?")

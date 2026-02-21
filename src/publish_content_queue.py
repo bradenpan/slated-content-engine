@@ -65,6 +65,13 @@ def publish() -> None:
                 pid = pin.get("pin_id", "")
                 if pid in pin_image_urls:
                     pin["_drive_image_url"] = pin_image_urls[pid]
+                    # Full-resolution download URL for Pinterest posting
+                    _thumb = pin_image_urls[pid]
+                    if "id=" in _thumb:
+                        _fid = _thumb.split("id=")[1].split("&")[0]
+                        pin["_drive_download_url"] = (
+                            f"https://drive.google.com/uc?id={_fid}&export=download"
+                        )
             try:
                 pin_results_path.write_text(
                     json.dumps(pin_data, indent=2, ensure_ascii=False),

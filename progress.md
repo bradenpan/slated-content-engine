@@ -347,3 +347,109 @@ When only post-attributable violations are found (topic repetition, negative key
 ### Status
 
 Implemented, not yet tested in production. First live validation will occur during the next weekly plan generation cycle.
+
+---
+
+## Phase 4: Pre-Launch Pipeline Review & Critical Bug Fixes
+
+**Date:** 2026-02-21
+
+The automated pipeline triggers for the first time Monday 2/23. Five review agents traced every data path, trigger, field name, and failure mode across all 9 workflows, 12 Python scripts, and 13 prompt templates. This phase fixes the critical and medium bugs that would prevent the pipeline from working.
+
+### Critical Bugs Fixed (3)
+
+#### C1: Pin images not available on the posting runner
+
+**Problem:** `.gitignore` excludes `*.png`, so rendered pin PNGs never reach git. The generation runner renders PNGs locally and commits only JSON metadata. `blog_deployer._create_pin_schedule()` wrote `image_path` (local path) but no `image_url`. On the posting runner (fresh checkout), `post_pins.py` tried `image_url` (missing) then `image_path` (file doesn't exist) → `FileNotFoundError`. Additionally, the stored `_drive_image_url` was a 400px thumbnail — far too small for Pinterest (needs 1000x1500+).
+
+**Fix:** Store a full-resolution Google Drive download URL (`_drive_download_url`) alongside the thumbnail URL during publish. Use this for Pinterest posting while keeping the thumbnail for Sheet display.
+
+| File | Change |
+|------|--------|
+| `src/publish_content_queue.py` | After storing `_drive_image_url`, extract file ID and store `_drive_download_url` (`https://drive.google.com/uc?id=FILE_ID&export=download`) |
+| `src/blog_deployer.py` | Add `image_url` field to schedule_entry populated from `_drive_download_url` |
+| `src/regen_content.py` | Store `_drive_download_url` after regen re-upload; add to `keys_to_update` list |
+
+#### C2: Evening posting slot gets wrong date (UTC vs ET)
+
+**Problem:** Evening cron (`0 1 * * *`) fires at 01:00 UTC = 8pm ET previous day. `post_pins.py` used `date.today()` which returns the UTC date. At 01:00 UTC Tuesday, `date.today()` = Tuesday, but evening pins are scheduled under Monday. Result: 50% of daily posting volume (2 evening pins) never fires.
+
+**Fix:** Replace all `date.today()` calls with `datetime.now(ZoneInfo("America/New_York")).date()`. Added `tzdata` to `requirements.txt` as a safety net for runners without OS timezone data.
+
+| File | Change |
+|------|--------|
+| `src/post_pins.py` | Import `ZoneInfo`, define `ET` constant, replace 3 `date.today()` calls in `post_pins()`, `apply_jitter()`, and `__main__` demo mode |
+| `requirements.txt` | Add `tzdata>=2024.1` |
+
+#### C3: Drive URLs not persisted to git (publish runs after commit)
+
+**Problem:** In `generate-content.yml`, the commit step ran before the publish step. `publish_content_queue.py` writes `_drive_image_url` and `_drive_download_url` to `pin-generation-results.json`, but this happens after the commit+push. The updated file is never persisted.
+
+**Fix:** Add a second commit step after the publish step.
+
+| File | Change |
+|------|--------|
+| `.github/workflows/generate-content.yml` | Add "Commit Drive URLs and publish metadata" step after publish, with `[skip ci]` tag |
+
+### Medium Bugs Fixed (6)
+
+#### M1: `PINTEREST_ENVIRONMENT` vs `PINTEREST_ENV` env var name
+
+All workflows set `PINTEREST_ENVIRONMENT: production` but `pinterest_api.py` read `PINTEREST_ENV`. Non-breaking (defaults to production) but would silently ignore sandbox mode.
+
+**Fix:** Changed all references in `src/apis/pinterest_api.py` from `PINTEREST_ENV` to `PINTEREST_ENVIRONMENT` (code + docstrings).
+
+#### M2: Missing fields in pin-schedule.json
+
+`blog_deployer._create_pin_schedule()` omitted 8 fields that `post_pins.py` writes to `content-log.jsonl`. They were always empty, degrading analytics/memory quality.
+
+**Fix:** Added `content_type`, `funnel_layer`, `secondary_keywords`, `template`, `treatment_number`, `source_post_id`, `image_source`, `image_id` to schedule_entry in `src/blog_deployer.py`.
+
+#### M3: Copy-only regen doesn't flag when pin image is stale
+
+When `regen_copy` succeeds but hero image is unavailable, the Sheet shows updated text but the thumbnail is stale. No indication to the reviewer.
+
+**Fix:** Flag `_copy_regen_no_rerender` in `src/regen_content.py`. Warning appears in Sheet notes column and Slack notification via `src/apis/slack_notify.py`.
+
+#### M4: Git push race condition between concurrent workflows
+
+Pipeline workflows (`pinterest-pipeline` group) and posting workflows (`pinterest-posting` group) can run simultaneously. Both do `git add data/ && commit && push` — second push fails if behind HEAD.
+
+**Fix:** Added `git pull --rebase` before `git push` in all commit steps across all 9 workflow files (10 commit steps total, including generate-content.yml's two).
+
+#### M5: Regen workflow timeout too short
+
+`regen-content.yml` had `timeout-minutes: 20`. Full-batch regen could take ~56 minutes.
+
+**Fix:** Increased to `timeout-minutes: 45`.
+
+#### M6: Evening posting workflow timeout too short
+
+`daily-post-evening.yml` had `timeout-minutes: 30`. Worst-case jitter (15 min initial + 20 min inter-pin) = 35 min, exceeding the timeout.
+
+**Fix:** Increased to `timeout-minutes: 45`.
+
+### Files Changed (Summary)
+
+| File | Bug(s) |
+|------|--------|
+| `src/publish_content_queue.py` | C1 |
+| `src/blog_deployer.py` | C1, M2 |
+| `src/post_pins.py` | C2 |
+| `src/regen_content.py` | C1, M3 |
+| `src/apis/pinterest_api.py` | M1 |
+| `src/apis/slack_notify.py` | M3 |
+| `requirements.txt` | C2 |
+| `.github/workflows/generate-content.yml` | C3, M4 |
+| `.github/workflows/daily-post-morning.yml` | M4 |
+| `.github/workflows/daily-post-afternoon.yml` | M4 |
+| `.github/workflows/daily-post-evening.yml` | M4, M6 |
+| `.github/workflows/deploy-and-schedule.yml` | M4 |
+| `.github/workflows/promote-and-schedule.yml` | M4 |
+| `.github/workflows/weekly-review.yml` | M4 |
+| `.github/workflows/monthly-review.yml` | M4 |
+| `.github/workflows/regen-content.yml` | M4, M5 |
+
+### Status
+
+All 9 fixes implemented and verified by two rounds of automated code review (6 review agents total). End-to-end data flow traces confirmed correct handoffs for: happy-path posting, regen posting, and evening timezone handling.

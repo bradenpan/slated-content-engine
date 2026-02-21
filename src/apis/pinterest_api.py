@@ -15,13 +15,13 @@ Key limitations designed around:
 - Analytics data latency: 24-48 hours
 - No board-level analytics endpoint (aggregate from pin data)
 
-Supports both sandbox and production base URLs via PINTEREST_ENV env var:
+Supports both sandbox and production base URLs via PINTEREST_ENVIRONMENT env var:
 - "sandbox" -> https://api-sandbox.pinterest.com/v5
 - "production" (default) -> https://api.pinterest.com/v5
 
 Environment variables required:
 - PINTEREST_ACCESS_TOKEN (or obtain via token_manager)
-- PINTEREST_ENV (optional, defaults to "production")
+- PINTEREST_ENVIRONMENT (optional, defaults to "production")
 
 See also: token_manager.py for OAuth token refresh.
 """
@@ -74,7 +74,7 @@ class PinterestAPI:
                 "No access token provided. Set PINTEREST_ACCESS_TOKEN env var or pass access_token.",
             )
 
-        env = os.environ.get("PINTEREST_ENV", "production").lower()
+        env = os.environ.get("PINTEREST_ENVIRONMENT", "production").lower()
         if env == "sandbox":
             self.base_url = BASE_URL_SANDBOX
             logger.info("Using Pinterest SANDBOX API: %s", self.base_url)

@@ -36,6 +36,7 @@ import re
 from datetime import datetime, date, timedelta
 from pathlib import Path
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 import requests
 
@@ -51,6 +52,9 @@ DATA_DIR = PROJECT_ROOT / "data"
 CONTENT_LOG_PATH = DATA_DIR / "content-log.jsonl"
 PIN_SCHEDULE_PATH = DATA_DIR / "pin-schedule.json"
 BOARD_STRUCTURE_PATH = PROJECT_ROOT / "strategy" / "board-structure.json"
+
+# Timezone for scheduling logic (all dates are ET)
+ET = ZoneInfo("America/New_York")
 
 # Slot configuration: how many pins per slot
 SLOT_PIN_COUNTS = {
@@ -99,7 +103,7 @@ def post_pins(time_slot: str) -> dict:
         raise ValueError(f"Invalid time_slot: {time_slot}. Must be one of {list(SLOT_PIN_COUNTS.keys())}")
 
     results = {"posted_count": 0, "failed_count": 0, "skipped_count": 0, "errors": []}
-    today_str = date.today().isoformat()
+    today_str = datetime.now(ET).date().isoformat()
 
     # Initialize services
     try:
@@ -318,7 +322,7 @@ def apply_jitter(time_slot: str, pin_index: int = 0) -> None:
         time_slot: Current time slot.
         pin_index: Index of the pin within this window (0-based).
     """
-    today_str = date.today().isoformat()
+    today_str = datetime.now(ET).date().isoformat()
     seed_str = f"{today_str}:{time_slot}:{pin_index}"
     seed = int(hashlib.sha256(seed_str.encode()).hexdigest(), 16) % (2**32)
     rng = random.Random(seed)
@@ -769,7 +773,7 @@ if __name__ == "__main__":
     if "--demo" in sys.argv:
         # Demo mode: show what would happen without actually posting
         print(f"=== Demo mode: post_pins('{slot}') ===")
-        today_str = date.today().isoformat()
+        today_str = datetime.now(ET).date().isoformat()
         print(f"Date: {today_str}")
         print(f"Slot: {slot} (expected pins: {SLOT_PIN_COUNTS[slot]})")
         print(f"Would skip: {should_skip_window(today_str, slot)}")

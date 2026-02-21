@@ -102,6 +102,7 @@ jobs:
           git config user.email "bot@pinterest-pipeline.local"
           git add data/ analysis/
           git diff --staged --quiet || git commit -m "chore: production deploy + pin schedule [skip ci]"
+          git pull --rebase
           git push
 
       - name: Notify failure
