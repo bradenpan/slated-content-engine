@@ -131,7 +131,7 @@ def generate_pin_content(
             image_tier = pin_spec.get("image_source_tier", "stock")
 
             # Source the image
-            image_path, image_source, image_id = _source_pin_image(
+            image_path, image_source, image_id, quality_meta = _source_pin_image(
                 pin_spec=pin_spec,
                 pin_copy=pin_copy,
                 image_tier=image_tier,
@@ -191,6 +191,12 @@ def generate_pin_content(
                 "treatment_number": pin_spec.get("treatment_number", 1),
                 "source_post_id": pin_spec.get("source_post_id", ""),
                 "funnel_layer": pin_spec.get("funnel_layer", "discovery"),
+                # Quality gate metadata
+                "image_quality_score": quality_meta.get("image_quality_score"),
+                "image_retries": quality_meta.get("image_retries", 0),
+                "image_low_confidence": quality_meta.get("image_low_confidence", False),
+                "image_source_original": quality_meta.get("image_source_original", image_source),
+                "image_quality_issues": quality_meta.get("image_quality_issues", []),
             }
 
             generated_pins.append(pin_data)
@@ -274,7 +280,7 @@ def source_image(
     image_gen_api: ImageGenAPI,
     used_image_ids: list[str],
     output_dir: Path,
-) -> tuple[Optional[Path], str, str]:
+) -> tuple[Optional[Path], str, str, dict]:
     """
     Source an image based on the specified tier.
 
@@ -288,14 +294,23 @@ def source_image(
         output_dir: Directory to save downloaded/generated images.
 
     Returns:
-        tuple: (image_path, image_source, image_id)
+        tuple: (image_path, image_source, image_id, quality_meta)
                image_path may be None for template-only pins.
+               quality_meta is a dict with image_quality_score, image_retries,
+               image_low_confidence, image_source_original.
     """
     pin_id = pin_spec.get("pin_id", "unknown")
+    template_meta = {
+        "image_quality_score": None,
+        "image_retries": 0,
+        "image_low_confidence": False,
+        "image_source_original": "template",
+        "image_quality_issues": [],
+    }
 
     if image_tier == "stock" or image_tier == "Tier 1":
         return _source_stock_image(
-            pin_spec, claude, stock_api, used_image_ids, output_dir
+            pin_spec, claude, stock_api, image_gen_api, used_image_ids, output_dir
         )
     elif image_tier == "ai" or image_tier == "Tier 2":
         return _source_ai_image(
@@ -304,14 +319,14 @@ def source_image(
     elif image_tier == "template" or image_tier == "Tier 3":
         # No image sourcing needed for template-only pins
         logger.info("Pin %s uses template-only (Tier 3), no image to source", pin_id)
-        return None, "template", ""
+        return None, "template", "", template_meta
     else:
         logger.warning(
             "Unknown image tier '%s' for pin %s, defaulting to stock",
             image_tier, pin_id,
         )
         return _source_stock_image(
-            pin_spec, claude, stock_api, used_image_ids, output_dir
+            pin_spec, claude, stock_api, image_gen_api, used_image_ids, output_dir
         )
 
 
@@ -546,12 +561,12 @@ def _source_pin_image(
     image_gen_api: ImageGenAPI,
     used_image_ids: list[str],
     output_dir: Path,
-) -> tuple[Optional[Path], str, str]:
+) -> tuple[Optional[Path], str, str, dict]:
     """
     Source an image for a pin, dispatching to the appropriate tier.
 
     Returns:
-        tuple: (image_path, image_source, image_id)
+        tuple: (image_path, image_source, image_id, quality_meta)
     """
     return source_image(
         pin_spec=pin_spec,
@@ -568,22 +583,34 @@ def _source_stock_image(
     pin_spec: dict,
     claude: ClaudeAPI,
     stock_api: ImageStockAPI,
+    image_gen_api: ImageGenAPI,
     used_image_ids: list[str],
     output_dir: Path,
-) -> tuple[Optional[Path], str, str]:
+) -> tuple[Optional[Path], str, str, dict]:
     """
-    Source an image from stock photo APIs (Tier 1).
+    Source an image from stock photo APIs (Tier 1) with quality ranking.
 
     Steps:
     1. Generate search query via Claude
     2. Search Unsplash + Pexels
     3. Filter out previously used images
-    4. Download the best match
+    4. Download thumbnails for top 5 candidates
+    5. Rank candidates with Claude Haiku vision
+    6. If best score < 6.5, retry with broader queries
+    7. If retry score < 5, fall back to AI generation
+    8. Download the best match at full resolution
 
     Returns:
-        tuple: (image_path, source_name, image_id)
+        tuple: (image_path, source_name, image_id, quality_meta)
     """
     pin_id = pin_spec.get("pin_id", "unknown")
+    quality_meta = {
+        "image_quality_score": None,
+        "image_retries": 0,
+        "image_low_confidence": False,
+        "image_source_original": "stock",
+        "image_quality_issues": [],
+    }
 
     # Generate search query
     search_query = claude.generate_image_prompt(pin_spec, image_source="stock")
@@ -597,8 +624,9 @@ def _source_stock_image(
     )
 
     if not candidates:
-        logger.warning("No stock photos found for pin %s, trying AI generation", pin_id)
-        return _source_ai_image(pin_spec, claude, ImageGenAPI(), output_dir)
+        logger.warning("No stock photos found for pin %s, falling back to AI generation", pin_id)
+        quality_meta["image_retries"] = 1
+        return _source_ai_image(pin_spec, claude, image_gen_api, output_dir, quality_meta)
 
     # Filter out previously used images
     filtered = stock_api.filter_previously_used(candidates, used_image_ids)
@@ -610,10 +638,95 @@ def _source_stock_image(
         )
         filtered = candidates[:1]
 
-    # Select the best candidate (first result after filtering)
-    selected = filtered[0]
+    # Take top 5 candidates for ranking
+    top_candidates = filtered[:5]
 
-    # Download the image
+    # Download thumbnails for ranking
+    for candidate in top_candidates:
+        try:
+            thumb_bytes = stock_api.download_thumbnail(candidate)
+            if thumb_bytes:
+                candidate["_thumb_bytes"] = thumb_bytes
+        except Exception as e:
+            logger.debug("Failed to download thumbnail for %s: %s", candidate.get("id"), e)
+
+    # Rank candidates with Claude Haiku vision
+    candidates_with_thumbs = [c for c in top_candidates if "_thumb_bytes" in c]
+
+    if candidates_with_thumbs:
+        ranked = claude.rank_stock_candidates(candidates_with_thumbs, pin_spec)
+        best = ranked[0]
+        best_score = best.get("_score", 0)
+        quality_meta["image_quality_score"] = best_score
+
+        if best_score >= 6.5:
+            selected = best
+        else:
+            # All candidates scored below threshold — retry with broader queries
+            logger.warning(
+                "All stock candidates scored < 6.5 for pin %s (best: %.1f), retrying search",
+                pin_id, best_score,
+            )
+            quality_meta["image_retries"] = 1
+            rejected_ids = {c.get("id") for c in filtered}
+
+            # Generate broader/alternative search query
+            retry_query = claude.generate_image_prompt(pin_spec, image_source="stock_retry")
+            retry_candidates = stock_api.search(
+                query=retry_query, num_results=10, orientation="portrait",
+            )
+
+            # Exclude already-seen images
+            retry_candidates = [c for c in retry_candidates if c.get("id") not in rejected_ids]
+            retry_candidates = stock_api.filter_previously_used(retry_candidates, used_image_ids)
+
+            if retry_candidates:
+                # Download thumbnails for retry candidates
+                for candidate in retry_candidates[:5]:
+                    try:
+                        thumb_bytes = stock_api.download_thumbnail(candidate)
+                        if thumb_bytes:
+                            candidate["_thumb_bytes"] = thumb_bytes
+                    except Exception:
+                        pass
+
+                retry_with_thumbs = [c for c in retry_candidates[:5] if "_thumb_bytes" in c]
+
+                if retry_with_thumbs:
+                    retry_ranked = claude.rank_stock_candidates(retry_with_thumbs, pin_spec)
+                    retry_best_score = retry_ranked[0].get("_score", 0)
+
+                    if retry_best_score >= 5:
+                        selected = retry_ranked[0]
+                        quality_meta["image_quality_score"] = retry_best_score
+                    else:
+                        # Still nothing good — fall back to AI generation
+                        logger.warning(
+                            "Stock retry also scored < 5 (best: %.1f), falling back to AI generation",
+                            retry_best_score,
+                        )
+                        quality_meta["image_retries"] = 2
+                        return _source_ai_image(
+                            pin_spec, claude, image_gen_api, output_dir, quality_meta
+                        )
+                else:
+                    logger.warning("No retry thumbnails available, falling back to AI generation")
+                    quality_meta["image_retries"] = 2
+                    return _source_ai_image(
+                        pin_spec, claude, image_gen_api, output_dir, quality_meta
+                    )
+            else:
+                logger.warning("No retry candidates found, falling back to AI generation")
+                quality_meta["image_retries"] = 2
+                return _source_ai_image(
+                    pin_spec, claude, image_gen_api, output_dir, quality_meta
+                )
+    else:
+        # No thumbnails available — fall back to first result (pre-quality-gate behavior)
+        logger.warning("No thumbnails available for ranking pin %s, using first result", pin_id)
+        selected = filtered[0]
+
+    # Download the selected image at full resolution
     image_filename = f"{pin_id}-hero.jpg"
     output_path = output_dir / image_filename
 
@@ -626,8 +739,11 @@ def _source_stock_image(
     source_name = selected.get("source", "stock")
     image_id = selected.get("id", "")
 
-    logger.info("Downloaded stock image for %s: %s:%s", pin_id, source_name, image_id)
-    return downloaded_path, source_name, image_id
+    logger.info(
+        "Downloaded stock image for %s: %s:%s (score: %s)",
+        pin_id, source_name, image_id, quality_meta.get("image_quality_score"),
+    )
+    return downloaded_path, source_name, image_id, quality_meta
 
 
 def _source_ai_image(
@@ -635,19 +751,38 @@ def _source_ai_image(
     claude: ClaudeAPI,
     image_gen_api: ImageGenAPI,
     output_dir: Path,
-) -> tuple[Optional[Path], str, str]:
+    quality_meta: Optional[dict] = None,
+) -> tuple[Optional[Path], str, str, dict]:
     """
-    Source an image via AI generation (Tier 2).
+    Source an image via AI generation (Tier 2) with quality validation.
 
     Steps:
     1. Generate image prompt via Claude
     2. Call image generation API
-    3. Validate and save the result
+    3. Validate with Claude Sonnet vision
+    4. If score < 6.5, regenerate with feedback (max 1 retry)
+    5. If still < 6.5, accept with low_confidence flag
+
+    Args:
+        pin_spec: Pin specification.
+        claude: ClaudeAPI instance.
+        image_gen_api: Image generation API client.
+        output_dir: Output directory for generated images.
+        quality_meta: Optional pre-populated quality metadata (from stock fallback).
 
     Returns:
-        tuple: (image_path, "ai_generated", prompt_hash)
+        tuple: (image_path, "ai_generated", prompt_hash, quality_meta)
     """
     pin_id = pin_spec.get("pin_id", "unknown")
+
+    if quality_meta is None:
+        quality_meta = {
+            "image_quality_score": None,
+            "image_retries": 0,
+            "image_low_confidence": False,
+            "image_source_original": "ai",
+            "image_quality_issues": [],
+        }
 
     # Generate image prompt
     image_prompt = claude.generate_image_prompt(pin_spec, image_source="ai")
@@ -668,8 +803,59 @@ def _source_ai_image(
     # Use a hash of the prompt as the image ID for tracking
     prompt_hash = hashlib.md5(image_prompt.encode()).hexdigest()[:12]
 
-    logger.info("Generated AI image for %s: %s", pin_id, generated_path)
-    return generated_path, "ai_generated", f"ai_{prompt_hash}"
+    # Validate with Claude vision
+    validation = claude.validate_ai_image(generated_path, image_prompt, pin_spec)
+    quality_meta["image_quality_score"] = validation["score"]
+    quality_meta["image_quality_issues"] = validation.get("issues", [])
+
+    if not validation["pass"]:
+        logger.warning(
+            "AI image failed validation for %s (score %.1f): %s",
+            pin_id, validation["score"], validation["issues"],
+        )
+
+        # Regenerate with Claude's specific feedback appended to prompt
+        feedback = validation.get("feedback", "")
+        if feedback:
+            modified_prompt = f"{image_prompt}\n\nCRITICAL — fix these issues: {feedback}"
+        else:
+            modified_prompt = image_prompt
+
+        regen_filename = f"{pin_id}-hero-regen.png"
+        regen_output_path = output_dir / regen_filename
+
+        generated_path = image_gen_api.generate(
+            prompt=modified_prompt,
+            width=1000,
+            height=1500,
+            output_path=regen_output_path,
+            style="natural",
+        )
+
+        prompt_hash = hashlib.md5(modified_prompt.encode()).hexdigest()[:12]
+        quality_meta["image_retries"] = quality_meta.get("image_retries", 0) + 1
+
+        # Re-validate
+        validation2 = claude.validate_ai_image(generated_path, modified_prompt, pin_spec)
+        quality_meta["image_quality_score"] = validation2["score"]
+        quality_meta["image_quality_issues"] = validation2.get("issues", [])
+
+        if not validation2["pass"]:
+            logger.warning(
+                "AI image still below threshold after retry for %s (score %.1f). "
+                "Accepting with low_confidence flag.",
+                pin_id, validation2["score"],
+            )
+            quality_meta["image_low_confidence"] = True
+
+    logger.info(
+        "AI image for %s: score=%.1f, retries=%d, low_confidence=%s",
+        pin_id,
+        quality_meta.get("image_quality_score", 0),
+        quality_meta.get("image_retries", 0),
+        quality_meta.get("image_low_confidence", False),
+    )
+    return generated_path, "ai_generated", f"ai_{prompt_hash}", quality_meta
 
 
 def _resolve_blog_slug(pin_spec: dict, blog_posts: dict) -> str:

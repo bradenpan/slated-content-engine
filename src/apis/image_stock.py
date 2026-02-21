@@ -380,6 +380,40 @@ class ImageStockAPI:
 
         return filtered
 
+    def download_thumbnail(self, candidate: dict, timeout: int = 10) -> bytes:
+        """
+        Download a small thumbnail image for a stock photo candidate.
+
+        Thumbnails are ~200px wide, 5-15KB each. Used for Claude vision
+        ranking without downloading full-resolution images.
+
+        Args:
+            candidate: Image dict from search results (must have thumbnail_url).
+            timeout: Request timeout in seconds.
+
+        Returns:
+            bytes: Raw thumbnail image data.
+
+        Raises:
+            StockPhotoError: If download fails or no thumbnail URL available.
+        """
+        thumb_url = candidate.get("thumbnail_url", "")
+        if not thumb_url:
+            raise StockPhotoError(
+                f"No thumbnail URL for candidate {candidate.get('id', 'unknown')}"
+            )
+
+        try:
+            response = requests.get(thumb_url, timeout=timeout)
+            response.raise_for_status()
+            logger.debug(
+                "Downloaded thumbnail for %s: %d bytes",
+                candidate.get("id", "unknown"), len(response.content),
+            )
+            return response.content
+        except requests.RequestException as e:
+            raise StockPhotoError(f"Failed to download thumbnail: {e}") from e
+
     @property
     def rate_limits(self) -> dict:
         """Return current rate limit status for both APIs."""

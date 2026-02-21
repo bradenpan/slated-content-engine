@@ -22,9 +22,10 @@ Environment variables required:
 - ANTHROPIC_API_KEY
 """
 
-import os
+import base64
 import json
 import logging
+import os
 from pathlib import Path
 from typing import Optional
 
@@ -38,11 +39,13 @@ STRATEGY_DIR = Path(__file__).parent.parent.parent / "strategy"
 # Model selection -- using the latest model IDs
 MODEL_ROUTINE = "claude-sonnet-4-20250514"
 MODEL_DEEP = "claude-opus-4-20250514"
+MODEL_HAIKU = "claude-haiku-4-5-20251001"
 
 # Approximate costs per million tokens (for cost tracking)
 COST_PER_MTK = {
     MODEL_ROUTINE: {"input": 3.0, "output": 15.0},
     MODEL_DEEP: {"input": 15.0, "output": 75.0},
+    MODEL_HAIKU: {"input": 0.80, "output": 4.0},
 }
 
 
@@ -347,7 +350,9 @@ class ClaudeAPI:
 
         Args:
             pin_spec: Pin specification with topic, template type, etc.
-            image_source: "ai" for AI image prompt, "stock" for search queries.
+            image_source: "ai" for AI image prompt, "stock" for search queries,
+                          "stock_retry" for broader/alternative stock queries
+                          when initial search scored poorly.
 
         Returns:
             str: AI image generation prompt or stock photo search query.
@@ -362,13 +367,26 @@ class ClaudeAPI:
 
         prompt = self._render_template(template, context)
 
-        system_msg = (
-            "You are an image prompt specialist for food and lifestyle photography. "
-            f"Generate a {'detailed AI image generation prompt' if image_source == 'ai' else 'stock photo search query'} "
-            "optimized for Pinterest pin images at 1000x1500px (2:3 ratio). "
-            "For food: prefer overhead/flat-lay compositions, warm lighting, rustic surfaces. "
-            "Return only the prompt/query text, no explanation."
-        )
+        if image_source == "stock_retry":
+            system_msg = (
+                "You are an image prompt specialist for food and lifestyle photography. "
+                "Generate a stock photo search query "
+                "optimized for Pinterest pin images at 1000x1500px (2:3 ratio). "
+                "For food: prefer overhead/flat-lay compositions, warm lighting, rustic surfaces. "
+                "IMPORTANT: The previous search query did not find good-enough images. "
+                "Try BROADER or ALTERNATIVE search terms. Approach the topic from a "
+                "different visual angle. Use more general food category terms or "
+                "different composition keywords. "
+                "Return only the query text, no explanation."
+            )
+        else:
+            system_msg = (
+                "You are an image prompt specialist for food and lifestyle photography. "
+                f"Generate a {'detailed AI image generation prompt' if image_source == 'ai' else 'stock photo search query'} "
+                "optimized for Pinterest pin images at 1000x1500px (2:3 ratio). "
+                "For food: prefer overhead/flat-lay compositions, warm lighting, rustic surfaces. "
+                "Return only the prompt/query text, no explanation."
+            )
 
         logger.info("Generating %s image prompt for: %s", image_source, pin_spec.get("topic", "unknown")[:50])
         return self._call_api(
@@ -503,6 +521,207 @@ class ClaudeAPI:
         """Alias for run_monthly_review to match requirement naming."""
         return self.run_monthly_review(monthly_data, weekly_analyses, current_strategy)
 
+    def rank_stock_candidates(
+        self,
+        candidates: list[dict],
+        pin_spec: dict,
+    ) -> list[dict]:
+        """
+        Rank stock photo candidates by relevance to a pin specification.
+
+        Sends thumbnail images to Claude Haiku for visual evaluation.
+        Each candidate must have a '_thumb_bytes' key with raw thumbnail
+        image data (populated by ImageStockAPI.download_thumbnail()).
+
+        Args:
+            candidates: List of stock photo candidate dicts, each with
+                        '_thumb_bytes' (bytes) for the thumbnail image.
+            pin_spec: Pin specification with topic, template, etc.
+
+        Returns:
+            list[dict]: Same candidates sorted by score (highest first),
+                        with '_score' (float) and '_rank_reason' (str) added.
+        """
+        if not candidates:
+            return []
+
+        # Load and render the ranking prompt template
+        template = self.load_prompt_template("image_rank.md")
+        pin_template = pin_spec.get("pin_template", "recipe-pin")
+        context = {
+            "PIN_SPEC": pin_spec,
+            "PIN_TEMPLATE": pin_template,
+            "NUM_CANDIDATES": str(len(candidates)),
+            "MAX_INDEX": str(len(candidates) - 1),
+        }
+        prompt = self._render_template(template, context)
+
+        # Build image list from thumbnail bytes
+        images = [c["_thumb_bytes"] for c in candidates if "_thumb_bytes" in c]
+
+        if not images:
+            logger.warning("No thumbnail data available for ranking, returning candidates as-is.")
+            for c in candidates:
+                c["_score"] = 5.0
+                c["_rank_reason"] = "No thumbnail available for ranking"
+            return candidates
+
+        system = (
+            "You are a visual quality evaluator for Pinterest pin images. "
+            "Evaluate each candidate image and return a JSON array of scores. "
+            "IMPORTANT: Output ONLY valid JSON. No explanations or text before or after."
+        )
+
+        logger.info(
+            "Ranking %d stock candidates for pin %s (template: %s)",
+            len(candidates), pin_spec.get("pin_id", "unknown"), pin_template,
+        )
+
+        try:
+            response_text = self._call_api(
+                prompt=prompt,
+                system=system,
+                model=MODEL_HAIKU,
+                max_tokens=1024,
+                temperature=0.3,
+                images=images,
+            )
+
+            rankings = self._parse_json_response(response_text, "stock ranking")
+
+            # Map scores back to candidates
+            if isinstance(rankings, list):
+                for ranking in rankings:
+                    idx = ranking.get("index", -1)
+                    if 0 <= idx < len(candidates):
+                        candidates[idx]["_score"] = float(ranking.get("score", 0))
+                        candidates[idx]["_rank_reason"] = ranking.get("reason", "")
+
+            # Ensure all candidates have a score
+            for c in candidates:
+                if "_score" not in c:
+                    c["_score"] = 0.0
+                    c["_rank_reason"] = "Not scored by evaluator"
+
+            # Sort by score descending
+            candidates.sort(key=lambda c: c.get("_score", 0), reverse=True)
+
+            logger.info(
+                "Stock ranking complete. Top score: %.1f (%s), lowest: %.1f",
+                candidates[0].get("_score", 0),
+                candidates[0].get("_rank_reason", "")[:60],
+                candidates[-1].get("_score", 0),
+            )
+
+            return candidates
+
+        except (ClaudeAPIError, Exception) as e:
+            logger.error("Stock ranking failed, returning candidates unranked: %s", e)
+            for c in candidates:
+                c["_score"] = 5.0
+                c["_rank_reason"] = f"Ranking failed: {e}"
+            return candidates
+
+    def validate_ai_image(
+        self,
+        image_path,
+        image_prompt: str,
+        pin_spec: dict,
+    ) -> dict:
+        """
+        Validate an AI-generated image for quality and suitability.
+
+        Sends the full-size image to Claude Sonnet for evaluation against
+        pin-specific quality criteria.
+
+        Args:
+            image_path: Path to the generated image file (str or Path).
+            image_prompt: The original prompt used to generate the image.
+            pin_spec: Pin specification with topic, template, etc.
+
+        Returns:
+            dict with keys:
+                - score (float): Quality score 1.0-10.0
+                - pass (bool): True if score >= 6.5
+                - issues (list[str]): Specific problems found
+                - feedback (str): Actionable re-generation instructions
+                - disqualifiers (list[str]): Hard failures
+        """
+        image_path = Path(image_path)
+
+        if not image_path.exists():
+            logger.error("Image file not found for validation: %s", image_path)
+            return {
+                "score": 0, "pass": False,
+                "issues": ["Image file not found"],
+                "feedback": "Image file does not exist.",
+                "disqualifiers": ["missing_file"],
+            }
+
+        # Load and render the validation prompt template
+        template = self.load_prompt_template("image_validate.md")
+        pin_template = pin_spec.get("pin_template", "recipe-pin")
+        context = {
+            "PIN_SPEC": pin_spec,
+            "PIN_TEMPLATE": pin_template,
+            "IMAGE_PROMPT": image_prompt,
+        }
+        prompt = self._render_template(template, context)
+
+        system = (
+            "You are an AI image quality evaluator for Pinterest pins. "
+            "Evaluate the provided image and return a JSON validation result. "
+            "IMPORTANT: Output ONLY valid JSON. No explanations or text before or after."
+        )
+
+        logger.info(
+            "Validating AI image for pin %s: %s",
+            pin_spec.get("pin_id", "unknown"), image_path.name,
+        )
+
+        try:
+            response_text = self._call_api(
+                prompt=prompt,
+                system=system,
+                model=MODEL_ROUTINE,
+                max_tokens=1024,
+                temperature=0.3,
+                images=[image_path],
+            )
+
+            result = self._parse_json_response(response_text, "AI image validation")
+
+            if isinstance(result, dict):
+                score = float(result.get("score", 0))
+                validation = {
+                    "score": score,
+                    "pass": score >= 6.5,
+                    "issues": result.get("issues", []),
+                    "feedback": result.get("feedback", ""),
+                    "disqualifiers": result.get("disqualifiers", []),
+                }
+            else:
+                logger.warning("Unexpected validation response format: %s", type(result))
+                validation = {
+                    "score": 5.0, "pass": False,
+                    "issues": ["Unexpected response format"],
+                    "feedback": "", "disqualifiers": [],
+                }
+
+            logger.info(
+                "AI image validation: score=%.1f pass=%s issues=%s",
+                validation["score"], validation["pass"], validation["issues"],
+            )
+            return validation
+
+        except (ClaudeAPIError, Exception) as e:
+            logger.error("AI image validation failed, assuming pass: %s", e)
+            return {
+                "score": 7.0, "pass": True,
+                "issues": [], "feedback": "",
+                "disqualifiers": [],
+            }
+
     def _call_api(
         self,
         prompt: str,
@@ -510,6 +729,7 @@ class ClaudeAPI:
         model: Optional[str] = None,
         max_tokens: int = 4096,
         temperature: float = 0.7,
+        images: Optional[list] = None,
     ) -> str:
         """
         Make a call to the Claude API with retry on rate limits and token/cost tracking.
@@ -520,6 +740,10 @@ class ClaudeAPI:
             model: Model to use. Defaults to MODEL_ROUTINE.
             max_tokens: Maximum response tokens.
             temperature: Sampling temperature.
+            images: Optional list of images to include in the message.
+                    Each element can be bytes (raw image data) or a str/Path
+                    (file path to read). Images are sent as base64-encoded
+                    content blocks before the text prompt.
 
         Returns:
             str: Claude's response text.
@@ -530,11 +754,37 @@ class ClaudeAPI:
         use_model = model or MODEL_ROUTINE
         max_retries = 3
 
+        # Build message content: images (if any) + text
+        if images:
+            content = []
+            for img in images:
+                if isinstance(img, bytes):
+                    image_data = base64.standard_b64encode(img).decode("utf-8")
+                    media_type = "image/png"
+                else:
+                    path = Path(img)
+                    image_data = base64.standard_b64encode(path.read_bytes()).decode("utf-8")
+                    media_type = (
+                        "image/jpeg" if path.suffix.lower() in (".jpg", ".jpeg")
+                        else "image/png"
+                    )
+                content.append({
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": media_type,
+                        "data": image_data,
+                    },
+                })
+            content.append({"type": "text", "text": prompt})
+        else:
+            content = prompt
+
         for attempt in range(max_retries + 1):
             try:
                 logger.debug(
-                    "Claude API call: model=%s, max_tokens=%d, prompt_length=%d chars",
-                    use_model, max_tokens, len(prompt),
+                    "Claude API call: model=%s, max_tokens=%d, prompt_length=%d chars, images=%d",
+                    use_model, max_tokens, len(prompt), len(images) if images else 0,
                 )
 
                 message = self.client.messages.create(
@@ -542,7 +792,7 @@ class ClaudeAPI:
                     max_tokens=max_tokens,
                     temperature=temperature,
                     system=system if system else anthropic.NOT_GIVEN,
-                    messages=[{"role": "user", "content": prompt}],
+                    messages=[{"role": "user", "content": content}],
                 )
 
                 # Track token usage and cost

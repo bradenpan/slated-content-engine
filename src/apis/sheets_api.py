@@ -279,6 +279,7 @@ class SheetsAPI:
         pins: list[dict],
         pin_image_urls: dict = None,
         blog_previews: dict = None,
+        quality_gate_stats: dict = None,
     ) -> None:
         """
         Write generated blog posts and pins to the "Content Queue" tab.
@@ -293,10 +294,14 @@ class SheetsAPI:
             pins: List of generated pin metadata dicts.
                 Keys: pin_id, title, description, board_name, link, scheduled_date,
                       scheduled_slot, pillar, image_path, alt_text
+                Optional quality keys: _quality_note, image_quality_score,
+                      image_retries, image_low_confidence
             pin_image_urls: Optional dict of pin_id -> public image URL.
                 When provided, writes =IMAGE(url) in thumbnail column.
             blog_previews: Optional dict of post_id -> blog description text.
                 When provided, writes preview in description column for blogs.
+            quality_gate_stats: Optional dict with stock_summary and ai_summary
+                strings. When provided, writes a summary row at the bottom.
         """
         pin_image_urls = pin_image_urls or {}
         blog_previews = blog_previews or {}
@@ -345,6 +350,9 @@ class SheetsAPI:
             else:
                 thumbnail = str(pin.get("image_path", ""))
 
+            # Per-pin quality note (populated by publish_content_queue.py)
+            quality_note = str(pin.get("_quality_note", ""))
+
             rows.append([
                 pin_id,
                 "pin",
@@ -356,7 +364,18 @@ class SheetsAPI:
                 str(pin.get("pillar", "")),
                 thumbnail,
                 "pending_review",
+                quality_note,
+            ])
+
+        # Quality gate summary row at the bottom
+        if quality_gate_stats:
+            rows.append([])  # blank separator row
+            rows.append([
+                "QUALITY GATE STATS",
                 "",
+                quality_gate_stats.get("stock_summary", ""),
+                quality_gate_stats.get("ai_summary", ""),
+                "", "", "", "", "", "", "",
             ])
 
         # Use USER_ENTERED so =IMAGE() formulas are interpreted
