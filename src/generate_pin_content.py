@@ -655,6 +655,8 @@ def _source_stock_image(
 
     if candidates_with_thumbs:
         ranked = claude.rank_stock_candidates(candidates_with_thumbs, pin_spec)
+        if not ranked:
+            ranked = filtered[:1]
         best = ranked[0]
         best_score = best.get("_score", 0)
         quality_meta["image_quality_score"] = best_score
@@ -824,29 +826,37 @@ def _source_ai_image(
         regen_filename = f"{pin_id}-hero-regen.png"
         regen_output_path = output_dir / regen_filename
 
-        generated_path = image_gen_api.generate(
-            prompt=modified_prompt,
-            width=1000,
-            height=1500,
-            output_path=regen_output_path,
-            style="natural",
-        )
+        try:
+            generated_path = image_gen_api.generate(
+                prompt=modified_prompt,
+                width=1000,
+                height=1500,
+                output_path=regen_output_path,
+                style="natural",
+            )
 
-        prompt_hash = hashlib.md5(modified_prompt.encode()).hexdigest()[:12]
-        quality_meta["image_retries"] = quality_meta.get("image_retries", 0) + 1
+            prompt_hash = hashlib.md5(modified_prompt.encode()).hexdigest()[:12]
+            quality_meta["image_retries"] = quality_meta.get("image_retries", 0) + 1
 
-        # Re-validate
-        validation2 = claude.validate_ai_image(generated_path, modified_prompt, pin_spec)
-        quality_meta["image_quality_score"] = validation2["score"]
-        quality_meta["image_quality_issues"] = validation2.get("issues", [])
+            # Re-validate
+            validation2 = claude.validate_ai_image(generated_path, modified_prompt, pin_spec)
+            quality_meta["image_quality_score"] = validation2["score"]
+            quality_meta["image_quality_issues"] = validation2.get("issues", [])
 
-        if not validation2["pass"]:
-            logger.warning(
-                "AI image still below threshold after retry for %s (score %.1f). "
-                "Accepting with low_confidence flag.",
-                pin_id, validation2["score"],
+            if not validation2["pass"]:
+                logger.warning(
+                    "AI image still below threshold after retry for %s (score %.1f). "
+                    "Accepting with low_confidence flag.",
+                    pin_id, validation2["score"],
+                )
+                quality_meta["image_low_confidence"] = True
+        except Exception as e:
+            logger.error(
+                "AI image regeneration failed for %s, accepting original: %s",
+                pin_id, e,
             )
             quality_meta["image_low_confidence"] = True
+            quality_meta["image_retries"] = quality_meta.get("image_retries", 0) + 1
 
     logger.info(
         "AI image for %s: score=%.1f, retries=%d, low_confidence=%s",

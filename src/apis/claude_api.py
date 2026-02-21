@@ -760,7 +760,7 @@ class ClaudeAPI:
             for img in images:
                 if isinstance(img, bytes):
                     image_data = base64.standard_b64encode(img).decode("utf-8")
-                    media_type = "image/png"
+                    media_type = "image/jpeg" if img[:2] == b'\xff\xd8' else "image/png"
                 else:
                     path = Path(img)
                     image_data = base64.standard_b64encode(path.read_bytes()).decode("utf-8")
