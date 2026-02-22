@@ -540,13 +540,14 @@ class PinAssembler:
             else:
                 img.save(jpeg_path, "JPEG", quality=88, optimize=True)
 
-            # Replace PNG with JPEG if smaller
+            # Replace PNG with JPEG if smaller — rename JPEG to the original
+            # .png path so all downstream path references remain valid
             if jpeg_path.stat().st_size < file_size:
-                image_path.unlink()
-                jpeg_path.rename(image_path.with_suffix(".jpg"))
+                image_path.unlink()          # delete original PNG
+                jpeg_path.rename(image_path) # rename .jpg to original path
                 logger.info(
                     "Converted to JPEG: %d bytes (was %d bytes PNG)",
-                    jpeg_path.stat().st_size if jpeg_path.exists() else 0,
+                    image_path.stat().st_size,
                     file_size,
                 )
             else:

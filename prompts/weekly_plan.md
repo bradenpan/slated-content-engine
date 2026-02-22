@@ -28,6 +28,9 @@ You are methodical, data-driven, and deeply familiar with Pinterest SEO. You und
 ### Keyword Performance Data
 {{keyword_performance}}
 
+### Dynamic Negative Keywords (from analytics)
+{{negative_keywords}}
+
 ---
 ## YOUR TASK
 

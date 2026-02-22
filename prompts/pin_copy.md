@@ -24,6 +24,12 @@ You never mention Slated, the app, downloads, or any product pitch in pin copy. 
 ### Funnel Layer
 {{funnel_layer}}
 
+### Brand Voice Details (loaded from strategy)
+{{brand_voice_details}}
+
+### Keyword Targets (per-pillar)
+{{keyword_targets}}
+
 ---
 ## BRAND VOICE
 

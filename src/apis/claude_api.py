@@ -166,6 +166,7 @@ class ClaudeAPI:
             "content_memory_summary": content_memory or "No content history yet (first run).",
             "seasonal_window": seasonal_context,
             "keyword_performance": keyword_data,
+            "negative_keywords": "\n".join(f"- {kw}" for kw in negative_keywords) if negative_keywords else "See NEGATIVE KEYWORD CONSTRAINTS above.",
         }
 
         prompt = self._render_template(template, context)
@@ -226,6 +227,8 @@ class ClaudeAPI:
                 "blog_post_content": "",
                 "pillar": "See individual pin specs above",
                 "funnel_layer": "See individual pin specs above",
+                "brand_voice_details": brand_voice or "",
+                "keyword_targets": keyword_targets or {},
             }
 
             prompt = self._render_template(template, context)

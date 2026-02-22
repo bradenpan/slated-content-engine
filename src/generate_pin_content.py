@@ -174,10 +174,11 @@ def generate_pin_content(
                 extra_context=extra_context,
             )
 
-            # Build the blog post link with UTM params
+            # Build the blog post link (bare URL — UTM params added at posting
+            # time by post_pins.py:construct_utm_link to avoid double-tagging)
             blog_slug = _resolve_blog_slug(pin_spec, blog_posts)
             board_name = pin_spec.get("target_board", "")
-            link = build_utm_link(blog_slug, board_name, pin_id)
+            link = f"{BLOG_BASE_URL}/{blog_slug}" if blog_slug else BLOG_BASE_URL
 
             # Build the complete pin data
             pin_data = {

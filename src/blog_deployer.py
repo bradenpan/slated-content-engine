@@ -751,6 +751,7 @@ class BlogDeployer:
 
                 entry = {
                     "date": today_str,
+                    "posted_date": today_str,  # weekly_analysis.py filters on this field
                     "pin_id": None,  # Set when actually posted to Pinterest
                     "blog_slug": full.get("blog_slug", ""),
                     "blog_title": full.get("title", pin_item.get("title", "")),

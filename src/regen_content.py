@@ -32,6 +32,7 @@ from src.generate_pin_content import (
     source_image,
     _load_brand_voice,
     _load_keyword_targets,
+    _build_template_context,
 )
 from src.pin_assembler import PinAssembler
 
@@ -406,16 +407,34 @@ def _regen_item(
     if hero_path and hero_path.exists():
         template_type = new_pin_data.get("template", "recipe-pin")
         text_overlay = new_pin_data.get("text_overlay", "")
-        subtitle = new_pin_data.get("subtitle", "")
+
+        # Extract headline/subtitle from text_overlay (may be dict or str)
+        if isinstance(text_overlay, dict):
+            headline = text_overlay.get("headline", "")
+            subtitle = text_overlay.get("sub_text", "")
+        else:
+            headline = str(text_overlay) if text_overlay else ""
+            subtitle = new_pin_data.get("subtitle", "")
+
+        # Build template-specific context for non-recipe templates
+        pin_copy_like = {
+            "title": new_pin_data.get("title", ""),
+            "description": new_pin_data.get("description", ""),
+            "text_overlay": text_overlay,
+        }
+        extra_context = _build_template_context(
+            template_type, pin_copy_like, pin_spec, hero_path,
+        )
 
         try:
             rendered_pin_path = assembler.assemble_pin(
                 template_type=template_type,
                 hero_image_path=hero_path,
-                headline=text_overlay,
+                headline=headline,
                 subtitle=subtitle,
                 variant=new_pin_data.get("template_variant", 1),
                 output_path=PIN_OUTPUT_DIR / f"{pin_id}.png",
+                extra_context=extra_context,
             )
             new_pin_data["image_path"] = str(rendered_pin_path)
 

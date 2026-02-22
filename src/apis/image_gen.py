@@ -331,15 +331,15 @@ class ImageGenAPI:
         Returns:
             bytes: Raw image data.
         """
-        # Create prediction
+        # Create prediction using the model-based endpoint (accepts model names
+        # directly, unlike /v1/predictions which requires a version SHA hash)
         response = requests.post(
-            "https://api.replicate.com/v1/predictions",
+            "https://api.replicate.com/v1/models/black-forest-labs/flux-pro/predictions",
             headers={
                 "Authorization": f"Bearer {self.api_key}",
                 "Content-Type": "application/json",
             },
             json={
-                "version": "black-forest-labs/flux-pro",
                 "input": {
                     "prompt": prompt,
                     "width": width,

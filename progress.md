@@ -549,3 +549,59 @@ All 10 files reviewed. 9/10 approved on first pass. One blocking issue caught: a
 ### Status
 
 All fixes implemented, compiled, and reviewed. Pipeline is ready for Monday 2/23 launch.
+
+---
+
+## Phase 5.1: Incremental Improvements & Fix Verification
+
+**Date:** 2026-02-22
+
+The Phase 5 agent errored out before confirming completion. A 6-agent review team (5 domain reviewers + 1 Sr Staff Engineer) audited all uncommitted changes against the fix plan. Verdict: **all plan items were implemented correctly**, and the uncommitted diff contains additional incremental improvements beyond the plan.
+
+### Changes in This Diff (8 files, +45/-11 lines)
+
+#### Replicate API endpoint fix (`src/apis/image_gen.py`)
+
+**Problem:** Old code called `POST /v1/predictions` with `"version": "black-forest-labs/flux-pro"`. That endpoint requires a version SHA hash, not a model name — would fail at runtime.
+
+**Fix:** Switched to model-based endpoint `POST /v1/models/black-forest-labs/flux-pro/predictions` which accepts model names directly. Removed the `version` field from the request body. Polling code unchanged (uses `/v1/predictions/{id}` which works regardless of creation endpoint).
+
+#### UTM double-tagging fix (`src/generate_pin_content.py`)
+
+**Problem:** `build_utm_link()` was called at content generation time, then `construct_utm_link()` in `post_pins.py` added UTMs again at posting time — double-tagging URLs.
+
+**Fix:** Generation now produces bare URLs (`{BLOG_BASE_URL}/{blog_slug}`). UTM params are added only at posting time by `post_pins.py:construct_utm_link()`. The old `build_utm_link()` function is now dead code (cleanup candidate).
+
+#### JPEG conversion path fix (`src/pin_assembler.py`)
+
+**Problem:** After JPEG optimization, `jpeg_path.rename(image_path.with_suffix(".jpg"))` created a `.jpg` file, but all downstream references (pin data, content logs, posting code) still used the original `.png` path — causing `FileNotFoundError` at posting time. Logging also read the wrong file size (always 0).
+
+**Fix:** Rename JPEG to the original `.png` path so downstream references remain valid. Updated logging to read the correct file size. Minor caveat: file bytes are JPEG but extension says `.png` — mitigated by Pinterest API's magic-byte detection (M1/M2 fix) and Chromium's content-sniffing in data URIs.
+
+#### Prompt template enhancements (`prompts/pin_copy.md`, `prompts/weekly_plan.md`, `src/apis/claude_api.py`)
+
+Added three new template variables for richer context:
+- `{{brand_voice_details}}` — loaded from strategy files, gives Claude specific voice/tone guidance per pin
+- `{{keyword_targets}}` — per-pillar keyword targets for SEO alignment
+- `{{negative_keywords}}` — dynamic negative keyword list from analytics (weekly plan prompt)
+
+Context dicts in `claude_api.py` inject matching values for all three.
+
+#### Regen template context fix (`src/regen_content.py`)
+
+Extended the C7 fix (non-recipe templates get empty text) to the regen path. Now imports `_build_template_context` from `generate_pin_content.py`, builds template-specific context for all 5 template types, and passes `extra_context` to `assemble_pin()`. Also properly extracts headline/subtitle from `text_overlay` dict format.
+
+#### Content log `posted_date` field (`src/blog_deployer.py`)
+
+Added `"posted_date": today_str` to content log entries. `weekly_analysis.py` filters on this field — previously missing, which could cause analytics gaps.
+
+### Minor Items Identified for Follow-Up
+
+1. **`_build_fallback_approvals()` still exists** — docstring warns "local testing only" but function is still callable. Future developer could accidentally re-enable auto-approve behavior.
+2. **`build_utm_link()` is dead code** — no longer called after UTM deferral fix. Should be removed.
+3. **JPEG-as-PNG MIME caveat** — `drive_api.py` uses `mimetypes.guess_type()` which trusts file extension, so a JPEG file with `.png` extension gets wrong MIME type for Drive uploads. Non-breaking (Drive handles it) but technically imprecise.
+4. **`_build_template_context` cross-module import** — `regen_content.py` imports a private (`_`-prefixed) function from `generate_pin_content.py`. Works fine but violates the convention that `_`-prefixed names are module-internal.
+
+### Status
+
+All changes verified by 6-agent review team. Safe to commit.
