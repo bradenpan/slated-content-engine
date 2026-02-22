@@ -645,3 +645,76 @@ Addressed the 4 minor items identified during the Phase 5.1 review. All are non-
 ### Status
 
 All 4 items implemented. Net -76 lines. Committed as `9d8ad11`.
+
+---
+
+## Phase 6: Final Pre-Launch Review & Fixes
+
+**Date:** 2026-02-22
+
+A 5-agent review team (4 domain reviewers + 1 Sr Staff Engineer) performed a comprehensive pre-launch audit of the entire pipeline. Four parallel reviewers covered: (1) GitHub Actions workflows & triggers, (2) data flow & field handoffs across all 10 pipeline steps, (3) all API integrations & prompt templates, (4) regen flows, error paths & edge cases. The Sr Staff Engineer then verified every finding against actual source code, filtering false positives.
+
+### Review Results
+
+**0 launch blockers found.** The most alarming finding — a schedule format mismatch in `sheets_api.py` initially flagged as a launch blocker — was downgraded after the Sr Staff Engineer traced the actual posting path and confirmed it reads from `pin-schedule.json` (separate fields), not the Sheet method with the mismatch.
+
+**Verified correct across all reviewers:**
+- All 5 pin template types get correct context variables
+- Full posting path: pin-schedule.json → board resolution → UTM construction → Pinterest API
+- Regen flow: feedback injection, image re-sourcing, upload-then-delete, Sheet update
+- Drive image handling: thumbnail vs full-res URLs, magic byte MIME detection
+- Blog deployment: batch commit, two-phase preview/production deploy
+- All 9 GitHub Actions workflows: cron schedules, triggers, concurrency groups, git pull --rebase
+- Error handling: retry logic, rate limit backoff, token refresh, failure notifications
+- Approval gates: plan, content, production, regen blocking
+
+### Pre-Launch Fixes (3)
+
+#### Fix 1: `generate-content.yml` timeout too short
+
+**Problem:** Content generation workflow had `timeout-minutes: 30`. With 28 pins requiring Claude API calls (search queries, stock ranking, AI validation), image downloads, Puppeteer rendering, and Drive uploads, worst-case execution could approach or exceed 30 minutes. The `regen-content.yml` already used 45 minutes for a subset of this work.
+
+**Fix:** Increased to `timeout-minutes: 45`.
+
+| File | Change |
+|------|--------|
+| `.github/workflows/generate-content.yml` | `timeout-minutes: 30` → `45` |
+
+#### Fix 2: Weekly analysis template placeholders don't match context dict
+
+**Problem:** `analyze_weekly_performance()` in `claude_api.py` passed 3 context keys (`PERFORMANCE_DATA`, `PREVIOUS_ANALYSIS`, `CONTENT_PLAN`) but the `weekly_analysis.md` template uses 8 different placeholders (`this_week_data`, `last_week_analysis`, `content_plan_vs_actual`, `per_pillar_metrics`, `per_keyword_metrics`, `per_board_metrics`, `per_funnel_layer_metrics`, `account_trends`). None matched — all placeholders went unreplaced. Claude would receive the template structure but no actual performance data, producing a generic analysis with no real numbers.
+
+**Fix:** Replaced the 3 mismatched keys with 8 keys matching the template placeholders. Each key maps to the correct slice of the `build_analysis_context()` return value:
+- `this_week_data` → week_summary, top/bottom pins, per-type/template/image-source/pin-type breakdowns
+- `last_week_analysis` → previous analysis text (with first-run fallback)
+- `content_plan_vs_actual` → content plan dict (with fallback)
+- `per_pillar_metrics` → `by_pillar` aggregate
+- `per_keyword_metrics` → `by_keyword` aggregate
+- `per_board_metrics` → `by_board` aggregate
+- `per_funnel_layer_metrics` → `by_funnel_layer` aggregate
+- `account_trends` → this week vs last week vs 4-week rolling average
+
+| File | Change |
+|------|--------|
+| `src/apis/claude_api.py` | Context dict in `analyze_weekly_performance()`: 3 mismatched keys → 8 keys matching template placeholders |
+
+#### Fix 3: Schedule format mismatch in Content Queue
+
+**Problem:** `write_content_queue()` wrote the schedule column as `"2026-02-24 / morning"` (spaces around slash), but `get_approved_pins_for_slot()` compared against `"2026-02-24/morning"` (no spaces). These would never match. The actual posting path reads from `pin-schedule.json` (not the Sheet), so this didn't block posting — but the inconsistency would cause `get_approved_pins_for_slot()` to return zero results if ever called.
+
+**Fix:** Changed write format to `"date/slot"` (no spaces) to match the read format.
+
+| File | Change |
+|------|--------|
+| `src/apis/sheets_api.py` | `write_content_queue()` schedule format: `" / "` → `"/"` |
+
+### Known Issues (not blocking launch)
+
+1. **Monthly review template placeholder mismatch** — Same pattern as Fix 2, affects `run_monthly_review()` context dict vs `monthly_review.md` template. First monthly review runs March 2. Fix before then.
+2. **Vision MIME detection uses file extension** — `claude_api.py` line 878 uses file extension instead of magic bytes for the file-path branch. Masked by fallback score of 7.0. Low practical impact.
+3. **Missing `REPLICATE_API_TOKEN`** in workflow env blocks — Only matters if image generation is switched from OpenAI to Replicate.
+4. **DST cron drift** — All cron jobs shift 1 hour later during EDT (March–November). Cosmetic, not a failure.
+
+### Status
+
+All 3 fixes implemented and verified by Sr Staff Engineer. Pipeline is ready for Monday 2/23 launch.

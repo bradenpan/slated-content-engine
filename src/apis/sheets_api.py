@@ -362,7 +362,7 @@ class SheetsAPI:
                 desc,
                 str(pin.get("board_name", pin.get("target_board", ""))),
                 str(pin.get("link", "")),
-                f"{pin.get('scheduled_date', '')} / {pin.get('scheduled_slot', '')}",
+                f"{pin.get('scheduled_date', '')}/{pin.get('scheduled_slot', '')}",
                 str(pin.get("pillar", "")),
                 thumbnail,
                 "pending_review",

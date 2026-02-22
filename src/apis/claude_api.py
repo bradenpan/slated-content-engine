@@ -542,9 +542,23 @@ class ClaudeAPI:
         template = self.load_prompt_template("weekly_analysis.md")
 
         context = {
-            "PERFORMANCE_DATA": performance_data,
-            "PREVIOUS_ANALYSIS": previous_analysis,
-            "CONTENT_PLAN": content_plan,
+            "this_week_data": {
+                "week_summary": performance_data.get("week_summary", {}),
+                "top_pins": performance_data.get("top_pins", []),
+                "bottom_pins": performance_data.get("bottom_pins", []),
+                "by_content_type": performance_data.get("by_content_type", {}),
+                "by_template": performance_data.get("by_template", {}),
+                "by_image_source": performance_data.get("by_image_source", {}),
+                "by_pin_type": performance_data.get("by_pin_type", {}),
+                "plan_vs_recipe": performance_data.get("plan_vs_recipe", {}),
+            },
+            "last_week_analysis": previous_analysis or "No previous analysis available (first run).",
+            "content_plan_vs_actual": content_plan or "No content plan data available.",
+            "per_pillar_metrics": performance_data.get("by_pillar", {}),
+            "per_keyword_metrics": performance_data.get("by_keyword", {}),
+            "per_board_metrics": performance_data.get("by_board", {}),
+            "per_funnel_layer_metrics": performance_data.get("by_funnel_layer", {}),
+            "account_trends": performance_data.get("account_trends", {}),
         }
 
         prompt = self._render_template(template, context)
