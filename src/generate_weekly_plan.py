@@ -73,7 +73,7 @@ MAX_TREATMENTS_PER_URL_60_DAYS = 5
 POSTING_DAYS = ["tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "monday"]
 
 # Time slots per day
-TIME_SLOTS = ["morning", "afternoon", "evening_1", "evening_2"]
+TIME_SLOTS = ["morning", "afternoon", "evening-1", "evening-2"]
 
 
 def generate_plan(week_start_date: Optional[str] = None) -> dict:
@@ -1177,8 +1177,7 @@ def validate_plan(
         sorted_pins = sorted(
             pins,
             key=lambda p: (
-                POSTING_DAYS.index(p.get("scheduled_date", "tuesday").lower())
-                if p.get("scheduled_date", "").lower() in POSTING_DAYS else 99,
+                p.get("scheduled_date", ""),
                 TIME_SLOTS.index(p.get("scheduled_slot", "morning"))
                 if p.get("scheduled_slot", "") in TIME_SLOTS else 99,
             ),
@@ -1204,12 +1203,19 @@ def validate_plan(
     day_counts = Counter(
         pin.get("scheduled_date", "").lower() for pin in pins
     )
-    for day in POSTING_DAYS:
-        count = day_counts.get(day, 0)
+    # Verify correct number of posting days
+    if len(day_counts) != len(POSTING_DAYS):
+        violations.append({
+            "category": "day_distribution",
+            "message": f"Expected {len(POSTING_DAYS)} posting days, found {len(day_counts)}",
+            "post_id": None,
+            "severity": "structural",
+        })
+    for day_date, count in day_counts.items():
         if count != PINS_PER_DAY:
             violations.append({
                 "category": "day_distribution",
-                "message": f"Day '{day}' has {count} pins, expected {PINS_PER_DAY}",
+                "message": f"Date '{day_date}' has {count} pins, expected {PINS_PER_DAY}",
                 "post_id": None,
                 "severity": "structural",
             })

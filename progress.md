@@ -453,3 +453,99 @@ Pipeline workflows (`pinterest-pipeline` group) and posting workflows (`pinteres
 ### Status
 
 All 9 fixes implemented and verified by two rounds of automated code review (6 review agents total). End-to-end data flow traces confirmed correct handoffs for: happy-path posting, regen posting, and evening timezone handling.
+
+---
+
+## Phase 5: Deep Pre-Launch Audit & Critical Fixes
+
+**Date:** 2026-02-22
+
+A second, deeper code review before Monday launch. Five review agents examined every workflow, trigger, handoff, approval gate, and failure path. I then personally validated every finding against the actual source code, downgrading several false positives and identifying the correct root causes. Four implementation agents fixed the confirmed issues, and a Sr Staff Engineer agent reviewed all changes for correctness and workflow fit.
+
+### Critical Bugs Fixed (3)
+
+#### C4: Image prompt template variables not injected
+
+**Problem:** `generate_image_prompt()` injected `{"PIN_SPEC": pin_spec, "IMAGE_SOURCE": image_source}` into the context dict, but the templates (`image_search.md`, `image_prompt.md`) use `{{pin_topic}}`, `{{content_type}}`, `{{primary_keyword}}`, `{{pin_template}}`, `{{pillar}}`. None matched — placeholders went unreplaced. Claude received no pin-specific information for image generation, producing generic images for every pin. Additionally, system messages said "Return only the prompt/query text" while templates said "Return valid JSON" — contradictory instructions.
+
+**Fix:**
+1. Changed context dict to inject individual fields matching template vars
+2. Removed contradictory "Return only the prompt/query text" from system message (templates now control output format)
+3. Added JSON parsing in callers (`_source_stock_image`, `_source_ai_image`) with graceful fallback to raw text
+
+| File | Change |
+|------|--------|
+| `src/apis/claude_api.py` | Context dict keys now match template vars; removed contradictory system message |
+| `src/generate_pin_content.py` | JSON parsing for stock image queries (`queries[0].query`) and AI image prompts (`image_prompt`) |
+
+#### C7: Non-recipe pin templates render with empty text
+
+**Problem:** `assemble_pin()` only passed `headline`, `subtitle`, `hero_image_url`. Non-recipe templates need many more variables — tip-pin needs `bullet_1-3`, listicle-pin needs `number`/`list_items`, problem-solution-pin needs `problem_text`/`solution_text`, infographic-pin needs `title`/`steps`/`footer_text`. All defaulted to empty string, so ~40-50% of pins rendered with blank text areas. Also, `text_overlay` from pin copy is a dict (`{headline, sub_text}`) but was being passed as a raw object to the headline parameter.
+
+**Fix:**
+1. Fixed `text_overlay` extraction to properly handle dict format
+2. Added `extra_context` parameter to `assemble_pin()` for template-specific variables
+3. New `_build_template_context()` function derives template-specific variables from pin copy data
+4. Helper functions extract bullets, list items, steps, and leading numbers from description text
+
+| File | Change |
+|------|--------|
+| `src/generate_pin_content.py` | `_build_template_context()` + 4 helpers, fixed text_overlay dict handling |
+| `src/pin_assembler.py` | `assemble_pin()` accepts optional `extra_context` dict merged into render context |
+
+#### C6: Fallback auto-approves everything if Sheets is down
+
+**Problem:** If `read_content_approvals()` threw an exception, `_build_fallback_approvals()` marked ALL generated content as "approved" — including items the human explicitly rejected. This was a safety hole: a transient Sheets outage during deploy could silently publish rejected content.
+
+**Fix:** All three fallback sites (`deploy_approved_content`, `deploy_to_preview`, `promote_to_production`) now send a Slack notification explaining the failure and re-raise the exception to halt the pipeline. `_build_fallback_approvals()` retained with a testing-only docstring.
+
+| File | Change |
+|------|--------|
+| `src/blog_deployer.py` | 3 fallback-to-auto-approve blocks → Slack notification + raise; docstring warning on `_build_fallback_approvals()` |
+
+### Medium Bugs Fixed (6)
+
+#### C1+C2: Validation day names and slot underscore mismatches
+
+**Problem:** `POSTING_DAYS` had day names (`"tuesday"`, etc.) but Claude produces YYYY-MM-DD dates. `TIME_SLOTS` used underscores (`"evening_1"`) but the prompt and posting code use hyphens. Sort key failed for dates; day distribution check always passed vacuously. This wasted 2 Claude retries per Monday run on structural violations that could never pass.
+
+**Fix:** Changed `TIME_SLOTS` to hyphens, sort key uses date strings directly (YYYY-MM-DD sorts lexicographically), day distribution counts by date instead of day name.
+
+| File | Change |
+|------|--------|
+| `src/generate_weekly_plan.py` | `TIME_SLOTS` hyphens, sort by date string, count distribution by date |
+
+#### M1+M2: Hardcoded image/png MIME types
+
+**Problem:** Pinterest API and Drive API hardcoded `image/png` for all uploads. After pin_assembler's JPEG optimization, actual images may be JPEG — causing MIME mismatch.
+
+**Fix:** Pinterest API detects format from base64 magic bytes (JPEG/PNG/WebP). Drive API uses `mimetypes.guess_type()` from file extension.
+
+| File | Change |
+|------|--------|
+| `src/apis/pinterest_api.py` | Magic byte detection for content_type |
+| `src/apis/drive_api.py` | `mimetypes.guess_type()` for upload MIME type |
+
+#### M9: Prompt says 4-week dedup, code enforces 10
+
+**Fix:** Changed "4 weeks" to "10 weeks" in the prompt's FINAL CHECKLIST.
+
+| File | Change |
+|------|--------|
+| `prompts/weekly_plan.md` | "4 weeks" → "10 weeks" in checklist |
+
+#### M8: Regen deletes old image before uploading new
+
+**Fix:** Swapped order: upload new image first, then delete old. If upload fails, old image remains intact.
+
+| File | Change |
+|------|--------|
+| `src/regen_content.py` | Upload-then-delete order; delete by file ID, not name |
+
+### Sr Staff Engineer Review
+
+All 10 files reviewed. 9/10 approved on first pass. One blocking issue caught: a concurrency group rename (`pinterest-pipeline` → `deploy-and-schedule`) would have allowed `deploy-and-schedule.yml` and `promote-and-schedule.yml` to run concurrently, creating race conditions on shared state. Reverted to shared group. Two non-blocking observations addressed (redundant import, dead code).
+
+### Status
+
+All fixes implemented, compiled, and reviewed. Pipeline is ready for Monday 2/23 launch.

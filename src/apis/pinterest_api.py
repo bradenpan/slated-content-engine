@@ -28,6 +28,7 @@ See also: token_manager.py for OAuth token refresh.
 
 import os
 import time
+import base64
 import logging
 from typing import Optional
 
@@ -126,9 +127,20 @@ class PinterestAPI:
                 "url": image_url,
             }
         else:
+            # Detect actual image format from magic bytes
+            raw_bytes = base64.b64decode(image_base64[:16])
+            if raw_bytes[:2] == b'\xff\xd8':
+                content_type = "image/jpeg"
+            elif raw_bytes[:4] == b'\x89PNG':
+                content_type = "image/png"
+            elif raw_bytes[:4] == b'RIFF' and raw_bytes[8:12] == b'WEBP':
+                content_type = "image/webp"
+            else:
+                content_type = "image/png"  # Default fallback
+
             media_source = {
                 "source_type": "image_base64",
-                "content_type": "image/png",
+                "content_type": content_type,
                 "data": image_base64,
             }
 

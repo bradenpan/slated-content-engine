@@ -18,6 +18,7 @@ import os
 import json
 import base64
 import logging
+import mimetypes
 from pathlib import Path
 from typing import Optional
 
@@ -183,9 +184,13 @@ class DriveAPI:
                 "name": name,
                 "parents": [folder_id],
             }
+            mime_type, _ = mimetypes.guess_type(str(file_path))
+            if not mime_type or not mime_type.startswith("image/"):
+                mime_type = "image/png"  # Default fallback
+
             media = MediaFileUpload(
                 str(file_path),
-                mimetype="image/png",
+                mimetype=mime_type,
                 resumable=False,
             )
 

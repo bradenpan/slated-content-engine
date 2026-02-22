@@ -104,9 +104,16 @@ class BlogDeployer:
         try:
             approvals = self.sheets.read_content_approvals()
         except Exception as e:
-            logger.error("Failed to read content approvals from Sheets: %s", e)
-            # Fall back to assuming all generated content is approved
-            approvals = _build_fallback_approvals()
+            logger.error("Failed to read content approvals: %s", e)
+            try:
+                self.slack.notify_failure(
+                    "deploy_approved_content",
+                    f"Cannot read content approvals from Google Sheets: {e}. "
+                    f"Deployment halted. Please retry when Sheets is accessible.",
+                )
+            except Exception:
+                pass
+            raise
 
         # Step 2: Filter to approved blog posts
         approved_blogs = [
@@ -236,7 +243,15 @@ class BlogDeployer:
             approvals = self.sheets.read_content_approvals()
         except Exception as e:
             logger.error("Failed to read content approvals: %s", e)
-            approvals = _build_fallback_approvals()
+            try:
+                self.slack.notify_failure(
+                    "deploy_to_preview",
+                    f"Cannot read content approvals from Google Sheets: {e}. "
+                    f"Preview deployment halted. Please retry when Sheets is accessible.",
+                )
+            except Exception:
+                pass
+            raise
 
         approved_blogs = [
             item for item in approvals
@@ -342,7 +357,15 @@ class BlogDeployer:
             approvals = self.sheets.read_content_approvals()
         except Exception as e:
             logger.error("Failed to read content approvals: %s", e)
-            approvals = _build_fallback_approvals()
+            try:
+                self.slack.notify_failure(
+                    "promote_to_production",
+                    f"Cannot read content approvals from Google Sheets: {e}. "
+                    f"Production promotion halted. Please retry when Sheets is accessible.",
+                )
+            except Exception:
+                pass
+            raise
 
         approved_blogs = [
             item for item in approvals
@@ -776,8 +799,10 @@ def _build_fallback_approvals() -> list[dict]:
     """
     Build approval data by reading local generation results files.
 
-    Used when Google Sheets is unavailable. Assumes all generated content
-    is approved.
+    WARNING: For local testing only. This function marks ALL generated content
+    as "approved" regardless of actual human review status. It must NOT be used
+    in production workflows, as it bypasses the human approval gate and could
+    deploy content that was explicitly rejected.
     """
     approvals = []
 

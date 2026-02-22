@@ -482,10 +482,13 @@ class PinAssembler:
         subtitle: str = "",
         variant: int | str = 1,
         output_path: Optional[Path] = None,
+        extra_context: Optional[dict[str, Any]] = None,
     ) -> Path:
         """Convenience method matching the caller interface in generate_pin_content.py.
 
         Maps positional arguments to the context dict expected by render_pin().
+        An optional extra_context dict is merged in, allowing callers to pass
+        template-specific variables (e.g. bullet_1, list_items, steps).
         """
         context = {
             "headline": headline,
@@ -493,6 +496,9 @@ class PinAssembler:
         }
         if hero_image_path:
             context["hero_image_url"] = str(hero_image_path)
+
+        if extra_context:
+            context.update(extra_context)
 
         return self.render_pin(
             template_name=template_type,

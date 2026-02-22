@@ -379,8 +379,11 @@ class ClaudeAPI:
         template = self.load_prompt_template(template_name)
 
         context = {
-            "PIN_SPEC": pin_spec,
-            "IMAGE_SOURCE": image_source,
+            "pin_topic": pin_spec.get("pin_topic", pin_spec.get("topic", "")),
+            "content_type": pin_spec.get("content_type", ""),
+            "primary_keyword": pin_spec.get("primary_keyword", ""),
+            "pin_template": pin_spec.get("pin_template", ""),
+            "pillar": str(pin_spec.get("pillar", "")),
         }
 
         prompt = self._render_template(template, context)
@@ -402,8 +405,7 @@ class ClaudeAPI:
                 "You are an image prompt specialist for food and lifestyle photography. "
                 f"Generate a {'detailed AI image generation prompt' if image_source == 'ai' else 'stock photo search query'} "
                 "optimized for Pinterest pin images at 1000x1500px (2:3 ratio). "
-                "For food: prefer overhead/flat-lay compositions, warm lighting, rustic surfaces. "
-                "Return only the prompt/query text, no explanation."
+                "For food: prefer overhead/flat-lay compositions, warm lighting, rustic surfaces."
             )
 
         if regen_feedback:

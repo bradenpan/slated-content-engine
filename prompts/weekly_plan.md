@@ -333,7 +333,7 @@ Before returning the plan, verify:
 - [ ] Exactly 4 pins per day across 7 days
 - [ ] Pillar percentages within target ranges
 - [ ] Funnel layer percentages within target ranges
-- [ ] No topic repeated from the last 4 weeks (per content memory)
+- [ ] No topic repeated from the last 10 weeks (per content memory)
 - [ ] No board has more than 5 pins
 - [ ] No more than 3 consecutive same-template pins
 - [ ] No URL has more than 2 fresh treatments this week

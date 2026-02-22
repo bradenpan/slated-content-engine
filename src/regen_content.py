@@ -419,11 +419,21 @@ def _regen_item(
             )
             new_pin_data["image_path"] = str(rendered_pin_path)
 
-            # Delete old Drive image before uploading replacement
-            drive.delete_image_by_name(f"{pin_id}.png")
+            # Capture old Drive file ID before uploading replacement
+            old_drive_url = pin_data.get("_drive_image_url", "")
+            old_drive_file_id = _extract_drive_file_id(old_drive_url)
 
-            # Upload new rendered pin to Drive
+            # Upload new rendered pin to Drive first
             new_image_url = drive.upload_image(rendered_pin_path)
+
+            # Only delete old image after successful upload
+            if old_drive_file_id:
+                try:
+                    drive.drive.files().delete(fileId=old_drive_file_id).execute()
+                    logger.debug("Deleted old Drive image %s for %s", old_drive_file_id, pin_id)
+                except Exception as e:
+                    logger.warning("Failed to delete old Drive image for %s: %s", pin_id, e)
+
             if "id=" in new_image_url:
                 _fid = new_image_url.split("id=")[1].split("&")[0]
                 new_pin_data["_drive_image_url"] = (

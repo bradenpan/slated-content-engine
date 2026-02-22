@@ -21,6 +21,7 @@ For "fresh treatment" pins: URL is the existing blog post URL from content log.
 import hashlib
 import json
 import logging
+import re
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Optional
@@ -148,16 +149,29 @@ def generate_pin_content(
 
             # Assemble the final pin image
             template_type = pin_spec.get("pin_template", "recipe-pin")
-            text_overlay = pin_copy.get("text_overlay", "")
-            subtitle = pin_copy.get("subtitle", "")
+            text_overlay = pin_copy.get("text_overlay", {})
+
+            # Extract headline/subtitle from text_overlay (may be dict or str)
+            if isinstance(text_overlay, dict):
+                headline = text_overlay.get("headline", "")
+                subtitle = text_overlay.get("sub_text", "")
+            else:
+                headline = str(text_overlay) if text_overlay else ""
+                subtitle = pin_copy.get("subtitle", "")
+
+            # Build template-specific context for non-recipe templates
+            extra_context = _build_template_context(
+                template_type, pin_copy, pin_spec, image_path,
+            )
 
             rendered_pin_path = assembler.assemble_pin(
                 template_type=template_type,
                 hero_image_path=image_path,
-                headline=text_overlay,
+                headline=headline,
                 subtitle=subtitle,
                 variant=pin_spec.get("template_variant", 1),
                 output_path=PIN_OUTPUT_DIR / f"{pin_id}.png",
+                extra_context=extra_context,
             )
 
             # Build the blog post link with UTM params
@@ -552,6 +566,133 @@ def _generate_all_copy(
     return all_copy
 
 
+def _build_template_context(
+    template_type: str,
+    pin_copy: dict,
+    pin_spec: dict,
+    image_path: Optional[Path],
+) -> dict:
+    """Build template-specific context variables for pin assembly.
+
+    The pin copy prompt produces: title, description, alt_text, and
+    text_overlay (with headline + sub_text). Non-recipe templates need
+    additional variables (bullets, list items, steps, etc.) that are
+    derived from the pin copy and pin spec data.
+
+    Args:
+        template_type: Template name (e.g. "tip-pin", "listicle-pin").
+        pin_copy: Pin copy dict from Claude (title, description, text_overlay, etc).
+        pin_spec: Pin specification from the weekly plan.
+        image_path: Path to the sourced hero/background image, or None.
+
+    Returns:
+        dict of extra context variables to merge into the render context.
+    """
+    context: dict = {}
+
+    # Non-recipe templates use background_image_url instead of (or in addition to)
+    # hero_image_url. The base assemble_pin() sets hero_image_url from hero_image_path,
+    # so we also need to provide background_image_url for templates that expect it.
+    if template_type != "recipe-pin" and image_path:
+        context["background_image_url"] = str(image_path)
+
+    text_overlay = pin_copy.get("text_overlay", {})
+    if isinstance(text_overlay, dict):
+        overlay_headline = text_overlay.get("headline", "")
+        overlay_sub_text = text_overlay.get("sub_text", "")
+    else:
+        overlay_headline = str(text_overlay) if text_overlay else ""
+        overlay_sub_text = ""
+
+    description = pin_copy.get("description", "")
+    pin_topic = pin_spec.get("pin_topic", "")
+
+    if template_type == "tip-pin":
+        # Tip pins need bullet_1, bullet_2, bullet_3.
+        # The pin copy prompt doesn't produce bullets directly, so we
+        # derive them from description sentences or sub_text.
+        bullets = _extract_bullets(description, overlay_sub_text, pin_topic)
+        for i, bullet in enumerate(bullets[:3], 1):
+            context[f"bullet_{i}"] = bullet
+
+    elif template_type == "listicle-pin":
+        # Listicle pins need number, list_items, headline.
+        # Extract a number from the headline if present (e.g. "7 Easy Dinners").
+        context["number"] = _extract_leading_number(overlay_headline)
+        context["list_items"] = _extract_list_items(description, pin_topic)
+
+    elif template_type == "problem-solution-pin":
+        # Problem-solution pins need problem_text and solution_text.
+        # Derive from headline + sub_text (the natural pairing).
+        context["problem_text"] = overlay_headline
+        context["solution_text"] = overlay_sub_text or pin_copy.get("title", "")
+
+    elif template_type == "infographic-pin":
+        # Infographic pins need title, steps, footer_text.
+        context["title"] = overlay_headline or pin_copy.get("title", "")
+        context["steps"] = _extract_steps(description)
+        context["footer_text"] = overlay_sub_text or ""
+
+    return context
+
+
+def _extract_bullets(description: str, sub_text: str, pin_topic: str) -> list[str]:
+    """Extract up to 3 bullet points from description text.
+
+    Splits description on sentence boundaries and returns the most
+    useful short phrases.
+    """
+    bullets: list[str] = []
+
+    # If sub_text exists, use it as the first bullet
+    if sub_text:
+        bullets.append(sub_text)
+
+    # Split description into sentences and pick short, punchy ones
+    sentences = [s.strip() for s in re.split(r'[.!?]+', description) if s.strip()]
+    for sentence in sentences:
+        if len(bullets) >= 3:
+            break
+        # Skip very long sentences (not good for bullets) and very short ones
+        if 10 < len(sentence) < 80:
+            bullets.append(sentence)
+
+    return bullets[:3]
+
+
+def _extract_leading_number(headline: str) -> str:
+    """Extract a leading number from a headline like '7 Easy Dinners'."""
+    match = re.match(r'^(\d+)', headline.strip())
+    return match.group(1) if match else ""
+
+
+def _extract_list_items(description: str, pin_topic: str) -> list[str]:
+    """Extract list items from description text.
+
+    Splits on sentence boundaries to produce a list of short items.
+    """
+    sentences = [s.strip() for s in re.split(r'[.!?]+', description) if s.strip()]
+    # Filter to reasonable-length items and cap at 7
+    items = [s for s in sentences if 8 < len(s) < 100]
+    return items[:7]
+
+
+def _extract_steps(description: str) -> list[dict]:
+    """Extract numbered steps from description text.
+
+    Returns list of {"number": str, "text": str} dicts.
+    """
+    sentences = [s.strip() for s in re.split(r'[.!?]+', description) if s.strip()]
+    steps = []
+    for i, sentence in enumerate(sentences, 1):
+        if len(sentence) < 8:
+            continue
+        steps.append({"number": str(i), "text": sentence})
+        if len(steps) >= 6:
+            break
+    return steps
+
+
 def _source_pin_image(
     pin_spec: dict,
     pin_copy: dict,
@@ -613,10 +754,18 @@ def _source_stock_image(
         "image_quality_issues": [],
     }
 
-    # Generate search query
-    search_query = claude.generate_image_prompt(
+    # Generate search query (template returns JSON with multiple queries)
+    search_query_raw = claude.generate_image_prompt(
         pin_spec, image_source="stock", regen_feedback=regen_feedback,
     )
+    try:
+        parsed = json.loads(search_query_raw)
+        if isinstance(parsed, dict) and "queries" in parsed:
+            search_query = parsed["queries"][0]["query"]
+        else:
+            search_query = search_query_raw
+    except (json.JSONDecodeError, KeyError, IndexError):
+        search_query = search_query_raw
     logger.info("Stock search query for %s: '%s'", pin_id, search_query[:80])
 
     # Search for candidates
@@ -675,8 +824,17 @@ def _source_stock_image(
             quality_meta["image_retries"] = 1
             rejected_ids = {c.get("id") for c in filtered}
 
-            # Generate broader/alternative search query
-            retry_query = claude.generate_image_prompt(pin_spec, image_source="stock_retry")
+            # Generate broader/alternative search query (stock_retry returns plain text,
+            # but handle JSON gracefully in case template format leaks through)
+            retry_query_raw = claude.generate_image_prompt(pin_spec, image_source="stock_retry")
+            try:
+                parsed = json.loads(retry_query_raw)
+                if isinstance(parsed, dict) and "queries" in parsed:
+                    retry_query = parsed["queries"][0]["query"]
+                else:
+                    retry_query = retry_query_raw
+            except (json.JSONDecodeError, KeyError, IndexError):
+                retry_query = retry_query_raw
             retry_candidates = stock_api.search(
                 query=retry_query, num_results=10, orientation="portrait",
             )
@@ -789,11 +947,19 @@ def _source_ai_image(
             "image_quality_issues": [],
         }
 
-    # Generate image prompt
+    # Generate image prompt (template returns JSON with image_prompt field)
     regen_feedback = pin_spec.get("_regen_feedback", "")
-    image_prompt = claude.generate_image_prompt(
+    image_prompt_raw = claude.generate_image_prompt(
         pin_spec, image_source="ai", regen_feedback=regen_feedback,
     )
+    try:
+        parsed = json.loads(image_prompt_raw)
+        if isinstance(parsed, dict) and "image_prompt" in parsed:
+            image_prompt = parsed["image_prompt"]
+        else:
+            image_prompt = image_prompt_raw
+    except (json.JSONDecodeError, KeyError):
+        image_prompt = image_prompt_raw
 
     # If reviewer feedback exists, append it as critical guidance
     if regen_feedback:
