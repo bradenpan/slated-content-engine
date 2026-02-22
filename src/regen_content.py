@@ -32,7 +32,7 @@ from src.generate_pin_content import (
     source_image,
     _load_brand_voice,
     _load_keyword_targets,
-    _build_template_context,
+    build_template_context,
 )
 from src.pin_assembler import PinAssembler
 
@@ -422,7 +422,7 @@ def _regen_item(
             "description": new_pin_data.get("description", ""),
             "text_overlay": text_overlay,
         }
-        extra_context = _build_template_context(
+        extra_context = build_template_context(
             template_type, pin_copy_like, pin_spec, hero_path,
         )
 

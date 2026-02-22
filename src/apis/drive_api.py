@@ -18,7 +18,6 @@ import os
 import json
 import base64
 import logging
-import mimetypes
 from pathlib import Path
 from typing import Optional
 
@@ -184,8 +183,17 @@ class DriveAPI:
                 "name": name,
                 "parents": [folder_id],
             }
-            mime_type, _ = mimetypes.guess_type(str(file_path))
-            if not mime_type or not mime_type.startswith("image/"):
+            # Detect actual image format from magic bytes (file may be JPEG
+            # with .png extension after pin_assembler size optimization)
+            with open(file_path, "rb") as img_f:
+                header = img_f.read(12)
+            if header[:2] == b"\xff\xd8":
+                mime_type = "image/jpeg"
+            elif header[:4] == b"\x89PNG":
+                mime_type = "image/png"
+            elif header[:4] == b"RIFF" and header[8:12] == b"WEBP":
+                mime_type = "image/webp"
+            else:
                 mime_type = "image/png"  # Default fallback
 
             media = MediaFileUpload(

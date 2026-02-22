@@ -796,54 +796,6 @@ def deploy_approved_content(plan_path: Optional[str] = None) -> dict:
     return deployer.deploy_approved_content(plan_path)
 
 
-def _build_fallback_approvals() -> list[dict]:
-    """
-    Build approval data by reading local generation results files.
-
-    WARNING: For local testing only. This function marks ALL generated content
-    as "approved" regardless of actual human review status. It must NOT be used
-    in production workflows, as it bypasses the human approval gate and could
-    deploy content that was explicitly rejected.
-    """
-    approvals = []
-
-    # Load blog generation results
-    blog_results_path = DATA_DIR / "blog-generation-results.json"
-    if blog_results_path.exists():
-        try:
-            blog_data = json.loads(blog_results_path.read_text(encoding="utf-8"))
-            for post_id, data in blog_data.items():
-                if data.get("status") == "success":
-                    approvals.append({
-                        "id": post_id,
-                        "slug": data.get("slug", ""),
-                        "type": "blog",
-                        "status": "approved",
-                        "title": data.get("title", ""),
-                    })
-        except (json.JSONDecodeError, KeyError):
-            pass
-
-    # Load pin generation results
-    pin_results_path = DATA_DIR / "pin-generation-results.json"
-    if pin_results_path.exists():
-        try:
-            pin_data = json.loads(pin_results_path.read_text(encoding="utf-8"))
-            for pin in pin_data.get("generated", []):
-                approvals.append({
-                    "id": pin.get("pin_id", ""),
-                    "pin_id": pin.get("pin_id", ""),
-                    "type": "pin",
-                    "status": "approved",
-                    "title": pin.get("title", ""),
-                })
-        except (json.JSONDecodeError, KeyError):
-            pass
-
-    logger.info("Built fallback approvals: %d items", len(approvals))
-    return approvals
-
-
 def _build_topic_summary(pin_data: dict) -> str:
     """
     Build a topic summary string from pin data for the content log.

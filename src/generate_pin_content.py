@@ -25,8 +25,6 @@ import re
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Optional
-from urllib.parse import quote_plus
-
 from src.apis.claude_api import ClaudeAPI
 from src.apis.image_stock import ImageStockAPI
 from src.apis.image_gen import ImageGenAPI
@@ -160,7 +158,7 @@ def generate_pin_content(
                 subtitle = pin_copy.get("subtitle", "")
 
             # Build template-specific context for non-recipe templates
-            extra_context = _build_template_context(
+            extra_context = build_template_context(
                 template_type, pin_copy, pin_spec, image_path,
             )
 
@@ -343,40 +341,6 @@ def source_image(
         return _source_stock_image(
             pin_spec, claude, stock_api, image_gen_api, used_image_ids, output_dir
         )
-
-
-def build_utm_link(blog_slug: str, board_name: str, pin_id: str) -> str:
-    """
-    Build a blog post URL with UTM parameters.
-
-    Format: goslated.com/blog/{slug}?utm_source=pinterest&utm_medium=organic
-            &utm_campaign={board_name}&utm_content={pin_id}
-
-    Args:
-        blog_slug: Blog post URL slug.
-        board_name: Pinterest board name.
-        pin_id: Internal pin ID.
-
-    Returns:
-        str: Full URL with UTM parameters.
-    """
-    if not blog_slug:
-        return BLOG_BASE_URL
-
-    base = f"{BLOG_BASE_URL}/{blog_slug}"
-
-    # URL-encode the board name for the campaign parameter
-    campaign = quote_plus(board_name.lower().replace(" ", "-")) if board_name else "general"
-    content = quote_plus(pin_id) if pin_id else ""
-
-    utm_params = (
-        f"utm_source=pinterest"
-        f"&utm_medium=organic"
-        f"&utm_campaign={campaign}"
-        f"&utm_content={content}"
-    )
-
-    return f"{base}?{utm_params}"
 
 
 def load_used_image_ids() -> list[str]:
@@ -567,7 +531,7 @@ def _generate_all_copy(
     return all_copy
 
 
-def _build_template_context(
+def build_template_context(
     template_type: str,
     pin_copy: dict,
     pin_spec: dict,
