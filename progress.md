@@ -589,19 +589,59 @@ Context dicts in `claude_api.py` inject matching values for all three.
 
 #### Regen template context fix (`src/regen_content.py`)
 
-Extended the C7 fix (non-recipe templates get empty text) to the regen path. Now imports `_build_template_context` from `generate_pin_content.py`, builds template-specific context for all 5 template types, and passes `extra_context` to `assemble_pin()`. Also properly extracts headline/subtitle from `text_overlay` dict format.
+Extended the C7 fix (non-recipe templates get empty text) to the regen path. Now imports `build_template_context` from `generate_pin_content.py`, builds template-specific context for all 5 template types, and passes `extra_context` to `assemble_pin()`. Also properly extracts headline/subtitle from `text_overlay` dict format.
 
 #### Content log `posted_date` field (`src/blog_deployer.py`)
 
 Added `"posted_date": today_str` to content log entries. `weekly_analysis.py` filters on this field — previously missing, which could cause analytics gaps.
 
-### Minor Items Identified for Follow-Up
+### Status
 
-1. **`_build_fallback_approvals()` still exists** — docstring warns "local testing only" but function is still callable. Future developer could accidentally re-enable auto-approve behavior.
-2. **`build_utm_link()` is dead code** — no longer called after UTM deferral fix. Should be removed.
-3. **JPEG-as-PNG MIME caveat** — `drive_api.py` uses `mimetypes.guess_type()` which trusts file extension, so a JPEG file with `.png` extension gets wrong MIME type for Drive uploads. Non-breaking (Drive handles it) but technically imprecise.
-4. **`_build_template_context` cross-module import** — `regen_content.py` imports a private (`_`-prefixed) function from `generate_pin_content.py`. Works fine but violates the convention that `_`-prefixed names are module-internal.
+All changes verified by 6-agent review team. Committed as `d2f2342`.
+
+---
+
+## Phase 5.2: Code Hygiene Cleanup
+
+**Date:** 2026-02-22
+
+Addressed the 4 minor items identified during the Phase 5.1 review. All are non-functional cleanup — no behavior changes, just dead code removal and convention fixes.
+
+### Changes
+
+#### 1. Delete `_build_fallback_approvals()` (`src/blog_deployer.py`, -46 lines)
+
+**Problem:** The function auto-approved ALL content (including explicitly rejected items). Its 3 callers were already changed to raise instead of calling it, but the function itself remained — a footgun for future developers.
+
+**Fix:** Deleted entirely. Zero callers confirmed by grep. Function is preserved in git history if ever needed for local testing.
+
+#### 2. Remove dead `build_utm_link()` (`src/generate_pin_content.py`, -33 lines)
+
+**Problem:** No longer called after UTM params were deferred to posting time (`post_pins.py:construct_utm_link()`). Dead code.
+
+**Fix:** Deleted function and its `quote_plus` import (also unused after removal).
+
+#### 3. Magic-byte MIME detection in Drive uploads (`src/apis/drive_api.py`, +8 lines net)
+
+**Problem:** `upload_image()` used `mimetypes.guess_type()` which trusts file extension. After `pin_assembler.py`'s JPEG optimization, files may be JPEG with `.png` extension — causing MIME mismatch on Drive uploads.
+
+**Fix:** Replaced with magic-byte detection (same pattern as `pinterest_api.py`): reads first 12 bytes, detects JPEG (`\xff\xd8`), PNG (`\x89PNG`), WebP (`RIFF...WEBP`), falls back to `image/png`. Removed unused `import mimetypes`.
+
+#### 4. Rename `_build_template_context` → `build_template_context` (`src/generate_pin_content.py`, `src/regen_content.py`)
+
+**Problem:** `regen_content.py` imported a `_`-prefixed (private by convention) function cross-module.
+
+**Fix:** Dropped the underscore prefix since the function is intentionally part of the public API. Updated definition (line 537), internal call (line 163), import (regen line 35), and usage (regen line 425).
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `src/blog_deployer.py` | Deleted `_build_fallback_approvals()` |
+| `src/generate_pin_content.py` | Deleted `build_utm_link()` + `quote_plus` import; renamed `_build_template_context` → `build_template_context` |
+| `src/regen_content.py` | Updated import and usage of `build_template_context` |
+| `src/apis/drive_api.py` | Replaced `mimetypes.guess_type()` with magic-byte detection; removed `import mimetypes` |
 
 ### Status
 
-All changes verified by 6-agent review team. Safe to commit.
+All 4 items implemented. Net -76 lines. Committed as `9d8ad11`.
