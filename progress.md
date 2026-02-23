@@ -721,7 +721,7 @@ All 3 fixes implemented and verified by Sr Staff Engineer. Pipeline is ready for
 
 ---
 
-## Phase 7: Content Queue Thumbnail Fixes (In Progress)
+## Phase 7: Content Queue Thumbnail Fixes + GCS Migration
 
 **Date:** 2026-02-23
 
@@ -742,31 +742,86 @@ Leverage shared drives or use OAuth delegation instead."
 Reason: storageQuotaExceeded
 ```
 
-The service account is in a GCP project under a personal Gmail account. Service accounts on personal Gmail cannot upload to their own Drive space. The code falls back to writing the useless local runner path (`sheets_api.py:353`).
+The service account (`pinterest-pipeline-sheets@pinterest-pipeline-488017.iam.gserviceaccount.com`) is in a GCP project under a personal Gmail account (`braden.pan@gmail.com`). Service accounts on personal Gmail get zero Drive storage quota because Google Drive is a per-user consumer product. The code falls back to writing useless local runner paths.
 
-### Additional Bug Found: Hero Image Naming Mismatch
+### Solution: Replace Google Drive with Google Cloud Storage (GCS)
 
-- `generate_pin_content.py:858` saves stock hero images as `{pin_id}-hero.jpg` (e.g., `W8-01-hero.jpg`)
-- `blog_deployer.py:583-587` looks for `{slug}-hero.{ext}` (e.g., `one-pan-lemon-herb-chicken-hero.jpg`)
-- Pin IDs and slugs are different strings, so the deployer never finds hero images — blog posts may deploy to goslated.com without their hero images
+Six alternatives were researched and evaluated:
 
-### Code Changes Made (saved to disk, NOT committed)
+| Option | Verdict |
+|--------|---------|
+| 1. Shared Drives (Workspace) | Blocked — requires Workspace admin to add external SA |
+| 2. OAuth Delegation | Security anti-pattern — Google recommends against it |
+| **3. Google Cloud Storage** | **Selected — no new credentials, $0/month, same GCP project** |
+| 4. Move SA to Workspace | Overkill — high migration effort for same result |
+| 5. Cloudflare R2 | Good but requires 3 new secrets + new vendor |
+| 6. Deploy to goslated.com | Git repo bloat from binary images over time |
 
-#### 1. `src/apis/sheets_api.py`
-- **Pin fallback fix**: Changed line 353 from `thumbnail = str(pin.get("image_path", ""))` to `thumbnail = ""` — stops writing useless local runner paths when Drive upload fails
-- **Blog thumbnail support**: Added `blog_image_urls` parameter to `write_content_queue()`. When provided, writes `=IMAGE()` formulas for blog rows in column I
+**Why GCS works where Drive doesn't:** GCS is a GCP infrastructure service — storage is billed to the project's billing account, not to any user's personal quota. The service account just needs IAM permissions on the bucket. No storage quota concept.
 
-#### 2. `src/publish_content_queue.py`
-- Added `_upload_blog_hero_images()` function — uploads blog hero images to Drive for Sheet preview
-- Added `_find_hero_image()` helper — locates hero images by slug or pin_id naming
-- Passes `blog_image_urls` to `sheets.write_content_queue()`
-- Better Drive error logging with specific diagnostic messages
-- Sets row heights for blog rows that have thumbnails (150px)
+**Cost analysis:** At ~38 images/week (~14MB rotating), all usage is well within GCS Always Free tier:
+- Storage: <1 GB used vs 5 GB free (even after 2 years of blog hero accumulation)
+- Class A ops: ~325/mo vs 5,000 free
+- Class B ops: ~1,780/mo vs 50,000 free
+- Egress: ~0.5 GB/mo vs 100 GB free
+- **Total: $0.00/month**
 
-#### 3. `src/generate_pin_content.py`
-- After downloading a hero image as `{pin_id}-hero.{ext}`, also saves a copy as `{slug}-hero.{ext}` — fixes the naming mismatch so `blog_deployer.py` can find hero images
+### GCP Setup (Manual, One-Time)
 
-### Still Needs to Be Done
+Completed under `braden.pan@gmail.com`, project `pinterest-pipeline-488017`:
 
-- **Fix the Drive storage quota issue** — The core blocker. Need to replace Google Drive with an alternative that works with service accounts on personal Gmail. Options under evaluation: Google Cloud Storage bucket, Shared Drive via Workspace, alternative image hosting. See `HANDOFF.md` for full details.
-- Test and commit code changes after Drive fix is resolved
+1. Enabled Cloud Storage JSON API
+2. Created bucket `slated-pipeline-pins` (us-central1, Standard, Uniform access)
+3. Granted service account `roles/storage.objectAdmin` in IAM
+4. Granted `allUsers` → `roles/storage.objectViewer` on bucket (required for Sheets `=IMAGE()`)
+
+No new GitHub secrets needed — GCS reuses `GOOGLE_SHEETS_CREDENTIALS_JSON`.
+
+### Additional Bug Fixed: Hero Image Naming Mismatch
+
+- `generate_pin_content.py` saves hero images as `{pin_id}-hero.{ext}` (e.g., `W8-01-hero.jpg`)
+- `blog_deployer.py` looks for `{slug}-hero.{ext}` (e.g., `one-pan-lemon-herb-chicken-hero.jpg`)
+- **Fix:** After downloading, `generate_pin_content.py` now also saves a copy as `{slug}-hero.{ext}` via `shutil.copy2`. Dual-save was chosen over updating `blog_deployer.py` because the deployer's slug-based lookup is correct by convention — it's the generation step that was missing the slug-named copy.
+
+### Additional Fix: Monthly Review Template Context
+
+Same pattern as the Phase 6 weekly analysis template fix — `run_monthly_review()` passed 3 mismatched context keys but the `monthly_review.md` template uses different placeholder names. All template variables now correctly mapped. Also added seasonal context loading.
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `src/apis/gcs_api.py` | **New** — GCS client class. Upload, download, batch upload (pins + blog heroes), delete, public URL generation. Auth via `GOOGLE_SHEETS_CREDENTIALS_JSON` (same SA). Graceful degradation when credentials/library missing (`self.client = None`). Fallback from pyca to python-rsa signer for environments where `cryptography` rejects non-standard key parameters. |
+| `src/publish_content_queue.py` | GCS-first with Drive fallback. `publish()` tries GCS for pin images and blog hero images; falls back to Drive if GCS unavailable. Both `_drive_image_url` and `_drive_download_url` fields store GCS public URLs (field names preserved for downstream compatibility). Blog hero upload function added. |
+| `src/regen_content.py` | GCS integration in regen path. Hero image download detects GCS URLs (`storage.googleapis.com`) vs Drive URLs and downloads accordingly. Replacement image upload uses GCS-first, Drive fallback. |
+| `src/apis/sheets_api.py` | Pin thumbnail fallback: empty string instead of local runner path. Blog thumbnail support: `blog_image_urls` parameter writes `=IMAGE()` formulas for blog rows. Schedule format fix: `" / "` → `"/"` to match read format. |
+| `src/generate_pin_content.py` | Hero image dual-save (`{pin_id}-hero` + `{slug}-hero`). |
+| `src/apis/claude_api.py` | Monthly review template context: 3 mismatched keys → correct keys matching `monthly_review.md` placeholders. Added `seasonal_context` parameter. |
+| `src/monthly_review.py` | Seasonal context loader (`_load_seasonal_context`) — reads seasonal calendar, finds current window, passes to Claude for seasonal awareness. |
+| `.github/workflows/monthly-review.yml` | Cron guard for first-Monday-only execution (POSIX cron OR limitation). Separate concurrency group `pinterest-monthly`. Conditional steps gated on guard output. |
+| `.github/workflows/generate-content.yml` | Updated commit step comment from "Drive" to "GCS". |
+| `requirements.txt` | Added `google-cloud-storage>=2.14.0`. |
+
+### Code Review (Sr Staff Engineer)
+
+Two rounds of review (Phase 7 code + GCS implementation):
+
+**Phase 7 code review:** APPROVE, 0 blocking issues. 4 non-blocking findings (import placement, hardcoded `.jpg` extension, blog row height assumption, seasonal loader DRY). All addressed or accepted.
+
+**GCS implementation review:** APPROVE, 0 blocking regressions. End-to-end URL flow traced through all 9 steps (GCS upload → pin-generation-results.json → blog_deployer → pin-schedule.json → post_pins → Pinterest API) — all correct. 3 non-blocking findings (pre-existing regen Drive fallback bug, docstring wording, hardcoded extension). Docstring and extension fixes applied.
+
+### Smoke Test
+
+Local smoke test verified full round trip:
+1. GCS client initialized with service account credentials
+2. Test image uploaded to `slated-pipeline-pins` bucket
+3. Public URL accessible (HTTP 200)
+4. Cleanup (delete) successful
+
+### Known Issue: Private Key Compatibility
+
+The service account's private key has non-standard CRT coefficients. The `cryptography` library (pyca backend) on Python 3.13/Windows rejects it with "Invalid private key". The `python-rsa` library accepts it (with a warning). `gcs_api.py` includes a fallback: if pyca fails with `ValueError`, it falls back to `python-rsa` signer. This won't affect GitHub Actions (Ubuntu, different Python/cryptography versions).
+
+### Status
+
+All changes implemented, reviewed, and locally tested. Ready for commit and first live pipeline run.

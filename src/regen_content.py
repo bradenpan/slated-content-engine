@@ -22,6 +22,7 @@ from typing import Optional
 
 from src.apis.claude_api import ClaudeAPI
 from src.apis.drive_api import DriveAPI
+from src.apis.gcs_api import GcsAPI
 from src.apis.image_gen import ImageGenAPI
 from src.apis.image_stock import ImageStockAPI
 from src.apis.sheets_api import SheetsAPI
@@ -60,6 +61,7 @@ def regen() -> None:
     stock_api = ImageStockAPI()
     image_gen_api = ImageGenAPI()
     assembler = PinAssembler()
+    gcs = GcsAPI()
     drive = DriveAPI()
     slack = SlackNotify()
 
@@ -161,6 +163,7 @@ def regen() -> None:
                 stock_api=stock_api,
                 image_gen_api=image_gen_api,
                 assembler=assembler,
+                gcs=gcs,
                 drive=drive,
                 used_image_ids=used_image_ids,
                 brand_voice=brand_voice,
@@ -273,6 +276,7 @@ def _regen_item(
     stock_api: ImageStockAPI,
     image_gen_api: ImageGenAPI,
     assembler: PinAssembler,
+    gcs: GcsAPI,
     drive: DriveAPI,
     used_image_ids: list[str],
     brand_voice: str,
@@ -283,7 +287,7 @@ def _regen_item(
 
     Returns:
         dict with "pin_data" (updated pin dict) and optional "image_url"
-        (new public Drive URL for the thumbnail).
+        (new public URL for the thumbnail, from GCS or Drive).
     """
     pin_id = pin_data["pin_id"]
     new_pin_data = dict(pin_data)
@@ -375,32 +379,46 @@ def _regen_item(
             if image_id:
                 used_image_ids.append(f"{image_source}:{image_id}")
 
-    # --- Resolve hero image (download from Drive if not on disk) ---
+    # --- Resolve hero image (download from GCS/Drive if not on disk) ---
     hero_path_str = new_pin_data.get("hero_image_path")
     hero_path = Path(hero_path_str) if hero_path_str else None
 
     if hero_path and not hero_path.exists():
-        # Hero image not on disk (fresh runner). Try downloading from Drive.
-        drive_url = pin_data.get("_drive_image_url", "")
-        if drive_url:
-            # Extract file ID from Drive thumbnail URL
-            # Format: https://drive.google.com/thumbnail?id=FILE_ID&sz=w400
-            drive_file_id = _extract_drive_file_id(drive_url)
+        # Hero image not on disk (fresh runner). Try downloading.
+        image_url = pin_data.get("_drive_image_url", "")
+        PIN_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+        downloaded = False
+
+        # Try GCS download first (URL starts with storage.googleapis.com)
+        if image_url and gcs.client and "storage.googleapis.com" in image_url:
+            object_name = gcs.extract_object_name(image_url)
+            if object_name:
+                hero_path = PIN_OUTPUT_DIR / f"{pin_id}-hero-downloaded.png"
+                result = gcs.download_image(object_name, hero_path)
+                if result:
+                    new_pin_data["hero_image_path"] = str(hero_path)
+                    logger.info("Downloaded hero image from GCS for %s", pin_id)
+                    downloaded = True
+                else:
+                    hero_path = None
+
+        # Fall back to Drive download
+        if not downloaded and image_url:
+            drive_file_id = _extract_drive_file_id(image_url)
             if drive_file_id:
                 try:
-                    PIN_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
                     hero_path = PIN_OUTPUT_DIR / f"{pin_id}-hero-downloaded.png"
                     drive.download_image(drive_file_id, hero_path)
                     new_pin_data["hero_image_path"] = str(hero_path)
                     logger.info("Downloaded hero image from Drive for %s", pin_id)
+                    downloaded = True
                 except Exception as e:
                     logger.warning("Failed to download hero from Drive for %s: %s", pin_id, e)
                     hero_path = None
-            else:
-                logger.warning("Could not extract Drive file ID from URL for %s", pin_id)
-                hero_path = None
-        else:
-            logger.warning("No Drive URL stored for %s, cannot re-render", pin_id)
+
+        if not downloaded:
+            if not image_url:
+                logger.warning("No image URL stored for %s, cannot re-render", pin_id)
             hero_path = None
 
     # --- Re-render the pin ---
@@ -438,32 +456,53 @@ def _regen_item(
             )
             new_pin_data["image_path"] = str(rendered_pin_path)
 
-            # Capture old Drive file ID before uploading replacement
-            old_drive_url = pin_data.get("_drive_image_url", "")
-            old_drive_file_id = _extract_drive_file_id(old_drive_url)
+            # Upload new rendered pin (GCS first, Drive fallback)
+            old_image_url = pin_data.get("_drive_image_url", "")
 
-            # Upload new rendered pin to Drive first
-            new_image_url = drive.upload_image(rendered_pin_path)
+            if gcs.client:
+                # Delete old GCS object if it was stored there
+                old_object_name = gcs.extract_object_name(old_image_url)
+                if old_object_name:
+                    try:
+                        gcs.bucket.blob(old_object_name).delete()
+                        logger.debug("Deleted old GCS object %s for %s", old_object_name, pin_id)
+                    except Exception as e:
+                        logger.warning("Failed to delete old GCS object for %s: %s", pin_id, e)
 
-            # Only delete old image after successful upload
-            if old_drive_file_id:
+                new_image_url = gcs.upload_image(rendered_pin_path)
+                if new_image_url:
+                    # GCS URLs work for both preview and download
+                    new_pin_data["_drive_image_url"] = new_image_url
+                    new_pin_data["_drive_download_url"] = new_image_url
+                    logger.info("Uploaded regen pin %s to GCS: %s", pin_id, new_image_url)
+
+            if not new_image_url:
+                # Fall back to Drive upload
+                old_drive_file_id = _extract_drive_file_id(old_image_url)
                 try:
-                    drive.drive.files().delete(fileId=old_drive_file_id).execute()
-                    logger.debug("Deleted old Drive image %s for %s", old_drive_file_id, pin_id)
+                    new_image_url = drive.upload_image(rendered_pin_path)
                 except Exception as e:
-                    logger.warning("Failed to delete old Drive image for %s: %s", pin_id, e)
+                    logger.warning("Drive upload also failed for %s: %s", pin_id, e)
 
-            if "id=" in new_image_url:
-                _fid = new_image_url.split("id=")[1].split("&")[0]
-                new_pin_data["_drive_image_url"] = (
-                    f"https://drive.google.com/thumbnail?id={_fid}&sz=w400"
-                )
-                new_pin_data["_drive_download_url"] = (
-                    f"https://drive.google.com/uc?id={_fid}&export=download"
-                )
-            else:
-                new_pin_data["_drive_image_url"] = new_image_url
-            logger.info("Uploaded regen pin %s to Drive: %s", pin_id, new_image_url)
+                if old_drive_file_id:
+                    try:
+                        drive.drive.files().delete(fileId=old_drive_file_id).execute()
+                        logger.debug("Deleted old Drive image %s for %s", old_drive_file_id, pin_id)
+                    except Exception as e:
+                        logger.warning("Failed to delete old Drive image for %s: %s", pin_id, e)
+
+                if new_image_url and "id=" in new_image_url:
+                    _fid = new_image_url.split("id=")[1].split("&")[0]
+                    new_pin_data["_drive_image_url"] = (
+                        f"https://drive.google.com/thumbnail?id={_fid}&sz=w400"
+                    )
+                    new_pin_data["_drive_download_url"] = (
+                        f"https://drive.google.com/uc?id={_fid}&export=download"
+                    )
+                elif new_image_url:
+                    new_pin_data["_drive_image_url"] = new_image_url
+                if new_image_url:
+                    logger.info("Uploaded regen pin %s to Drive: %s", pin_id, new_image_url)
         except Exception as e:
             logger.error("Pin assembly/upload failed for %s: %s", pin_id, e)
     else:

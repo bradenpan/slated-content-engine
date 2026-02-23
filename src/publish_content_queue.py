@@ -2,9 +2,9 @@
 Content Queue Publisher
 
 Reads generation results, uploads pin images and blog hero images to
-Google Drive for inline preview, extracts blog post summaries, and writes
-the Content Queue to Google Sheets with IMAGE() formulas. Sends Slack
-notification.
+Google Cloud Storage (or Google Drive as fallback) for inline preview,
+extracts blog post summaries, and writes the Content Queue to Google
+Sheets with IMAGE() formulas. Sends Slack notification.
 
 Runs as a separate workflow step after pin generation completes.
 """
@@ -15,6 +15,7 @@ from pathlib import Path
 
 import yaml
 
+from src.apis.gcs_api import GcsAPI
 from src.apis.drive_api import DriveAPI, DriveAPIError
 from src.apis.sheets_api import SheetsAPI, TAB_CONTENT_QUEUE
 from src.apis.slack_notify import SlackNotify
@@ -29,8 +30,9 @@ PIN_OUTPUT_DIR = DATA_DIR / "generated" / "pins"
 
 def publish() -> None:
     """
-    Read generation results, upload pin images to Drive, write Content
-    Queue with inline previews, and send Slack notification.
+    Read generation results, upload pin images to GCS (or Drive as
+    fallback), write Content Queue with inline previews, and send
+    Slack notification.
     """
     # Load blog generation results
     blog_results_path = DATA_DIR / "blog-generation-results.json"
@@ -52,58 +54,88 @@ def publish() -> None:
 
     generated_pins = pin_data.get("generated", [])
 
-    # Upload pin images to Google Drive for Sheet preview
+    # Upload pin images for Sheet preview (GCS primary, Drive fallback)
     pin_image_urls: dict[str, str] = {}
     blog_image_urls: dict[str, str] = {}
-    drive: DriveAPI | None = None
-    drive_failed = False
-    try:
-        drive = DriveAPI()
-        logger.info(
-            "Drive API initialized. Uploading %d pin images from %s",
-            len(generated_pins), PIN_OUTPUT_DIR,
-        )
-        pin_image_urls = drive.upload_pin_images(generated_pins, PIN_OUTPUT_DIR)
-        logger.info("Drive upload complete: %d pin image URLs obtained", len(pin_image_urls))
+    upload_failed = False
+    upload_backend = "none"
 
-        # Save Drive URLs back to pin-generation-results.json so the regen
-        # workflow can download hero images on a fresh runner
-        if pin_image_urls:
-            for pin in generated_pins:
-                pid = pin.get("pin_id", "")
-                if pid in pin_image_urls:
-                    pin["_drive_image_url"] = pin_image_urls[pid]
-                    # Full-resolution download URL for Pinterest posting
-                    _thumb = pin_image_urls[pid]
-                    if "id=" in _thumb:
-                        _fid = _thumb.split("id=")[1].split("&")[0]
+    # Try GCS first
+    gcs = GcsAPI()
+    if gcs.client:
+        try:
+            logger.info(
+                "GCS API initialized. Uploading %d pin images from %s",
+                len(generated_pins), PIN_OUTPUT_DIR,
+            )
+            pin_image_urls = gcs.upload_pin_images(generated_pins, PIN_OUTPUT_DIR)
+            upload_backend = "gcs"
+            logger.info("GCS upload complete: %d pin image URLs obtained", len(pin_image_urls))
+        except Exception as e:
+            logger.error("GCS upload failed: %s (%s)", e, type(e).__name__)
+            pin_image_urls = {}
+
+    # Fall back to Drive if GCS didn't produce results
+    drive: DriveAPI | None = None
+    if not pin_image_urls:
+        try:
+            drive = DriveAPI()
+            logger.info(
+                "Falling back to Drive. Uploading %d pin images from %s",
+                len(generated_pins), PIN_OUTPUT_DIR,
+            )
+            pin_image_urls = drive.upload_pin_images(generated_pins, PIN_OUTPUT_DIR)
+            upload_backend = "drive"
+            logger.info("Drive upload complete: %d pin image URLs obtained", len(pin_image_urls))
+        except DriveAPIError as e:
+            logger.error(
+                "Drive upload failed — no image previews in Content Queue. "
+                "Error: %s | Check that Google Drive API is enabled in your "
+                "GCP project and the service account has access.", e
+            )
+            upload_failed = True
+        except Exception as e:
+            logger.error(
+                "Unexpected error during Drive upload: %s (%s)", e, type(e).__name__
+            )
+            upload_failed = True
+
+    # Save image URLs back to pin-generation-results.json so the regen
+    # workflow can download hero images on a fresh runner
+    if pin_image_urls:
+        for pin in generated_pins:
+            pid = pin.get("pin_id", "")
+            if pid in pin_image_urls:
+                url = pin_image_urls[pid]
+                if upload_backend == "gcs":
+                    # GCS URLs work for both preview and direct download
+                    pin["_drive_image_url"] = url
+                    pin["_drive_download_url"] = url
+                else:
+                    # Drive thumbnail URL
+                    pin["_drive_image_url"] = url
+                    if "id=" in url:
+                        _fid = url.split("id=")[1].split("&")[0]
                         pin["_drive_download_url"] = (
                             f"https://drive.google.com/uc?id={_fid}&export=download"
                         )
-            try:
-                pin_results_path.write_text(
-                    json.dumps(pin_data, indent=2, ensure_ascii=False),
-                    encoding="utf-8",
-                )
-                logger.info("Saved Drive URLs back to pin-generation-results.json")
-            except OSError as e:
-                logger.error("Failed to save Drive URLs to pin results: %s", e)
+        try:
+            pin_results_path.write_text(
+                json.dumps(pin_data, indent=2, ensure_ascii=False),
+                encoding="utf-8",
+            )
+            logger.info("Saved %s URLs back to pin-generation-results.json", upload_backend)
+        except OSError as e:
+            logger.error("Failed to save image URLs to pin results: %s", e)
 
-    except DriveAPIError as e:
-        logger.error(
-            "Drive upload failed — no image previews in Content Queue. "
-            "Error: %s | Check that Google Drive API is enabled in your "
-            "GCP project and the service account has access.", e
-        )
-        drive_failed = True
-    except Exception as e:
-        logger.error(
-            "Unexpected error during Drive upload: %s (%s)", e, type(e).__name__
-        )
-        drive_failed = True
-
-    # Upload blog hero images to Drive for Sheet preview
-    if drive and not drive_failed and blog_results:
+    # Upload blog hero images for Sheet preview
+    if upload_backend == "gcs" and gcs.client and blog_results:
+        try:
+            blog_image_urls = gcs.upload_blog_hero_images(blog_results, PIN_OUTPUT_DIR)
+            logger.info("Uploaded %d blog hero images to GCS", len(blog_image_urls))
+        except Exception as e:
+            logger.warning("GCS blog hero image upload failed (non-critical): %s", e)
+    elif drive and not upload_failed and blog_results:
         try:
             blog_image_urls = _upload_blog_hero_images(
                 drive, blog_results, generated_pins, PIN_OUTPUT_DIR,
@@ -207,11 +239,11 @@ def publish() -> None:
             num_pins=len(generated_pins),
             num_blog_posts=len(blog_entries),
         )
-        if drive_failed:
+        if upload_failed:
             slack.notify(
-                "Warning: Drive image upload failed. Image previews will NOT "
+                "Warning: Image upload failed (GCS + Drive). Image previews will NOT "
                 "appear in the Content Queue. Check workflow logs for details. "
-                "Verify Google Drive API is enabled in GCP and service account has access.",
+                "Verify GCS bucket exists and service account has access.",
                 level="warning",
             )
     except Exception as e:

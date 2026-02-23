@@ -17,6 +17,7 @@ replicate>=0.25.0              # Replicate API (Flux Pro image generation)
 google-api-python-client>=2.100.0  # Google Sheets API
 google-auth>=2.25.0                # Google service account authentication
 google-auth-oauthlib>=1.2.0        # OAuth helpers
+google-cloud-storage>=2.14.0       # Google Cloud Storage (pin image hosting)
 
 # --- Blog Deployment ---
 PyGithub>=2.1.0                # GitHub API for committing blog posts

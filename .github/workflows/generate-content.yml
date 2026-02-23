@@ -80,15 +80,15 @@ jobs:
           git push
 
       - name: Publish Content Queue for review
-        # Uploads pin images to Google Drive for inline Sheet preview
+        # Uploads pin images to GCS (or Drive fallback) for inline Sheet preview
         # Writes Content Queue with IMAGE() formulas and blog summaries
         # Sends Slack notification that content is ready for review
         run: python -m src.publish_content_queue
 
-      - name: Commit Drive URLs and publish metadata
+      - name: Commit image URLs and publish metadata
         run: |
           git add data/
-          git diff --staged --quiet || git commit -m "chore: update Drive URLs [skip ci]"
+          git diff --staged --quiet || git commit -m "chore: update image URLs [skip ci]"
           git pull --rebase
           git push
 

@@ -4,6 +4,7 @@
 - **NEVER read .env, .env.*, or data/token-store.json.** These contain live API keys and secrets. If you need to know what env vars exist, read .env.example instead.
 - **NEVER display, log, or reference the contents of secret files** in conversation output.
 - If you need to edit .env (e.g., add a new variable), use the Edit tool with a targeted old_string/new_string — never Read the full file first.
+- **Do NOT add Co-Authored-By lines** or any Claude/AI co-author attribution to git commits.
 
 ## Project Overview
 This is the Slated Pinterest automation pipeline. It generates blog posts and pins via AI, deploys them to goslated.com, posts pins to Pinterest, pulls analytics, and runs weekly/monthly reviews.
