@@ -1,10 +1,10 @@
 # Content Memory Summary
-Generated: 2026-02-20
+Generated: 2026-02-23
 Content log entries: 0
 ---
-## 1. RECENT TOPICS (Last 4 Weeks)
+## 1. RECENT TOPICS (Last 10 Weeks)
 
-No content in the last 4 weeks (first run).
+No content in the last 10 weeks (first run).
 
 ## 2. ALL BLOG POSTS
 
@@ -12,7 +12,7 @@ No blog posts yet (first run).
 
 ## 3. PILLAR MIX
 
-### Last 4 Weeks
+### Last 10 Weeks
   P1: 0 pins (0%)
   P2: 0 pins (0%)
   P3: 0 pins (0%)
@@ -26,11 +26,11 @@ No blog posts yet (first run).
   P4: 0 pins (0%)
   P5: 0 pins (0%)
 
-### Content Type (Last 4 Weeks)
+### Content Type (Last 10 Weeks)
 
-### Board Distribution (Last 4 Weeks)
+### Board Distribution (Last 10 Weeks)
 
-### Funnel Layer (Last 4 Weeks)
+### Funnel Layer (Last 10 Weeks)
 
 ## 4. KEYWORD FREQUENCY
 
