@@ -14,7 +14,6 @@ Anti-bot jitter:
 1. Sleep for random(0, 900) seconds (0-15 min) at start of window
 2. If posting multiple pins, space with random(300, 1200) seconds between
 3. Jitter values seeded from date + slot (reproducible but non-repeating)
-4. Skip one random posting window per week for irregularity
 
 Idempotency: Checks content-log.jsonl before posting to prevent duplicates.
 
@@ -71,9 +70,6 @@ INTER_PIN_JITTER_MAX = 1200     # 20 minutes
 # Retry constants
 MAX_PIN_FAILURES = 3
 
-# Slot index mapping for skip logic
-SLOT_INDICES = {"morning": 0, "afternoon": 1, "evening": 2}
-
 
 def post_pins(time_slot: str) -> dict:
     """
@@ -81,17 +77,16 @@ def post_pins(time_slot: str) -> dict:
 
     Steps:
     1. Refresh Pinterest token if needed
-    2. Check if this window should be skipped (weekly jitter)
-    3. Apply anti-bot jitter (random sleep)
-    4. Load pin schedule and filter for today + slot
-    5. Build board name -> board ID mapping
-    6. For each pin:
+    2. Apply anti-bot jitter (random sleep)
+    3. Load pin schedule and filter for today + slot
+    4. Build board name -> board ID mapping
+    5. For each pin:
        a. Check content-log.jsonl for idempotency
        b. Verify blog post URL is live
        c. Construct UTM-tagged link
        d. Create pin via Pinterest API
        e. Update content-log.jsonl and Google Sheet on success/failure
-    7. Send Slack summary notification
+    6. Send Slack summary notification
 
     Args:
         time_slot: "morning", "afternoon", or "evening".
@@ -118,16 +113,6 @@ def post_pins(time_slot: str) -> dict:
         except Exception:
             pass
         raise
-
-    # Check if this window should be skipped (weekly jitter)
-    if should_skip_window(today_str, time_slot):
-        logger.info("Skipping %s window on %s (weekly jitter skip)", time_slot, today_str)
-        slack.notify(
-            f"Skipped {time_slot} posting window on {today_str} (weekly jitter)",
-            level="info",
-        )
-        results["skipped_count"] = SLOT_PIN_COUNTS[time_slot]
-        return results
 
     # Apply initial jitter before posting
     apply_jitter(time_slot, pin_index=0)
@@ -345,48 +330,6 @@ def apply_jitter(time_slot: str, pin_index: int = 0) -> None:
     time.sleep(jitter_seconds)
 
 
-def should_skip_window(date_str: str, time_slot: str) -> bool:
-    """
-    Determine if this posting window should be skipped.
-
-    One random window per week is skipped for anti-pattern behavior.
-    The decision is deterministic: based on ISO week number + a salt,
-    we pick one (day, slot) pair per week to skip.
-
-    There are 7 days * 3 slots = 21 possible windows per week.
-    We pick one to skip.
-
-    Args:
-        date_str: Current date string (YYYY-MM-DD).
-        time_slot: Current time slot ("morning", "afternoon", "evening").
-
-    Returns:
-        bool: True if this window should be skipped.
-    """
-    current_date = date.fromisoformat(date_str)
-    iso_year, iso_week, iso_weekday = current_date.isocalendar()
-
-    # Create a deterministic seed from week number + salt
-    salt = "slated-pinterest-skip-v1"
-    seed_str = f"{iso_year}:W{iso_week}:{salt}"
-    seed = int(hashlib.sha256(seed_str.encode()).hexdigest(), 16) % (2**32)
-    rng = random.Random(seed)
-
-    # Pick which day (1-7, Mon=1) and slot to skip
-    skip_weekday = rng.randint(1, 7)
-    skip_slot_index = rng.randint(0, 2)
-    slot_names = ["morning", "afternoon", "evening"]
-    skip_slot = slot_names[skip_slot_index]
-
-    should_skip = (iso_weekday == skip_weekday and time_slot == skip_slot)
-
-    if should_skip:
-        logger.info(
-            "Weekly skip: week %d-%02d, skipping %s on weekday %d (today is weekday %d, slot %s)",
-            iso_year, iso_week, skip_slot, skip_weekday, iso_weekday, time_slot,
-        )
-
-    return should_skip
 
 
 def is_already_posted(pin_id: str) -> bool:
@@ -776,7 +719,6 @@ if __name__ == "__main__":
         today_str = datetime.now(ET).date().isoformat()
         print(f"Date: {today_str}")
         print(f"Slot: {slot} (expected pins: {SLOT_PIN_COUNTS[slot]})")
-        print(f"Would skip: {should_skip_window(today_str, slot)}")
         pins = load_scheduled_pins(today_str, slot)
         print(f"Scheduled pins: {len(pins)}")
         for pin in pins:

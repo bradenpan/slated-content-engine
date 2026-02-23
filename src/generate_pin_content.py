@@ -373,7 +373,7 @@ def load_used_image_ids() -> list[str]:
                 continue
             try:
                 entry = json.loads(line)
-                entry_date_str = entry.get("date", "")
+                entry_date_str = entry.get("posted_date", entry.get("date", ""))
                 try:
                     entry_date = datetime.strptime(entry_date_str, "%Y-%m-%d").date()
                 except (ValueError, TypeError):
@@ -800,7 +800,7 @@ def _source_stock_image(
 
             # Generate broader/alternative search query (stock_retry returns plain text,
             # but handle JSON gracefully in case template format leaks through)
-            retry_query_raw = claude.generate_image_prompt(pin_spec, image_source="stock_retry")
+            retry_query_raw = claude.generate_image_prompt(pin_spec, image_source="stock_retry", regen_feedback=regen_feedback)
             try:
                 parsed = json.loads(retry_query_raw)
                 if isinstance(parsed, dict) and "queries" in parsed:

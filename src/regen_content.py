@@ -208,6 +208,9 @@ def regen() -> None:
         quality_note = _build_regen_quality_note(new_pin_data)
         if new_pin_data.get("_copy_regen_no_rerender"):
             quality_note += " | WARNING: copy updated but pin image not re-rendered (hero unavailable)"
+        if new_pin_data.get("_copy_regen_failed"):
+            quality_note += " | WARNING: copy regen failed, original copy retained"
+            update_kwargs["feedback"] = feedback  # preserve feedback for retry
         update_kwargs["notes"] = quality_note
 
         if regen_type in ("regen_image", "regen") and new_image_url:
@@ -226,16 +229,18 @@ def regen() -> None:
         except Exception as e:
             logger.error("Failed to update Sheet row for %s: %s", item_id, e)
 
+        warning = None
+        if new_pin_data.get("_copy_regen_no_rerender"):
+            warning = "Copy updated but pin image not re-rendered (hero unavailable)"
+        if new_pin_data.get("_copy_regen_failed"):
+            warning = "Copy regen failed, original copy retained"
         regen_results.append({
             "pin_id": item_id,
             "type": item_type,
             "regen_type": regen_type,
             "old_score": old_score,
             "new_score": new_score,
-            "warning": (
-                "Copy updated but pin image not re-rendered (hero unavailable)"
-                if new_pin_data.get("_copy_regen_no_rerender") else None
-            ),
+            "warning": warning,
         })
 
     # Step 6: Save updated pin results
@@ -341,6 +346,7 @@ def _regen_item(
                 logger.info("Copy regenerated for %s: '%s'", pin_id, new_pin_data["title"][:60])
         except Exception as e:
             logger.error("Copy regeneration failed for %s: %s", pin_id, e)
+            new_pin_data["_copy_regen_failed"] = True
 
     # --- Regenerate image ---
     if do_image:

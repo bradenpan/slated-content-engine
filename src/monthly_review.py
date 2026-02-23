@@ -247,15 +247,19 @@ def build_monthly_context(
     sixty_days_ago = (today - timedelta(days=60)).isoformat()
 
     # Filter to this month's entries
+    # Exclude blog_deployer placeholder entries (pin_id=None, 0 metrics)
+    # so they don't inflate counts or dilute averages.
     month_entries = [
         e for e in entries
         if e.get("posted_date", "") >= thirty_days_ago
+        and e.get("pin_id")
     ]
 
     # Previous month's entries (for month-over-month comparison)
     prev_month_entries = [
         e for e in entries
         if sixty_days_ago <= e.get("posted_date", "") < thirty_days_ago
+        and e.get("pin_id")
     ]
 
     logger.info(
@@ -315,17 +319,20 @@ def build_monthly_context(
             "trend": trend,
         }
 
+    # Exclude placeholders from all-time analyses too
+    posted_entries = [e for e in entries if e.get("pin_id")]
+
     # --- Keyword saturation analysis ---
-    keyword_saturation = _analyze_keyword_saturation(entries, thirty_days_ago)
+    keyword_saturation = _analyze_keyword_saturation(posted_entries, thirty_days_ago)
 
     # --- Board density analysis ---
-    board_density = _analyze_board_density(entries)
+    board_density = _analyze_board_density(posted_entries)
 
     # --- Fresh pin effectiveness ---
     fresh_pin_analysis = _analyze_fresh_pin_effectiveness(month_entries)
 
     # --- Content age analysis (compounding measurement) ---
-    content_age_analysis = _analyze_content_age(entries)
+    content_age_analysis = _analyze_content_age(posted_entries)
 
     # --- Plan-level vs. recipe pin performance ---
     plan_vs_recipe = _analyze_plan_vs_recipe(month_entries)
@@ -350,7 +357,7 @@ def build_monthly_context(
         "content_age_analysis": content_age_analysis,
         "plan_vs_recipe": plan_vs_recipe,
         "weekly_analyses_count": len(weekly_analyses),
-        "total_pins_all_time": len(entries),
+        "total_pins_all_time": len(posted_entries),
         "total_pins_this_month": len(month_entries),
     }
 

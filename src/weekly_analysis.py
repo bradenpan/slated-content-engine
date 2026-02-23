@@ -140,9 +140,12 @@ def build_analysis_context(
     week_ago = (today - timedelta(days=7)).isoformat()
 
     # Separate this week's pins from all-time
+    # Exclude blog_deployer placeholder entries (pin_id=None, 0 metrics)
+    # so they don't inflate counts or dilute averages.
     this_week_entries = [
         e for e in entries
         if e.get("posted_date", "") >= week_ago
+        and e.get("pin_id")
     ]
 
     # Per-dimension aggregates (this week)
@@ -155,8 +158,9 @@ def build_analysis_context(
     by_image_source = aggregate_by_dimension(this_week_entries, "image_source")
     by_pin_type = aggregate_by_dimension(this_week_entries, "pin_type")
 
-    # All-time aggregates for trend context
-    all_by_pillar = aggregate_by_dimension(entries, "pillar")
+    # All-time aggregates for trend context (exclude placeholders)
+    posted_entries = [e for e in entries if e.get("pin_id")]
+    all_by_pillar = aggregate_by_dimension(posted_entries, "pillar")
 
     # Top and bottom performing pins (by save_rate, with minimum impression threshold)
     sorted_by_saves = sorted(
@@ -189,13 +193,14 @@ def build_analysis_context(
     }
 
     # Account-level trends: this week vs. last week vs. 4-week rolling avg
-    account_trends = _compute_account_trends(entries)
+    account_trends = _compute_account_trends(posted_entries)
 
     # 4-week rolling average per pillar
     four_weeks_ago = (today - timedelta(days=28)).isoformat()
     rolling_entries = [
         e for e in entries
         if e.get("posted_date", "") >= four_weeks_ago
+        and e.get("pin_id")
     ]
     rolling_by_pillar = aggregate_by_dimension(rolling_entries, "pillar")
 
@@ -222,7 +227,7 @@ def build_analysis_context(
         "all_time_by_pillar": all_by_pillar,
         "rolling_4wk_by_pillar": rolling_by_pillar,
         "content_plan": content_plan,
-        "all_time_pin_count": len(entries),
+        "all_time_pin_count": len(posted_entries),
     }
 
     return context

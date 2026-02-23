@@ -825,3 +825,64 @@ The service account's private key has non-standard CRT coefficients. The `crypto
 ### Status
 
 All changes implemented, reviewed, and locally tested. Ready for commit and first live pipeline run.
+
+---
+
+## Phase 7.1: Bug Fixes (Pre-existing Issues Found During Pipeline Audit)
+
+Five bugs identified during the Phase 7 full pipeline review. All fixed.
+
+### Bug 1: Analytics Double-Counting (content-log.jsonl)
+
+**Problem:** `blog_deployer._append_to_content_log()` writes placeholder entries (pin_id=None, all metrics=0) before pins are posted. `post_pins.py` later writes the real entries (with pin_id and pinterest_pin_id). Both coexist in content-log.jsonl permanently. `weekly_analysis.py` and `monthly_review.py` were including the placeholder entries in metric aggregations, inflating pin counts and diluting averages.
+
+**Root cause:** The placeholders exist intentionally — they let the planning system know what content is in the pipeline before pins post. But the analytics code didn't distinguish them from real posted entries.
+
+**Fix:** Added `and e.get("pin_id")` filter to all metric aggregation entry lists in `weekly_analysis.py` and `monthly_review.py`. The `generate_content_memory_summary()` function is intentionally left unfiltered so the planning system still sees pipeline content for topic/keyword dedup.
+
+**Files changed:** `src/weekly_analysis.py`, `src/monthly_review.py`
+
+### Bug 2: Image Dedup Date Field Mismatch
+
+**Problem:** `generate_pin_content.py:load_used_image_ids()` read `entry.get("date")` from content-log.jsonl, but `post_pins.py` writes `posted_date` (not `date`). Only blog_deployer writes the `date` field. Result: image dedup was only checking blog_deployer placeholder entries, missing all real posted-pin entries.
+
+**Fix:** Changed to `entry.get("posted_date", entry.get("date", ""))` to check both fields.
+
+**File changed:** `src/generate_pin_content.py`
+
+### Bug 3: Regen Feedback Dropped in Stock Image Retry
+
+**Problem:** When stock image search gets low-quality results and retries with broader queries, the retry call to `claude.generate_image_prompt()` was missing the `regen_feedback` parameter. If a reviewer requested a regen with specific feedback (e.g., "no close-up hands"), the retry search wouldn't incorporate that feedback.
+
+**Fix:** Added `regen_feedback=regen_feedback` to the retry call.
+
+**File changed:** `src/generate_pin_content.py`
+
+### Bug 4: Copy Regen Failure Silently Swallowed
+
+**Problem:** In `regen_content.py`, if copy regeneration fails (Claude API error, etc.), the exception was caught and logged but the function returned the old copy as if it were new. The caller cleared the reviewer's feedback and set status to `pending_review` — making it look like regen succeeded when it didn't.
+
+**Fix:** Added `_copy_regen_failed` flag (following existing `_copy_regen_no_rerender` pattern). When set, the caller preserves the reviewer's feedback for retry and adds a warning note to the Sheet.
+
+**File changed:** `src/regen_content.py`
+
+### Bug 5: 28-Pin Skip Window Mismatch
+
+**Problem:** `generate_weekly_plan.py` creates exactly 28 pins (4/day x 7 days, validated by Check 7). But `post_pins.py:should_skip_window()` skipped 1 random posting window per week. If evening was skipped, 2 pins were lost; otherwise 1. Skipped pins were never retried or rescheduled — they silently never posted. Over a year, 52-104 pins wasted.
+
+**Fix:** Removed `should_skip_window()` entirely. The existing anti-bot jitter (0-90 min initial delay, 5-20 min between pins, seeded from date+slot) provides sufficient anti-pattern behavior without sacrificing content.
+
+**File changed:** `src/post_pins.py`
+
+### Code Review (Sr Staff Engineer)
+
+All 5 fixes reviewed and approved. One cosmetic finding (docstring step numbering in post_pins.py after removing step 2) — fixed. No blocking issues. Key verification points:
+- Bug 1: All 6 aggregation list comprehensions across 2 files are filtered; content memory intentionally left unfiltered for planning
+- Bug 2: Fallback chain handles both `posted_date` (post_pins) and `date` (blog_deployer) fields
+- Bug 3: `regen_feedback=""` default means non-regen calls are unaffected
+- Bug 4: `_copy_regen_failed` flag is transient (not persisted to pin-generation-results.json)
+- Bug 5: No orphaned references; `hashlib` and `random` imports still used by jitter logic
+
+### Status
+
+All 5 bug fixes implemented, reviewed, and ready for commit.
