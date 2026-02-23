@@ -106,6 +106,9 @@ def run_monthly_review(month: Optional[int] = None, year: Optional[int] = None) 
     # Step 4: Compute 30-day aggregates
     monthly_context = build_monthly_context(entries, weekly_analyses, year, month)
 
+    # Step 4b: Load seasonal context
+    seasonal_context = _load_seasonal_context()
+
     # Step 5: Call Claude Opus for monthly review
     try:
         claude = ClaudeAPI()
@@ -113,6 +116,7 @@ def run_monthly_review(month: Optional[int] = None, year: Optional[int] = None) 
             monthly_data=monthly_context,
             weekly_analyses=weekly_analyses,
             current_strategy=strategy_doc,
+            seasonal_context=seasonal_context,
         )
     except Exception as e:
         logger.error("Claude monthly review failed: %s", e)
@@ -775,6 +779,50 @@ def _generate_fallback_review(context: dict, year: int, month: int) -> str:
     lines.append("")
 
     return "\n".join(lines)
+
+
+def _load_seasonal_context() -> str:
+    """
+    Load the seasonal calendar and return the current seasonal window description.
+
+    Reuses the same logic as generate_weekly_plan.get_current_seasonal_window().
+
+    Returns:
+        str: Current seasonal window description, or empty string if unavailable.
+    """
+    calendar_path = STRATEGY_DIR / "seasonal-calendar.json"
+    try:
+        if not calendar_path.exists():
+            return ""
+        calendar_data = json.loads(calendar_path.read_text(encoding="utf-8"))
+        seasons = calendar_data.get("seasons", [])
+        if not seasons:
+            return ""
+
+        current_month = date.today().month
+        active_seasons = []
+        for season in seasons:
+            publish_months = season.get("publish_window_months", [])
+            if current_month in publish_months:
+                active_seasons.append(season)
+
+        if not active_seasons:
+            return f"Current month: {current_month}. No seasonal publish windows are active."
+
+        lines = [f"Current month: {current_month}. Active seasonal windows:\n"]
+        for s in active_seasons:
+            priority = s.get("priority", "normal")
+            priority_label = " [HIGH PRIORITY]" if priority == "high" else ""
+            lines.append(f"**{s['name']}**{priority_label}")
+            lines.append(f"  Content angle: {s.get('content_angle', '')}")
+            lines.append(f"  Seasonal keywords: {', '.join(s.get('keywords', []))}")
+            lines.append(f"  Relevant pillars: {s.get('relevant_pillars', [])}")
+            lines.append("")
+        return "\n".join(lines)
+
+    except (json.JSONDecodeError, OSError) as e:
+        logger.warning("Could not load seasonal calendar: %s", e)
+        return ""
 
 
 if __name__ == "__main__":

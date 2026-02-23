@@ -594,6 +594,7 @@ class ClaudeAPI:
         monthly_data: dict,
         weekly_analyses: list[str],
         current_strategy: str,
+        seasonal_context: str = "",
     ) -> str:
         """
         Run the monthly strategy review using Claude Opus.
@@ -601,19 +602,41 @@ class ClaudeAPI:
         Uses the deeper-reasoning Opus model for strategic analysis.
 
         Args:
-            monthly_data: 30-day aggregated performance data.
+            monthly_data: 30-day aggregated performance data from build_monthly_context().
             weekly_analyses: All weekly analyses from the past month.
             current_strategy: Current strategy document text.
+            seasonal_context: Current seasonal window description.
 
         Returns:
             str: Monthly review markdown with strategy recommendations.
         """
+        from datetime import date as _date
+
         template = self.load_prompt_template("monthly_review.md")
 
+        # Build the review period label (e.g., "February 2026")
+        review_period = monthly_data.get("review_period", "")
+        if review_period:
+            try:
+                y, m = review_period.split("-")
+                month_year = _date(int(y), int(m), 1).strftime("%B %Y")
+            except (ValueError, TypeError):
+                month_year = review_period
+        else:
+            month_year = _date.today().strftime("%B %Y")
+
+        # Map context keys to match the template placeholders exactly
         context = {
-            "MONTHLY_DATA": monthly_data,
-            "WEEKLY_ANALYSES": "\n\n---\n\n".join(weekly_analyses),
-            "CURRENT_STRATEGY": current_strategy,
+            "monthly_data": monthly_data,
+            "all_weekly_analyses": "\n\n---\n\n".join(weekly_analyses) if weekly_analyses else "No weekly analyses available for this month.",
+            "current_strategy_summary": current_strategy or "No strategy document loaded.",
+            "pillar_performance": monthly_data.get("by_pillar", {}),
+            "keyword_performance": monthly_data.get("by_keyword", {}),
+            "board_performance": monthly_data.get("by_board", {}),
+            "content_type_performance": monthly_data.get("by_content_type", {}),
+            "image_source_performance": monthly_data.get("by_image_source", {}),
+            "seasonal_context": seasonal_context or "No seasonal calendar data available.",
+            "month_year": month_year,
         }
 
         prompt = self._render_template(template, context)
@@ -642,9 +665,10 @@ class ClaudeAPI:
         monthly_data: dict,
         weekly_analyses: list[str],
         current_strategy: str,
+        seasonal_context: str = "",
     ) -> str:
         """Alias for run_monthly_review to match requirement naming."""
-        return self.run_monthly_review(monthly_data, weekly_analyses, current_strategy)
+        return self.run_monthly_review(monthly_data, weekly_analyses, current_strategy, seasonal_context)
 
     def rank_stock_candidates(
         self,

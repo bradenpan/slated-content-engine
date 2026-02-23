@@ -1,16 +1,18 @@
 name: Monthly Review
 
-# Runs 1st Monday of each month at 5am ET (10:00 UTC), before the weekly review
+# Runs 1st Monday of each month at 4am ET (9:00 UTC), well before weekly review (6am ET)
 # Deep 30-day analysis using Claude Opus for deeper strategic reasoning
+#
+# NOTE: cron day-of-month + day-of-week fields combine with OR (POSIX behavior),
+# so '0 9 1-7 * 1' fires on ANY Monday OR days 1-7 — not just Mondays that are
+# days 1-7. The guard step below filters to first-Monday-only at runtime.
 on:
   schedule:
-    # Runs at 10:00 UTC (5:00 AM ET) on Mondays, but only triggers
-    # the job on the 1st-7th of the month (covers the first Monday)
-    - cron: '0 10 1-7 * 1'  # Minutes:0, Hour:10 UTC, Day:1-7, Any month, Monday
-  workflow_dispatch:          # Manual fallback trigger
+    - cron: '0 9 1-7 * 1'   # 9:00 UTC = 4:00 AM ET; fires every Monday (OR days 1-7)
+  workflow_dispatch:          # Manual fallback trigger (bypasses first-Monday check)
 
 concurrency:
-  group: pinterest-pipeline
+  group: pinterest-monthly
   cancel-in-progress: false
 
 env:
@@ -36,27 +38,47 @@ jobs:
     timeout-minutes: 30
 
     steps:
+      - name: Guard — first Monday only
+        id: guard
+        if: github.event_name == 'schedule'
+        run: |
+          DAY=$(TZ=America/New_York date +%-d)
+          DOW=$(TZ=America/New_York date +%u)  # 1=Monday, 7=Sunday
+          if [ "$DAY" -gt 7 ] || [ "$DOW" -ne 1 ]; then
+            echo "::notice::Not the first Monday of the month (day=$DAY, dow=$DOW). Skipping."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "First Monday confirmed (day=$DAY, dow=$DOW). Proceeding."
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Checkout repository
+        if: steps.guard.outputs.skip != 'true'
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Python
+        if: steps.guard.outputs.skip != 'true'
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip'
 
       - name: Install dependencies
+        if: steps.guard.outputs.skip != 'true'
         run: pip install -r requirements.txt
 
       - name: Refresh Pinterest token
+        if: steps.guard.outputs.skip != 'true'
         run: python -m src.token_manager
 
       - name: Pull 30-day analytics
+        if: steps.guard.outputs.skip != 'true'
         run: python -c "from src.pull_analytics import pull_analytics; pull_analytics(days_back=30)"
 
       - name: Run monthly strategy review (Claude Opus)
+        if: steps.guard.outputs.skip != 'true'
         # Deep analysis: pillar performance, keyword strategy, board architecture,
         # posting cadence, template effectiveness, image source comparison,
         # strategy update recommendations
@@ -64,6 +86,7 @@ jobs:
         run: python -m src.monthly_review
 
       - name: Commit monthly analysis files
+        if: steps.guard.outputs.skip != 'true'
         run: |
           git config user.name "pinterest-pipeline-bot"
           git config user.email "bot@pinterest-pipeline.local"
@@ -73,7 +96,7 @@ jobs:
           git push
 
       - name: Notify failure
-        if: failure()
+        if: failure() && steps.guard.outputs.skip != 'true'
         run: |
           python -c "
           from src.apis.slack_notify import SlackNotify
