@@ -1,8 +1,8 @@
 {
   "W8-P01": {
-    "slug": "herb-crusted-cod-green-beans",
+    "slug": "lemon-basil-chicken-zucchini-pasta",
     "title": "This Week's Family Dinner Plan — 5 Light Spring Dinners Under 30 Minutes",
-    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/herb-crusted-cod-green-beans.mdx",
+    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/lemon-basil-chicken-zucchini-pasta.mdx",
     "pillar": 1,
     "content_type": "weekly-plan",
     "hero_image": "/assets/blog/weekly-plan-fresh-spring-dinners-under-30-minutes.jpg",
@@ -10,12 +10,12 @@
     "error": null
   },
   "W8-P02": {
-    "slug": "loaded-chicken-quesadillas",
+    "slug": "teriyaki-salmon-steamed-rice",
     "title": "This Week's Family Dinner Plan — 5 Easy Dinners Everyone Will Eat",
-    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/loaded-chicken-quesadillas.mdx",
+    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/teriyaki-salmon-steamed-rice.mdx",
     "pillar": 1,
     "content_type": "weekly-plan",
-    "hero_image": "/assets/blog/weekly-plan-5-easy-dinners-everyone-will-eat.jpg",
+    "hero_image": "/assets/blog/weekly-plan-5-easy-family-dinners.jpg",
     "status": "success",
     "error": null
   },
@@ -30,12 +30,12 @@
     "error": null
   },
   "W8-P04": {
-    "slug": "family-agree-dinner-before-cooking",
+    "slug": "how-to-get-family-to-agree-on-dinner-before-cooking",
     "title": "How to Get Your Family to Agree on Dinner Before You Cook",
-    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/family-agree-dinner-before-cooking.mdx",
+    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/how-to-get-family-to-agree-on-dinner-before-cooking.mdx",
     "pillar": 2,
     "content_type": "guide",
-    "hero_image": "/assets/blog/family-agree-dinner-before-cooking.jpg",
+    "hero_image": "/assets/blog/how-to-get-family-to-agree-on-dinner-before-cooking.jpg",
     "status": "success",
     "error": null
   },
@@ -70,12 +70,12 @@
     "error": null
   },
   "W8-P08": {
-    "slug": "hellofresh-alternative-what-we-do-instead",
+    "slug": "hellofresh-alternative-better-meal-planning",
     "title": "Why We Quit HelloFresh — And What We Do Instead",
-    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/hellofresh-alternative-what-we-do-instead.mdx",
+    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/hellofresh-alternative-better-meal-planning.mdx",
     "pillar": 4,
     "content_type": "guide",
-    "hero_image": "/assets/blog/hellofresh-alternative-what-we-do-instead.jpg",
+    "hero_image": "/assets/blog/hellofresh-alternative-better-meal-planning.jpg",
     "status": "success",
     "error": null
   },
@@ -91,7 +91,7 @@
   },
   "W8-P10": {
     "slug": "instant-pot-gluten-free-chicken-rice-bowl",
-    "title": "Instant Pot Gluten-Free Chicken and Rice Bowl - 30 Minutes",
+    "title": "Easy Instant Pot Gluten-Free Chicken and Rice Bowl",
     "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/instant-pot-gluten-free-chicken-rice-bowl.mdx",
     "pillar": 5,
     "content_type": "recipe",
