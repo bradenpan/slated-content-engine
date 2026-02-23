@@ -172,9 +172,18 @@ def generate_pin_content(
                 extra_context=extra_context,
             )
 
+            # Save a slug-named copy of the hero image so blog_deployer.py
+            # can find it (deployer looks for {slug}-hero.{ext}, not {pin_id}-hero.{ext})
+            blog_slug = _resolve_blog_slug(pin_spec, blog_posts)
+            if blog_slug and image_path and Path(image_path).exists():
+                slug_hero = PIN_OUTPUT_DIR / f"{blog_slug}-hero{Path(image_path).suffix}"
+                if not slug_hero.exists():
+                    import shutil
+                    shutil.copy2(image_path, slug_hero)
+                    logger.info("Saved slug-named hero copy: %s", slug_hero.name)
+
             # Build the blog post link (bare URL — UTM params added at posting
             # time by post_pins.py:construct_utm_link to avoid double-tagging)
-            blog_slug = _resolve_blog_slug(pin_spec, blog_posts)
             board_name = pin_spec.get("target_board", "")
             link = f"{BLOG_BASE_URL}/{blog_slug}" if blog_slug else BLOG_BASE_URL
 

@@ -279,6 +279,7 @@ class SheetsAPI:
         blog_posts: list[dict],
         pins: list[dict],
         pin_image_urls: dict = None,
+        blog_image_urls: dict = None,
         blog_previews: dict = None,
         quality_gate_stats: dict = None,
     ) -> None:
@@ -299,12 +300,15 @@ class SheetsAPI:
                       image_retries, image_low_confidence
             pin_image_urls: Optional dict of pin_id -> public image URL.
                 When provided, writes =IMAGE(url) in thumbnail column.
+            blog_image_urls: Optional dict of post_id -> public hero image URL.
+                When provided, writes =IMAGE(url) for blog post thumbnails.
             blog_previews: Optional dict of post_id -> blog description text.
                 When provided, writes preview in description column for blogs.
             quality_gate_stats: Optional dict with stock_summary and ai_summary
                 strings. When provided, writes a summary row at the bottom.
         """
         pin_image_urls = pin_image_urls or {}
+        blog_image_urls = blog_image_urls or {}
         blog_previews = blog_previews or {}
 
         logger.info("Writing content queue: %d blog posts, %d pins...", len(blog_posts), len(pins))
@@ -320,6 +324,10 @@ class SheetsAPI:
             post_id = str(post.get("post_id", ""))
             description = blog_previews.get(post_id, str(post.get("content_type", "")))
 
+            # Use IMAGE() formula if we have a hero image URL from Drive
+            blog_img_url = blog_image_urls.get(post_id)
+            blog_thumbnail = f'=IMAGE("{blog_img_url}")' if blog_img_url else ""
+
             rows.append([
                 post_id,
                 "blog",
@@ -329,7 +337,7 @@ class SheetsAPI:
                 str(post.get("slug", "")),  # Slug stored in Blog URL column; deployer needs it
                 "",  # No schedule for blog posts
                 str(post.get("pillar", "")),
-                "",  # No thumbnail for blog posts
+                blog_thumbnail,
                 "pending_review",
                 "",  # Notes
                 "",  # Feedback
@@ -345,12 +353,14 @@ class SheetsAPI:
             if alt_text:
                 desc = f"{desc}\n\nAlt: {alt_text}"
 
-            # Use IMAGE() formula if we have a public URL
+            # Use IMAGE() formula if we have a public URL from Drive
             image_url = pin_image_urls.get(pin_id)
             if image_url:
                 thumbnail = f'=IMAGE("{image_url}")'
             else:
-                thumbnail = str(pin.get("image_path", ""))
+                # Don't write local runner paths — they're meaningless after
+                # the GitHub Actions runner is destroyed
+                thumbnail = ""
 
             # Per-pin quality note (populated by publish_content_queue.py)
             quality_note = str(pin.get("_quality_note", ""))

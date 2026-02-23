@@ -718,3 +718,55 @@ A 5-agent review team (4 domain reviewers + 1 Sr Staff Engineer) performed a com
 ### Status
 
 All 3 fixes implemented and verified by Sr Staff Engineer. Pipeline is ready for Monday 2/23 launch.
+
+---
+
+## Phase 7: Content Queue Thumbnail Fixes (In Progress)
+
+**Date:** 2026-02-23
+
+### Problem
+
+First live content generation run completed successfully (10 blog posts, 28 pins). The Google Sheets Content Queue has two image issues:
+
+1. **Pin thumbnails show raw local paths** — Column I displays `/home/runner/work/.../W8-19.png` as plain text instead of rendered inline images
+2. **Blog thumbnails are empty** — Column I is blank for all blog rows; blog hero image thumbnails were never implemented
+
+### Root Cause (Confirmed)
+
+Google Drive upload fails for ALL 28 pin images with:
+
+```
+HttpError 403: "Service Accounts do not have storage quota.
+Leverage shared drives or use OAuth delegation instead."
+Reason: storageQuotaExceeded
+```
+
+The service account is in a GCP project under a personal Gmail account. Service accounts on personal Gmail cannot upload to their own Drive space. The code falls back to writing the useless local runner path (`sheets_api.py:353`).
+
+### Additional Bug Found: Hero Image Naming Mismatch
+
+- `generate_pin_content.py:858` saves stock hero images as `{pin_id}-hero.jpg` (e.g., `W8-01-hero.jpg`)
+- `blog_deployer.py:583-587` looks for `{slug}-hero.{ext}` (e.g., `one-pan-lemon-herb-chicken-hero.jpg`)
+- Pin IDs and slugs are different strings, so the deployer never finds hero images — blog posts may deploy to goslated.com without their hero images
+
+### Code Changes Made (saved to disk, NOT committed)
+
+#### 1. `src/apis/sheets_api.py`
+- **Pin fallback fix**: Changed line 353 from `thumbnail = str(pin.get("image_path", ""))` to `thumbnail = ""` — stops writing useless local runner paths when Drive upload fails
+- **Blog thumbnail support**: Added `blog_image_urls` parameter to `write_content_queue()`. When provided, writes `=IMAGE()` formulas for blog rows in column I
+
+#### 2. `src/publish_content_queue.py`
+- Added `_upload_blog_hero_images()` function — uploads blog hero images to Drive for Sheet preview
+- Added `_find_hero_image()` helper — locates hero images by slug or pin_id naming
+- Passes `blog_image_urls` to `sheets.write_content_queue()`
+- Better Drive error logging with specific diagnostic messages
+- Sets row heights for blog rows that have thumbnails (150px)
+
+#### 3. `src/generate_pin_content.py`
+- After downloading a hero image as `{pin_id}-hero.{ext}`, also saves a copy as `{slug}-hero.{ext}` — fixes the naming mismatch so `blog_deployer.py` can find hero images
+
+### Still Needs to Be Done
+
+- **Fix the Drive storage quota issue** — The core blocker. Need to replace Google Drive with an alternative that works with service accounts on personal Gmail. Options under evaluation: Google Cloud Storage bucket, Shared Drive via Workspace, alternative image hosting. See `HANDOFF.md` for full details.
+- Test and commit code changes after Drive fix is resolved

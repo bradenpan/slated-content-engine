@@ -1,9 +1,10 @@
 """
 Content Queue Publisher
 
-Reads generation results, uploads pin images to Google Drive for
-inline preview, extracts blog post summaries, and writes the Content
-Queue to Google Sheets with IMAGE() formulas. Sends Slack notification.
+Reads generation results, uploads pin images and blog hero images to
+Google Drive for inline preview, extracts blog post summaries, and writes
+the Content Queue to Google Sheets with IMAGE() formulas. Sends Slack
+notification.
 
 Runs as a separate workflow step after pin generation completes.
 """
@@ -53,10 +54,17 @@ def publish() -> None:
 
     # Upload pin images to Google Drive for Sheet preview
     pin_image_urls: dict[str, str] = {}
+    blog_image_urls: dict[str, str] = {}
+    drive: DriveAPI | None = None
     drive_failed = False
     try:
         drive = DriveAPI()
+        logger.info(
+            "Drive API initialized. Uploading %d pin images from %s",
+            len(generated_pins), PIN_OUTPUT_DIR,
+        )
         pin_image_urls = drive.upload_pin_images(generated_pins, PIN_OUTPUT_DIR)
+        logger.info("Drive upload complete: %d pin image URLs obtained", len(pin_image_urls))
 
         # Save Drive URLs back to pin-generation-results.json so the regen
         # workflow can download hero images on a fresh runner
@@ -83,9 +91,26 @@ def publish() -> None:
 
     except DriveAPIError as e:
         logger.error(
-            "Drive upload failed, Content Queue will not have image previews: %s", e
+            "Drive upload failed — no image previews in Content Queue. "
+            "Error: %s | Check that Google Drive API is enabled in your "
+            "GCP project and the service account has access.", e
         )
         drive_failed = True
+    except Exception as e:
+        logger.error(
+            "Unexpected error during Drive upload: %s (%s)", e, type(e).__name__
+        )
+        drive_failed = True
+
+    # Upload blog hero images to Drive for Sheet preview
+    if drive and not drive_failed and blog_results:
+        try:
+            blog_image_urls = _upload_blog_hero_images(
+                drive, blog_results, generated_pins, PIN_OUTPUT_DIR,
+            )
+            logger.info("Uploaded %d blog hero images to Drive", len(blog_image_urls))
+        except Exception as e:
+            logger.warning("Blog hero image upload failed (non-critical): %s", e)
 
     # Extract blog content previews from MDX frontmatter
     blog_previews: dict[str, str] = {}
@@ -122,9 +147,10 @@ def publish() -> None:
     quality_gate_stats = _compute_quality_stats(generated_pins)
 
     logger.info(
-        "Publishing Content Queue: %d blog posts, %d pins, %d image URLs, %d blog previews",
+        "Publishing Content Queue: %d blog posts, %d pins, %d pin image URLs, "
+        "%d blog image URLs, %d blog previews",
         len(blog_entries), len(generated_pins),
-        len(pin_image_urls), len(blog_previews),
+        len(pin_image_urls), len(blog_image_urls), len(blog_previews),
     )
 
     # Write to Google Sheets with IMAGE() formulas
@@ -134,12 +160,23 @@ def publish() -> None:
             blog_posts=blog_entries,
             pins=generated_pins,
             pin_image_urls=pin_image_urls,
+            blog_image_urls=blog_image_urls,
             blog_previews=blog_previews,
             quality_gate_stats=quality_gate_stats,
         )
 
-        # Set row heights for pin rows so images are visible
-        # Pins come after the header row (1) + blog rows
+        # Set row heights for rows with images so previews are visible
+        # Blog rows with images come first (after header)
+        blogs_with_images = sum(1 for e in blog_entries if e["post_id"] in blog_image_urls)
+        if blogs_with_images:
+            sheets.set_row_heights(
+                TAB_CONTENT_QUEUE,
+                start_row=2,  # First data row (1-based)
+                num_rows=blogs_with_images,
+                height_px=150,
+            )
+
+        # Pin rows come after all blog rows
         pin_start_row = 2 + len(blog_entries)  # 1-based
         if generated_pins:
             sheets.set_row_heights(
@@ -172,14 +209,123 @@ def publish() -> None:
         )
         if drive_failed:
             slack.notify(
-                "Warning: Drive image upload failed. Pin image previews will NOT "
-                "appear in the Content Queue. Check workflow logs for details.",
+                "Warning: Drive image upload failed. Image previews will NOT "
+                "appear in the Content Queue. Check workflow logs for details. "
+                "Verify Google Drive API is enabled in GCP and service account has access.",
                 level="warning",
             )
     except Exception as e:
         logger.error("Failed to send Slack notification: %s", e)
 
     logger.info("Content Queue published successfully")
+
+
+def _upload_blog_hero_images(
+    drive: DriveAPI,
+    blog_results: dict,
+    generated_pins: list[dict],
+    pins_dir: Path,
+) -> dict[str, str]:
+    """
+    Upload blog hero images to Drive for Sheet preview thumbnails.
+
+    For each blog post, find the hero image from the first associated pin's
+    source image (saved as {pin_id}-hero.{ext} or {slug}-hero.{ext}).
+
+    Args:
+        drive: Initialized DriveAPI instance.
+        blog_results: Blog generation results dict (post_id -> data).
+        generated_pins: List of generated pin data dicts.
+        pins_dir: Directory containing pin and hero images.
+
+    Returns:
+        dict: post_id -> public Drive thumbnail URL.
+    """
+    # Build post_id -> first pin mapping (each blog may have multiple pins)
+    post_to_pin: dict[str, dict] = {}
+    for pin in generated_pins:
+        source_id = pin.get("source_post_id", "")
+        if source_id and source_id not in post_to_pin:
+            post_to_pin[source_id] = pin
+
+    urls: dict[str, str] = {}
+    for post_id, post_data in blog_results.items():
+        if post_data.get("status") != "success":
+            continue
+
+        slug = post_data.get("slug", "")
+        pin = post_to_pin.get(post_id)
+
+        hero_path = _find_hero_image(slug, pin, pins_dir)
+        if not hero_path:
+            logger.debug("No hero image found for blog %s (slug=%s)", post_id, slug)
+            continue
+
+        try:
+            url = drive.upload_image(hero_path, f"blog-hero-{slug}.jpg")
+            urls[post_id] = url
+            logger.debug("Uploaded blog hero for %s: %s", post_id, url[:60])
+        except DriveAPIError as e:
+            logger.warning("Failed to upload hero image for blog %s: %s", post_id, e)
+
+    return urls
+
+
+def _find_hero_image(
+    slug: str,
+    pin: dict | None,
+    pins_dir: Path,
+) -> Path | None:
+    """
+    Find the hero image file for a blog post.
+
+    Searches for:
+    1. {slug}-hero.{ext} in pins_dir (created by generate_pin_content.py)
+    2. {pin_id}-hero.{ext} in pins_dir (original pin hero image)
+    3. {slug}.{ext} in the blog output dir
+
+    Args:
+        slug: Blog post slug.
+        pin: First associated pin data dict (may be None).
+        pins_dir: Directory containing pin images.
+
+    Returns:
+        Path if found, None otherwise.
+    """
+    extensions = [".jpg", ".jpeg", ".png", ".webp"]
+
+    # Try slug-named hero image first
+    if slug:
+        for ext in extensions:
+            candidate = pins_dir / f"{slug}-hero{ext}"
+            if candidate.exists():
+                return candidate
+
+    # Try pin_id-named hero image
+    if pin:
+        pin_id = pin.get("pin_id", "")
+        if pin_id:
+            for ext in extensions:
+                candidate = pins_dir / f"{pin_id}-hero{ext}"
+                if candidate.exists():
+                    return candidate
+
+        # Try the hero_image_path stored in pin data
+        hero_path_str = pin.get("hero_image_path")
+        if hero_path_str:
+            hero_path = Path(hero_path_str)
+            if hero_path.exists():
+                return hero_path
+
+    # Try slug-named image in blog output dir
+    if slug:
+        blog_dir = pins_dir.parent / "blog"
+        for ext in extensions:
+            candidate = blog_dir / f"{slug}{ext}"
+            if candidate.exists():
+                return candidate
+
+    return None
 
 
 def _extract_frontmatter_description(mdx_path: Path) -> str:
