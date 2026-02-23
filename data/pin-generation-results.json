@@ -57,7 +57,7 @@
       "scheduled_date": "2026-02-25",
       "scheduled_slot": "afternoon",
       "image_source": "unsplash",
-      "image_id": "unsplash:ZWDTaJy_K1I",
+      "image_id": "unsplash:-wMxr1Ginpo",
       "pillar": null,
       "pin_type": "recipe-pull",
       "template": "recipe-pin",
@@ -70,13 +70,23 @@
       "treatment_number": 1,
       "source_post_id": "W9-P01",
       "funnel_layer": "discovery",
-      "image_quality_score": 9.0,
+      "image_quality_score": 8.0,
       "image_retries": 0,
       "image_low_confidence": false,
       "image_source_original": "stock",
       "image_quality_issues": [],
       "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-02.png",
-      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-02.png"
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-02.png",
+      "_regen_history": [
+        {
+          "regen_type": "regen_image",
+          "feedback": "this is chicken with oranges, the recipe talks about lemon herb chicken. this has the wrong ingredients and never should have been rated a 9",
+          "timestamp": "2026-02-23T21:40:10.174915",
+          "previous_score": 9.0,
+          "previous_image_source": "unsplash",
+          "previous_title": "Lemon Herb Chicken with Spring Vegetables — Easy One Pan Dinner"
+        }
+      ]
     },
     {
       "pin_id": "W9-03",
@@ -314,12 +324,12 @@
     },
     {
       "pin_id": "W9-09",
-      "title": "Hidden Veggie Mac and Cheese — Kid Friendly Dinners They'll Actually Eat",
-      "description": "Kid friendly dinners that sneak in nutrition without the battle. This hidden veggie mac and cheese tastes like the classic comfort food kids love, but packs butternut squash and cauliflower into the creamy cheese sauce. Easy dinners kids will eat while parents feel good about what's on the plate. The vegetables blend completely into the sauce, so even the pickiest eaters won't detect them.",
-      "alt_text": "Bowl of creamy orange-tinted mac and cheese with a fork, showing the hidden vegetable cheese sauce that looks like regular mac and cheese. Kid friendly dinner with hidden vegetables.",
+      "title": "Mac and Cheese with Secret Veggies — Kid Friendly Dinners They'll Actually Eat",
+      "description": "Kid friendly dinners don't have to skip the vegetables. This creamy mac and cheese hides pureed butternut squash and cauliflower right in the cheese sauce — your kids get extra nutrition without even knowing it. The hidden veggie recipes that actually work are the ones where you can't taste the difference. Ready in 25 minutes with ingredients you probably have on hand. Easy dinners kids will eat while parents feel good about what's on the plate.",
+      "alt_text": "Creamy mac and cheese in a blue bowl with a fork, showing the golden cheese sauce that contains hidden pureed vegetables. Kid friendly dinner recipe with secret veggies that children will actually eat.",
       "text_overlay": {
-        "headline": "Mac & Cheese With Secrets",
-        "sub_text": "Veggies they'll never know about"
+        "headline": "Mac and Cheese with Secret Veggies",
+        "sub_text": "They'll never know"
       },
       "image_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/pins/W9-09.png",
       "hero_image_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/pins/W9-09-hero.jpg",
@@ -330,7 +340,7 @@
       "scheduled_date": "2026-02-27",
       "scheduled_slot": "morning",
       "image_source": "unsplash",
-      "image_id": "unsplash:i0Y6PmkzrVs",
+      "image_id": "unsplash:eS07Cany2g4",
       "pillar": null,
       "pin_type": "primary",
       "template": "recipe-pin",
@@ -343,13 +353,23 @@
       "treatment_number": 1,
       "source_post_id": "W9-P03",
       "funnel_layer": "discovery",
-      "image_quality_score": 6.5,
+      "image_quality_score": 9.0,
       "image_retries": 0,
       "image_low_confidence": false,
       "image_source_original": "stock",
       "image_quality_issues": [],
       "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-09.png",
-      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-09.png"
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-09.png",
+      "_regen_history": [
+        {
+          "regen_type": "regen",
+          "feedback": "this is a picture of vegetables not a picture of macroni and cheese with vegetables. Additionally the title is wrong. its \"Mac and Cheese with Sevret Veggies\" not \"Mac and Cheese with Secrets\".",
+          "timestamp": "2026-02-23T21:40:35.308832",
+          "previous_score": 6.5,
+          "previous_image_source": "unsplash",
+          "previous_title": "Hidden Veggie Mac and Cheese — Kid Friendly Dinners They'll Actually Eat"
+        }
+      ]
     },
     {
       "pin_id": "W9-10",
@@ -446,8 +466,8 @@
       "blog_slug": "15-minute-teriyaki-salmon-bowls",
       "scheduled_date": "2026-02-27",
       "scheduled_slot": "evening-2",
-      "image_source": "unsplash",
-      "image_id": "unsplash:jGlJNIFUDqE",
+      "image_source": "pexels",
+      "image_id": "pexels:4828099",
       "pillar": null,
       "pin_type": "primary",
       "template": "recipe-pin",
@@ -460,13 +480,23 @@
       "treatment_number": 1,
       "source_post_id": "W9-P06",
       "funnel_layer": "discovery",
-      "image_quality_score": 8.0,
+      "image_quality_score": 7.5,
       "image_retries": 0,
       "image_low_confidence": false,
       "image_source_original": "stock",
       "image_quality_issues": [],
       "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-12.png",
-      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-12.png"
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-12.png",
+      "_regen_history": [
+        {
+          "regen_type": "regen_image",
+          "feedback": "this picture has noodles. this should be a bowl with teriyaki salmon, white rice, and vegetables",
+          "timestamp": "2026-02-23T21:40:49.680358",
+          "previous_score": 8.0,
+          "previous_image_source": "unsplash",
+          "previous_title": "15-Minute Teriyaki Salmon Bowls — Quick Weeknight Dinners That Deliver"
+        }
+      ]
     },
     {
       "pin_id": "W9-13",
@@ -602,8 +632,8 @@
       "blog_slug": "high-protein-turkey-meatball-bowls",
       "scheduled_date": "2026-02-28",
       "scheduled_slot": "evening-2",
-      "image_source": "pexels",
-      "image_id": "pexels:10977258",
+      "image_source": "unsplash",
+      "image_id": "unsplash:q9gYYnlTi5U",
       "pillar": null,
       "pin_type": "primary",
       "template": "recipe-pin",
@@ -616,13 +646,23 @@
       "treatment_number": 1,
       "source_post_id": "W9-P10",
       "funnel_layer": "discovery",
-      "image_quality_score": 9.0,
+      "image_quality_score": 7.5,
       "image_retries": 0,
       "image_low_confidence": false,
       "image_source_original": "stock",
       "image_quality_issues": [],
       "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-16.png",
-      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-16.png"
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-16.png",
+      "_regen_history": [
+        {
+          "regen_type": "regen_image",
+          "feedback": "this is turkey meatballs in tomato sauce not Turkey meatballs over rice and veggies.",
+          "timestamp": "2026-02-23T21:41:04.667819",
+          "previous_score": 9.0,
+          "previous_image_source": "pexels",
+          "previous_title": "High Protein Turkey Meatball Bowls — Healthy Dinner Kids Actually Eat"
+        }
+      ]
     },
     {
       "pin_id": "W9-17",
@@ -641,8 +681,8 @@
       "blog_slug": "shrimp-avocado-tacos",
       "scheduled_date": "2026-03-01",
       "scheduled_slot": "morning",
-      "image_source": "unsplash",
-      "image_id": "unsplash:iEyQnsMPB5o",
+      "image_source": "pexels",
+      "image_id": "pexels:25884476",
       "pillar": null,
       "pin_type": "recipe-pull",
       "template": "recipe-pin",
@@ -661,7 +701,17 @@
       "image_source_original": "stock",
       "image_quality_issues": [],
       "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-17.png",
-      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-17.png"
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-17.png",
+      "_regen_history": [
+        {
+          "regen_type": "regen_image",
+          "feedback": "i have no idea what this is a picture of but it is not chicken and rice in one pan",
+          "timestamp": "2026-02-23T21:41:22.379129",
+          "previous_score": 9.0,
+          "previous_image_source": "unsplash",
+          "previous_title": "Spring Chicken and Rice Skillet — Easy Weeknight Dinner in One Pan"
+        }
+      ]
     },
     {
       "pin_id": "W9-18",
@@ -681,7 +731,7 @@
       "scheduled_date": "2026-03-01",
       "scheduled_slot": "afternoon",
       "image_source": "unsplash",
-      "image_id": "unsplash:1LY2Rv7MjUY",
+      "image_id": "unsplash:HDSX4xPIvqo",
       "pillar": null,
       "pin_type": "recipe-pull",
       "template": "recipe-pin",
@@ -694,33 +744,43 @@
       "treatment_number": 1,
       "source_post_id": "W9-P02",
       "funnel_layer": "discovery",
-      "image_quality_score": 9.0,
+      "image_quality_score": 7.5,
       "image_retries": 0,
       "image_low_confidence": false,
       "image_source_original": "stock",
       "image_quality_issues": [],
       "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-18.png",
-      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-18.png"
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-18.png",
+      "_regen_history": [
+        {
+          "regen_type": "regen_image",
+          "feedback": "this is a picture of broccoli, not a picture of beef and broccoli stir-fry",
+          "timestamp": "2026-02-23T21:41:37.354017",
+          "previous_score": 9.0,
+          "previous_image_source": "unsplash",
+          "previous_title": "Easy Beef and Broccoli Stir-Fry — Dinner Ideas for Family in 30 Minutes"
+        }
+      ]
     },
     {
       "pin_id": "W9-19",
       "title": "Hidden Veggie Recipes Kids Actually Eat — 12 Sneaky Dinner Ideas That Work",
-      "description": "Hidden veggie recipes that turn picky eaters into happy diners. These kid friendly dinners pack vegetables into familiar favorites like mac and cheese, meatballs, and pasta sauce. Each recipe hides nutrients without changing the flavors kids love. From cauliflower mac to zucchini meatballs, these easy dinners kids will eat prove you can serve vegetables without the dinner table battles.",
-      "alt_text": "Colorful array of kid-friendly dinner plates showing hidden vegetable recipes like veggie-packed mac and cheese, zucchini meatballs, and cauliflower pizza. Hidden veggie recipes that kids actually eat.",
+      "description": "Hidden veggie recipes that turn picky eaters into willing dinner participants. These twelve kid-friendly dinners sneak vegetables into familiar favorites like mac and cheese with butternut squash, meatballs with hidden zucchini, and pizza with cauliflower crust. Each recipe includes prep tips for getting vegetables past the most discerning young critics. No battles, no bribes, just dinners everyone will eat.",
+      "alt_text": "Colorful array of kid-friendly dinner plates showing mac and cheese, meatballs, and pizza with vegetables cleverly incorporated. Hidden veggie recipes that kids actually enjoy eating.",
       "text_overlay": {
-        "headline": "Veggies Hidden, Kids Happy",
-        "sub_text": "12 Sneaky Dinner Wins"
+        "headline": "12 Hidden Veggie Dinners",
+        "sub_text": "Kids actually eat these"
       },
       "image_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/pins/W9-19.png",
-      "hero_image_path": null,
+      "hero_image_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/pins/W9-19-hero.jpg",
       "board_name": "Family Dinner Ideas Even Picky Eaters Love",
       "board_id": "",
       "link": "https://goslated.com/blog/hidden-veggie-mac-and-cheese-kids-love",
       "blog_slug": "hidden-veggie-mac-and-cheese-kids-love",
       "scheduled_date": "2026-03-01",
       "scheduled_slot": "evening-1",
-      "image_source": "template",
-      "image_id": "",
+      "image_source": "unsplash",
+      "image_id": "unsplash:31st2dvwGUs",
       "pillar": null,
       "pin_type": "secondary",
       "template": "listicle-pin",
@@ -733,13 +793,23 @@
       "treatment_number": 1,
       "source_post_id": "W9-P03",
       "funnel_layer": "consideration",
-      "image_quality_score": null,
+      "image_quality_score": 8.5,
       "image_retries": 0,
       "image_low_confidence": false,
       "image_source_original": "template",
       "image_quality_issues": [],
       "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-19.png",
-      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-19.png"
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-19.png",
+      "_regen_history": [
+        {
+          "regen_type": "regen",
+          "feedback": "this should be a stock image not a template",
+          "timestamp": "2026-02-23T21:42:04.763131",
+          "previous_score": null,
+          "previous_image_source": "template",
+          "previous_title": "Hidden Veggie Recipes Kids Actually Eat — 12 Sneaky Dinner Ideas That Work"
+        }
+      ]
     },
     {
       "pin_id": "W9-20",
@@ -751,15 +821,15 @@
         "sub_text": null
       },
       "image_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/pins/W9-20.png",
-      "hero_image_path": null,
+      "hero_image_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/pins/W9-20-hero.jpg",
       "board_name": "Family Meal Planning Strategies",
       "board_id": "",
       "link": "https://goslated.com/blog/meals-for-picky-families-agreement-strategy",
       "blog_slug": "meals-for-picky-families-agreement-strategy",
       "scheduled_date": "2026-03-01",
       "scheduled_slot": "evening-2",
-      "image_source": "template",
-      "image_id": "",
+      "image_source": "unsplash",
+      "image_id": "unsplash:p-aFwK7toYo",
       "pillar": null,
       "pin_type": "secondary",
       "template": "tip-pin",
@@ -772,13 +842,23 @@
       "treatment_number": 1,
       "source_post_id": "W9-P04",
       "funnel_layer": "consideration",
-      "image_quality_score": null,
+      "image_quality_score": 8.0,
       "image_retries": 0,
       "image_low_confidence": false,
       "image_source_original": "template",
       "image_quality_issues": [],
       "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-20.png",
-      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-20.png"
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-20.png",
+      "_regen_history": [
+        {
+          "regen_type": "regen_image",
+          "feedback": "this should be a stock image not a template",
+          "timestamp": "2026-02-23T21:42:25.511084",
+          "previous_score": null,
+          "previous_image_source": "template",
+          "previous_title": "Family Meal Planning That Actually Works — 7 Strategies for Picky Families"
+        }
+      ]
     },
     {
       "pin_id": "W9-21",
@@ -790,15 +870,15 @@
         "sub_text": "Fresh. Fast. 30 Minutes."
       },
       "image_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/pins/W9-21.png",
-      "hero_image_path": null,
+      "hero_image_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/pins/W9-21-hero.jpg",
       "board_name": "Meal Planning & Grocery Tips",
       "board_id": "",
       "link": "https://goslated.com/blog/one-pan-lemon-herb-chicken-spring-vegetables",
       "blog_slug": "one-pan-lemon-herb-chicken-spring-vegetables",
       "scheduled_date": "2026-03-02",
       "scheduled_slot": "morning",
-      "image_source": "template",
-      "image_id": "",
+      "image_source": "unsplash",
+      "image_id": "unsplash:H-D-0UOgzMc",
       "pillar": null,
       "pin_type": "secondary",
       "template": "tip-pin",
@@ -811,13 +891,23 @@
       "treatment_number": 1,
       "source_post_id": "W9-P05",
       "funnel_layer": "consideration",
-      "image_quality_score": null,
+      "image_quality_score": 8.5,
       "image_retries": 0,
       "image_low_confidence": false,
       "image_source_original": "template",
       "image_quality_issues": [],
       "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-21.png",
-      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-21.png"
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-21.png",
+      "_regen_history": [
+        {
+          "regen_type": "regen_image",
+          "feedback": "this should be a stock image not a template",
+          "timestamp": "2026-02-23T21:42:42.444984",
+          "previous_score": null,
+          "previous_image_source": "template",
+          "previous_title": "30 Minute Meals — One Pan Spring Dinners Ready in Half an Hour"
+        }
+      ]
     },
     {
       "pin_id": "W9-22",
@@ -829,15 +919,15 @@
         "sub_text": "Quick Weeknight Wins"
       },
       "image_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/pins/W9-22.png",
-      "hero_image_path": null,
+      "hero_image_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/pins/W9-22-hero.jpg",
       "board_name": "Meal Planning & Grocery Tips",
       "board_id": "",
       "link": "https://goslated.com/blog/15-minute-teriyaki-salmon-bowls",
       "blog_slug": "15-minute-teriyaki-salmon-bowls",
       "scheduled_date": "2026-03-02",
       "scheduled_slot": "afternoon",
-      "image_source": "template",
-      "image_id": "",
+      "image_source": "unsplash",
+      "image_id": "unsplash:0CFIC4hgZ8g",
       "pillar": null,
       "pin_type": "secondary",
       "template": "listicle-pin",
@@ -850,13 +940,23 @@
       "treatment_number": 1,
       "source_post_id": "W9-P06",
       "funnel_layer": "consideration",
-      "image_quality_score": null,
+      "image_quality_score": 8.5,
       "image_retries": 0,
       "image_low_confidence": false,
       "image_source_original": "template",
       "image_quality_issues": [],
       "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-22.png",
-      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-22.png"
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-22.png",
+      "_regen_history": [
+        {
+          "regen_type": "regen_image",
+          "feedback": "this should be a stock image not a template",
+          "timestamp": "2026-02-23T21:42:59.340631",
+          "previous_score": null,
+          "previous_image_source": "template",
+          "previous_title": "15 Minute Meals — Quick Weeknight Dinners When Time is Short"
+        }
+      ]
     },
     {
       "pin_id": "W9-23",
@@ -868,15 +968,15 @@
         "sub_text": null
       },
       "image_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/pins/W9-23.png",
-      "hero_image_path": null,
+      "hero_image_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/pins/W9-23-hero.jpg",
       "board_name": "Family Dinner Ideas Even Picky Eaters Love",
       "board_id": "",
       "link": "https://goslated.com/blog/creamy-tuscan-chicken-pasta",
       "blog_slug": "creamy-tuscan-chicken-pasta",
       "scheduled_date": "2026-03-02",
       "scheduled_slot": "evening-1",
-      "image_source": "template",
-      "image_id": "",
+      "image_source": "unsplash",
+      "image_id": "unsplash:PpmLfADlCmA",
       "pillar": null,
       "pin_type": "secondary",
       "template": "listicle-pin",
@@ -889,13 +989,23 @@
       "treatment_number": 1,
       "source_post_id": "W9-P07",
       "funnel_layer": "discovery",
-      "image_quality_score": null,
+      "image_quality_score": 8.5,
       "image_retries": 0,
       "image_low_confidence": false,
       "image_source_original": "template",
       "image_quality_issues": [],
       "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-23.png",
-      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-23.png"
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-23.png",
+      "_regen_history": [
+        {
+          "regen_type": "regen_image",
+          "feedback": "this should be a stock image not a template",
+          "timestamp": "2026-02-23T21:43:17.756522",
+          "previous_score": null,
+          "previous_image_source": "template",
+          "previous_title": "Dinner Ideas for Family — Creamy Pasta Recipes Everyone Will Love"
+        }
+      ]
     },
     {
       "pin_id": "W9-24",
@@ -907,15 +1017,15 @@
         "sub_text": "Half the Cost, Full Control"
       },
       "image_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/pins/W9-24.png",
-      "hero_image_path": null,
+      "hero_image_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/pins/W9-24-hero.jpg",
       "board_name": "Better Than a Meal Kit",
       "board_id": "",
       "link": "https://goslated.com/blog/hellofresh-alternative-meal-planning",
       "blog_slug": "hellofresh-alternative-meal-planning",
       "scheduled_date": "2026-03-02",
       "scheduled_slot": "evening-2",
-      "image_source": "template",
-      "image_id": "",
+      "image_source": "pexels",
+      "image_id": "pexels:8581005",
       "pillar": null,
       "pin_type": "secondary",
       "template": "tip-pin",
@@ -928,13 +1038,23 @@
       "treatment_number": 1,
       "source_post_id": "W9-P08",
       "funnel_layer": "conversion",
-      "image_quality_score": null,
+      "image_quality_score": 7.5,
       "image_retries": 0,
       "image_low_confidence": false,
       "image_source_original": "template",
       "image_quality_issues": [],
       "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-24.png",
-      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-24.png"
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-24.png",
+      "_regen_history": [
+        {
+          "regen_type": "regen_image",
+          "feedback": "this should be a stock image not a template",
+          "timestamp": "2026-02-23T21:43:37.540522",
+          "previous_score": null,
+          "previous_image_source": "template",
+          "previous_title": "Meal Kit Alternative — Save Time and Money with This Better System"
+        }
+      ]
     },
     {
       "pin_id": "W9-25",
@@ -946,15 +1066,15 @@
         "sub_text": "Ready in 30 minutes"
       },
       "image_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/pins/W9-25.png",
-      "hero_image_path": null,
+      "hero_image_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/pins/W9-25-hero.jpg",
       "board_name": "Air Fryer & Instant Pot Dinner Recipes",
       "board_id": "",
       "link": "https://goslated.com/blog/air-fryer-honey-garlic-chicken-thighs",
       "blog_slug": "air-fryer-honey-garlic-chicken-thighs",
       "scheduled_date": "2026-03-03",
       "scheduled_slot": "morning",
-      "image_source": "template",
-      "image_id": "",
+      "image_source": "unsplash",
+      "image_id": "unsplash:jF89MwHjfvg",
       "pillar": null,
       "pin_type": "secondary",
       "template": "listicle-pin",
@@ -967,13 +1087,23 @@
       "treatment_number": 1,
       "source_post_id": "W9-P09",
       "funnel_layer": "consideration",
-      "image_quality_score": null,
+      "image_quality_score": 8.0,
       "image_retries": 0,
       "image_low_confidence": false,
       "image_source_original": "template",
       "image_quality_issues": [],
       "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-25.png",
-      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-25.png"
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-25.png",
+      "_regen_history": [
+        {
+          "regen_type": "regen_image",
+          "feedback": "this should be a stock image not a template",
+          "timestamp": "2026-02-23T21:43:52.338638",
+          "previous_score": null,
+          "previous_image_source": "template",
+          "previous_title": "Air Fryer Chicken Dinners Ready in 30 Minutes — 5 Easy Recipes for Busy Weeknights"
+        }
+      ]
     },
     {
       "pin_id": "W9-26",
@@ -985,15 +1115,15 @@
         "sub_text": "Fuel that lasts"
       },
       "image_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/pins/W9-26.png",
-      "hero_image_path": null,
+      "hero_image_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/pins/W9-26-hero.jpg",
       "board_name": "Healthy Family Dinner Recipes",
       "board_id": "",
       "link": "https://goslated.com/blog/high-protein-turkey-meatball-bowls",
       "blog_slug": "high-protein-turkey-meatball-bowls",
       "scheduled_date": "2026-03-03",
       "scheduled_slot": "afternoon",
-      "image_source": "template",
-      "image_id": "",
+      "image_source": "unsplash",
+      "image_id": "unsplash:9TogNg01qzI",
       "pillar": null,
       "pin_type": "secondary",
       "template": "tip-pin",
@@ -1006,13 +1136,23 @@
       "treatment_number": 1,
       "source_post_id": "W9-P10",
       "funnel_layer": "consideration",
-      "image_quality_score": null,
+      "image_quality_score": 9.0,
       "image_retries": 0,
       "image_low_confidence": false,
       "image_source_original": "template",
       "image_quality_issues": [],
       "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-26.png",
-      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-26.png"
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-26.png",
+      "_regen_history": [
+        {
+          "regen_type": "regen_image",
+          "feedback": "this should be a stock image not a template",
+          "timestamp": "2026-02-23T21:44:07.494277",
+          "previous_score": null,
+          "previous_image_source": "template",
+          "previous_title": "High Protein Dinner Recipes for Active Families — Quick Weeknight Meals That Fuel"
+        }
+      ]
     },
     {
       "pin_id": "W9-27",
@@ -1031,8 +1171,8 @@
       "blog_slug": "shrimp-avocado-tacos",
       "scheduled_date": "2026-03-03",
       "scheduled_slot": "evening-1",
-      "image_source": "unsplash",
-      "image_id": "unsplash:fPBuD_gPTiw",
+      "image_source": "pexels",
+      "image_id": "pexels:15057293",
       "pillar": null,
       "pin_type": "recipe-pull",
       "template": "recipe-pin",
@@ -1045,13 +1185,23 @@
       "treatment_number": 1,
       "source_post_id": "W9-P01",
       "funnel_layer": "discovery",
-      "image_quality_score": 6.5,
-      "image_retries": 0,
+      "image_quality_score": 8.0,
+      "image_retries": 1,
       "image_low_confidence": false,
       "image_source_original": "stock",
       "image_quality_issues": [],
       "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-27.png",
-      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-27.png"
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-27.png",
+      "_regen_history": [
+        {
+          "regen_type": "regen_image",
+          "feedback": "this is a picture of flowers. the recipe is pasta primavera with vegetables",
+          "timestamp": "2026-02-23T21:44:37.506957",
+          "previous_score": 6.5,
+          "previous_image_source": "unsplash",
+          "previous_title": "Spring Pasta Primavera — Light 30 Minute Dinner with Fresh Vegetables"
+        }
+      ]
     },
     {
       "pin_id": "W9-28",
