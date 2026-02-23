@@ -35,7 +35,9 @@
       "image_retries": 0,
       "image_low_confidence": false,
       "image_source_original": "stock",
-      "image_quality_issues": []
+      "image_quality_issues": [],
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-01.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-01.png"
     },
     {
       "pin_id": "W9-02",
@@ -72,7 +74,9 @@
       "image_retries": 0,
       "image_low_confidence": false,
       "image_source_original": "stock",
-      "image_quality_issues": []
+      "image_quality_issues": [],
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-02.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-02.png"
     },
     {
       "pin_id": "W9-03",
@@ -109,7 +113,9 @@
       "image_retries": 0,
       "image_low_confidence": false,
       "image_source_original": "stock",
-      "image_quality_issues": []
+      "image_quality_issues": [],
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-03.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-03.png"
     },
     {
       "pin_id": "W9-04",
@@ -146,7 +152,9 @@
       "image_retries": 0,
       "image_low_confidence": false,
       "image_source_original": "stock",
-      "image_quality_issues": []
+      "image_quality_issues": [],
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-04.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-04.png"
     },
     {
       "pin_id": "W9-05",
@@ -183,7 +191,9 @@
       "image_retries": 0,
       "image_low_confidence": false,
       "image_source_original": "stock",
-      "image_quality_issues": []
+      "image_quality_issues": [],
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-05.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-05.png"
     },
     {
       "pin_id": "W9-06",
@@ -220,7 +230,9 @@
       "image_retries": 0,
       "image_low_confidence": false,
       "image_source_original": "stock",
-      "image_quality_issues": []
+      "image_quality_issues": [],
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-06.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-06.png"
     },
     {
       "pin_id": "W9-07",
@@ -257,7 +269,9 @@
       "image_retries": 0,
       "image_low_confidence": false,
       "image_source_original": "stock",
-      "image_quality_issues": []
+      "image_quality_issues": [],
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-07.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-07.png"
     },
     {
       "pin_id": "W9-08",
@@ -294,7 +308,9 @@
       "image_retries": 0,
       "image_low_confidence": false,
       "image_source_original": "stock",
-      "image_quality_issues": []
+      "image_quality_issues": [],
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-08.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-08.png"
     },
     {
       "pin_id": "W9-09",
@@ -331,7 +347,9 @@
       "image_retries": 0,
       "image_low_confidence": false,
       "image_source_original": "stock",
-      "image_quality_issues": []
+      "image_quality_issues": [],
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-09.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-09.png"
     },
     {
       "pin_id": "W9-10",
@@ -368,7 +386,9 @@
       "image_retries": 0,
       "image_low_confidence": false,
       "image_source_original": "template",
-      "image_quality_issues": []
+      "image_quality_issues": [],
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-10.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-10.png"
     },
     {
       "pin_id": "W9-11",
@@ -405,7 +425,9 @@
       "image_retries": 0,
       "image_low_confidence": false,
       "image_source_original": "stock",
-      "image_quality_issues": []
+      "image_quality_issues": [],
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-11.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-11.png"
     },
     {
       "pin_id": "W9-12",
@@ -442,7 +464,9 @@
       "image_retries": 0,
       "image_low_confidence": false,
       "image_source_original": "stock",
-      "image_quality_issues": []
+      "image_quality_issues": [],
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-12.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-12.png"
     },
     {
       "pin_id": "W9-13",
@@ -479,7 +503,9 @@
       "image_retries": 0,
       "image_low_confidence": false,
       "image_source_original": "stock",
-      "image_quality_issues": []
+      "image_quality_issues": [],
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-13.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-13.png"
     },
     {
       "pin_id": "W9-14",
@@ -516,7 +542,9 @@
       "image_retries": 0,
       "image_low_confidence": false,
       "image_source_original": "template",
-      "image_quality_issues": []
+      "image_quality_issues": [],
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-14.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-14.png"
     },
     {
       "pin_id": "W9-15",
@@ -553,7 +581,9 @@
       "image_retries": 0,
       "image_low_confidence": false,
       "image_source_original": "stock",
-      "image_quality_issues": []
+      "image_quality_issues": [],
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-15.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-15.png"
     },
     {
       "pin_id": "W9-16",
@@ -590,7 +620,9 @@
       "image_retries": 0,
       "image_low_confidence": false,
       "image_source_original": "stock",
-      "image_quality_issues": []
+      "image_quality_issues": [],
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-16.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-16.png"
     },
     {
       "pin_id": "W9-17",
@@ -627,7 +659,9 @@
       "image_retries": 0,
       "image_low_confidence": false,
       "image_source_original": "stock",
-      "image_quality_issues": []
+      "image_quality_issues": [],
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-17.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-17.png"
     },
     {
       "pin_id": "W9-18",
@@ -664,7 +698,9 @@
       "image_retries": 0,
       "image_low_confidence": false,
       "image_source_original": "stock",
-      "image_quality_issues": []
+      "image_quality_issues": [],
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-18.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-18.png"
     },
     {
       "pin_id": "W9-19",
@@ -701,7 +737,9 @@
       "image_retries": 0,
       "image_low_confidence": false,
       "image_source_original": "template",
-      "image_quality_issues": []
+      "image_quality_issues": [],
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-19.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-19.png"
     },
     {
       "pin_id": "W9-20",
@@ -738,7 +776,9 @@
       "image_retries": 0,
       "image_low_confidence": false,
       "image_source_original": "template",
-      "image_quality_issues": []
+      "image_quality_issues": [],
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-20.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-20.png"
     },
     {
       "pin_id": "W9-21",
@@ -775,7 +815,9 @@
       "image_retries": 0,
       "image_low_confidence": false,
       "image_source_original": "template",
-      "image_quality_issues": []
+      "image_quality_issues": [],
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-21.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-21.png"
     },
     {
       "pin_id": "W9-22",
@@ -812,7 +854,9 @@
       "image_retries": 0,
       "image_low_confidence": false,
       "image_source_original": "template",
-      "image_quality_issues": []
+      "image_quality_issues": [],
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-22.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-22.png"
     },
     {
       "pin_id": "W9-23",
@@ -849,7 +893,9 @@
       "image_retries": 0,
       "image_low_confidence": false,
       "image_source_original": "template",
-      "image_quality_issues": []
+      "image_quality_issues": [],
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-23.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-23.png"
     },
     {
       "pin_id": "W9-24",
@@ -886,7 +932,9 @@
       "image_retries": 0,
       "image_low_confidence": false,
       "image_source_original": "template",
-      "image_quality_issues": []
+      "image_quality_issues": [],
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-24.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-24.png"
     },
     {
       "pin_id": "W9-25",
@@ -923,7 +971,9 @@
       "image_retries": 0,
       "image_low_confidence": false,
       "image_source_original": "template",
-      "image_quality_issues": []
+      "image_quality_issues": [],
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-25.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-25.png"
     },
     {
       "pin_id": "W9-26",
@@ -960,7 +1010,9 @@
       "image_retries": 0,
       "image_low_confidence": false,
       "image_source_original": "template",
-      "image_quality_issues": []
+      "image_quality_issues": [],
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-26.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-26.png"
     },
     {
       "pin_id": "W9-27",
@@ -997,7 +1049,9 @@
       "image_retries": 0,
       "image_low_confidence": false,
       "image_source_original": "stock",
-      "image_quality_issues": []
+      "image_quality_issues": [],
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-27.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-27.png"
     },
     {
       "pin_id": "W9-28",
@@ -1034,7 +1088,9 @@
       "image_retries": 0,
       "image_low_confidence": false,
       "image_source_original": "template",
-      "image_quality_issues": []
+      "image_quality_issues": [],
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-28.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W9-28.png"
     }
   ],
   "failures": [],
