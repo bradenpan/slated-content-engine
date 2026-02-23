@@ -1,47 +1,47 @@
 {
-  "W8-P01": {
-    "slug": "lemon-basil-chicken-zucchini-pasta",
-    "title": "This Week's Family Dinner Plan — 5 Light Spring Dinners Under 30 Minutes",
-    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/lemon-basil-chicken-zucchini-pasta.mdx",
+  "W9-P01": {
+    "slug": "shrimp-avocado-tacos",
+    "title": "This Week's Family Dinner Plan — 5 Fresh Spring Dinners Under 30 Minutes",
+    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/shrimp-avocado-tacos.mdx",
     "pillar": 1,
     "content_type": "weekly-plan",
-    "hero_image": "/assets/blog/weekly-plan-fresh-spring-dinners-under-30-minutes.jpg",
+    "hero_image": "/assets/blog/weekly-plan-spring-dinners-under-30-minutes.jpg",
     "status": "success",
     "error": null
   },
-  "W8-P02": {
-    "slug": "teriyaki-salmon-steamed-rice",
-    "title": "This Week's Family Dinner Plan — 5 Easy Dinners Everyone Will Eat",
-    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/teriyaki-salmon-steamed-rice.mdx",
+  "W9-P02": {
+    "slug": "beef-broccoli-stir-fry",
+    "title": "This Week's Family Dinner Plan — 5 Dinners Everyone Will Eat",
+    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/beef-broccoli-stir-fry.mdx",
     "pillar": 1,
     "content_type": "weekly-plan",
-    "hero_image": "/assets/blog/weekly-plan-5-easy-family-dinners.jpg",
+    "hero_image": "/assets/blog/weekly-plan-5-dinners-everyone-will-eat.jpg",
     "status": "success",
     "error": null
   },
-  "W8-P03": {
-    "slug": "hidden-veggie-chicken-parmesan-kid-approved",
-    "title": "Hidden Veggie Chicken Parmesan — Kid-Approved Recipe",
-    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/hidden-veggie-chicken-parmesan-kid-approved.mdx",
+  "W9-P03": {
+    "slug": "hidden-veggie-mac-and-cheese-kids-love",
+    "title": "Hidden Veggie Mac and Cheese Kids Actually Love",
+    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/hidden-veggie-mac-and-cheese-kids-love.mdx",
     "pillar": 2,
     "content_type": "recipe",
-    "hero_image": "/assets/blog/hidden-veggie-chicken-parmesan-kid-approved.jpg",
+    "hero_image": "/assets/blog/hidden-veggie-mac-and-cheese-kids-love.jpg",
     "status": "success",
     "error": null
   },
-  "W8-P04": {
-    "slug": "how-to-get-family-to-agree-on-dinner-before-cooking",
-    "title": "How to Get Your Family to Agree on Dinner Before You Cook",
-    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/how-to-get-family-to-agree-on-dinner-before-cooking.mdx",
+  "W9-P04": {
+    "slug": "meals-for-picky-families-agreement-strategy",
+    "title": "How to Get Your Family to Agree on Dinner Before You Cook (No More Last-Minute Arguments)",
+    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/meals-for-picky-families-agreement-strategy.mdx",
     "pillar": 2,
     "content_type": "guide",
-    "hero_image": "/assets/blog/how-to-get-family-to-agree-on-dinner-before-cooking.jpg",
+    "hero_image": "/assets/blog/meals-for-picky-families-agreement-strategy.jpg",
     "status": "success",
     "error": null
   },
-  "W8-P05": {
+  "W9-P05": {
     "slug": "one-pan-lemon-herb-chicken-spring-vegetables",
-    "title": "One-Pan Lemon Herb Chicken with Spring Vegetables - Easy 30-Minute Dinner",
+    "title": "One-Pan Lemon Herb Chicken with Spring Vegetables - Easy Dinner Ideas",
     "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/one-pan-lemon-herb-chicken-spring-vegetables.mdx",
     "pillar": 3,
     "content_type": "recipe",
@@ -49,53 +49,53 @@
     "status": "success",
     "error": null
   },
-  "W8-P06": {
-    "slug": "15-minute-shrimp-asparagus-stir-fry",
-    "title": "15-Minute Shrimp and Asparagus Stir Fry - Quick Weeknight Dinner",
-    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/15-minute-shrimp-asparagus-stir-fry.mdx",
+  "W9-P06": {
+    "slug": "15-minute-teriyaki-salmon-bowls",
+    "title": "15-Minute Teriyaki Salmon Bowls for Quick Weeknight Dinners",
+    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/15-minute-teriyaki-salmon-bowls.mdx",
     "pillar": 3,
     "content_type": "recipe",
-    "hero_image": "/assets/blog/15-minute-shrimp-asparagus-stir-fry.jpg",
+    "hero_image": "/assets/blog/15-minute-teriyaki-salmon-bowls.jpg",
     "status": "success",
     "error": null
   },
-  "W8-P07": {
-    "slug": "creamy-tuscan-chicken-pasta-25-minutes",
-    "title": "Creamy Tuscan Chicken Pasta — Ready in 25 Minutes",
-    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/creamy-tuscan-chicken-pasta-25-minutes.mdx",
+  "W9-P07": {
+    "slug": "creamy-tuscan-chicken-pasta",
+    "title": "Creamy Tuscan Chicken Pasta - What to Cook for Dinner Tonight",
+    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/creamy-tuscan-chicken-pasta.mdx",
     "pillar": 3,
     "content_type": "recipe",
-    "hero_image": "/assets/blog/creamy-tuscan-chicken-pasta-25-minutes.jpg",
+    "hero_image": "/assets/blog/creamy-tuscan-chicken-pasta.jpg",
     "status": "success",
     "error": null
   },
-  "W8-P08": {
-    "slug": "hellofresh-alternative-better-meal-planning",
-    "title": "Why We Quit HelloFresh — And What We Do Instead",
-    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/hellofresh-alternative-better-meal-planning.mdx",
+  "W9-P08": {
+    "slug": "hellofresh-alternative-meal-planning",
+    "title": "Why We Quit HelloFresh and Started Planning Our Own Meals",
+    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/hellofresh-alternative-meal-planning.mdx",
     "pillar": 4,
     "content_type": "guide",
-    "hero_image": "/assets/blog/hellofresh-alternative-better-meal-planning.jpg",
+    "hero_image": "/assets/blog/hellofresh-alternative-meal-planning.jpg",
     "status": "success",
     "error": null
   },
-  "W8-P09": {
-    "slug": "air-fryer-honey-garlic-salmon",
-    "title": "Air Fryer Honey Garlic Salmon — 20-Minute High Protein Dinner",
-    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/air-fryer-honey-garlic-salmon.mdx",
+  "W9-P09": {
+    "slug": "air-fryer-honey-garlic-chicken-thighs",
+    "title": "Air Fryer Honey Garlic Chicken Thighs - Easy 30-Minute Dinner",
+    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/air-fryer-honey-garlic-chicken-thighs.mdx",
     "pillar": 5,
     "content_type": "recipe",
-    "hero_image": "/assets/blog/air-fryer-honey-garlic-salmon.jpg",
+    "hero_image": "/assets/blog/air-fryer-honey-garlic-chicken-thighs.jpg",
     "status": "success",
     "error": null
   },
-  "W8-P10": {
-    "slug": "instant-pot-gluten-free-chicken-rice-bowl",
-    "title": "Easy Instant Pot Gluten-Free Chicken and Rice Bowl",
-    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/instant-pot-gluten-free-chicken-rice-bowl.mdx",
+  "W9-P10": {
+    "slug": "high-protein-turkey-meatball-bowls",
+    "title": "High-Protein Turkey Meatball Bowls — 30 Minutes",
+    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/high-protein-turkey-meatball-bowls.mdx",
     "pillar": 5,
     "content_type": "recipe",
-    "hero_image": "/assets/blog/instant-pot-gluten-free-chicken-rice-bowl.jpg",
+    "hero_image": "/assets/blog/high-protein-turkey-meatball-bowls.jpg",
     "status": "success",
     "error": null
   }
