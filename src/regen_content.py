@@ -35,6 +35,7 @@ from src.generate_pin_content import (
     generate_copy_batch,
     load_used_image_ids,
     source_image,
+    _source_ai_image,
     _load_brand_voice,
     _load_keyword_targets,
     build_template_context,
@@ -340,6 +341,19 @@ def regen() -> None:
                 desc = f"{desc}\n\nAlt: {alt_text}"
             update_kwargs["description"] = desc
 
+        # Upload AI comparison image to GCS and write to column M
+        ai_hero_path_str = new_pin_data.get("_ai_hero_image_path")
+        if ai_hero_path_str:
+            ai_hero_path = Path(ai_hero_path_str)
+            if ai_hero_path.exists() and gcs.client:
+                try:
+                    ai_url = gcs.upload_image(ai_hero_path, remote_name=f"ai-heroes/{pin_id}-ai-hero.png")
+                    if ai_url:
+                        update_kwargs["ai_image"] = f'=IMAGE("{ai_url}")'
+                        new_pin_data["_ai_image_url"] = ai_url
+                except Exception as e:
+                    logger.warning("AI hero upload failed for %s (non-fatal): %s", pin_id, e)
+
         try:
             sheets.update_content_row(**update_kwargs)
         except Exception as e:
@@ -511,6 +525,24 @@ def _regen_item(
 
             if image_id:
                 used_image_ids.append(f"{image_source}:{image_id}")
+
+            # Generate AI comparison image for Tier 1/2 (if winner wasn't already AI)
+            if image_source != "ai_generated" and image_tier in ("stock", "Tier 1"):
+                try:
+                    ai_path, _, ai_id, ai_meta = _source_ai_image(
+                        pin_spec, claude, image_gen_api, PIN_OUTPUT_DIR,
+                        filename_prefix=f"{pin_id}-ai-hero",
+                    )
+                    new_pin_data["_ai_hero_image_path"] = str(ai_path) if ai_path else None
+                    new_pin_data["_ai_image_id"] = ai_id
+                    new_pin_data["_ai_image_score"] = ai_meta.get("image_quality_score")
+                except Exception as e:
+                    logger.warning("AI comparison image failed for %s (non-fatal): %s", pin_id, e)
+            elif image_source == "ai_generated":
+                # Winner IS AI — store same image as comparison
+                new_pin_data["_ai_hero_image_path"] = new_pin_data.get("hero_image_path")
+                new_pin_data["_ai_image_id"] = image_id
+                new_pin_data["_ai_image_score"] = quality_meta.get("image_quality_score")
 
     # --- Resolve hero image (download from GCS/Drive if not on disk) ---
     hero_path_str = new_pin_data.get("hero_image_path")
@@ -790,6 +822,7 @@ def _update_pin_results(
         "image_path", "hero_image_path", "image_source", "image_id",
         "image_quality_score", "image_retries", "image_low_confidence",
         "image_quality_issues", "_drive_image_url", "_drive_download_url",
+        "_ai_hero_image_path", "_ai_image_id", "_ai_image_score", "_ai_image_url",
     ]
     for key in keys_to_update:
         if key in new_pin_data:
