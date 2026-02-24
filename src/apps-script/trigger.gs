@@ -94,10 +94,11 @@ function allContentReviewed(sheet) {
   return true;
 }
 
-/** Convenience function for the optional "Run Regen" button drawing. */
+/** Convenience function for the "Run Regen" button drawing. */
 function runRegen() {
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Content Queue");
   if (sheet) {
     sheet.getRange("N1").setValue("run");
   }
+  triggerGitHubWorkflow("regen-content");
 }

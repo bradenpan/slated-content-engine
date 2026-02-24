@@ -886,3 +886,91 @@ All 5 fixes reviewed and approved. One cosmetic finding (docstring step numberin
 ### Status
 
 All 5 bug fixes implemented, reviewed, and ready for commit.
+
+---
+
+## Phase 8: Blog Image Regen Support + Regen Quality Investigation
+
+**Date:** 2026-02-24
+
+### Problem
+
+During W9 content review, 21 regen requests were submitted (6 blog, 15 pin):
+
+- **6 blog rows** (W9-P03, P04, P06, P08, P09, P10) — all rejected by the hard block in `regen_content.py:108-128`. Feedback like "this is a picture of vegetables, not mac and cheese" was ignored. Blog rows got reset to `pending_review` with "Blog regen not supported" — blocking reviewers from fixing bad hero images.
+- **15 pin rows** — all succeeded (new images sourced, rendered, uploaded to GCS, sheet updated). But some regenerated images were **worse** than the originals because of quality gaps in the selection process.
+
+Three changes needed:
+1. **Add blog image regen support** (the main blocker — implemented)
+2. **Improve regen image quality** (planned, not yet implemented)
+3. **Store image prompts for debugging** (planned, not yet implemented)
+
+### Why the Hardblock Existed
+
+The block was introduced in commit `b7572cb` (2026-02-22) alongside the initial regen feature. It was **deliberately technical**, not "not yet implemented":
+
+1. **Blog copy lives in MDX files** — pin copy is just JSON metadata, but blog text is persisted as `.mdx` on disk. The generic pin regen workflow couldn't handle blog text regeneration.
+2. **Hero images need slug-based filenames** — `blog_deployer.py` searches for heroes at `{slug}-hero{ext}`, not by pin_id. The pin regen path saves images by pin_id, which the deployer wouldn't find.
+3. **No downstream breakage risk** — the block wasn't protecting a fragile dependency. It was that the blog regen path needed custom handling (slug-based naming, raw photo upload instead of rendered pin).
+
+### Change 1: Blog Image Regen (Implemented)
+
+**File: `src/regen_content.py`**
+
+Added full blog image regen support:
+
+- **Load blog results** — `blog-generation-results.json` loaded alongside pin results, with a `blog_results_dirty` flag for conditional save
+- **Blog regen routing** — replaced the hard block with routing logic:
+  - `regen_copy` → rejected with clear message (blog text is MDX, not regenerable via this workflow)
+  - `regen` (both) → treated as `regen_image` with a note that copy regen isn't supported
+  - `regen_image` → calls new `_regen_blog_image()` function
+- **New `_regen_blog_image()` function:**
+  1. Builds pin_spec from blog_data (title, content_type, pillar, feedback)
+  2. Calls existing `source_image()` — reuses the stock/AI image sourcing pipeline
+  3. Saves hero with slug name (`{slug}-hero{ext}`) for `blog_deployer.py` compatibility
+  4. Uploads **raw hero photo** to GCS with timestamped name for cache-busting (`{post_id}-hero-{ts}{ext}`)
+  5. Key difference from pin regen: no Puppeteer rendering step — blog heroes are raw stock/AI photos, not rendered pins
+- **Blog results save** — updated entries saved back to `blog-generation-results.json` after the regen loop
+
+**Scoping verification:** Blog regen is scoped to the single flagged blog — `blog_data = blog_results.get(item_id)` gets only that entry, all mutations apply only to that entry, hero images use unique slug-based filenames, GCS uploads use unique `{post_id}-hero-{timestamp}` names. No cross-contamination possible.
+
+### Change 1B: Apps Script Button Fix
+
+**File: `src/apps-script/trigger.gs`**
+
+The `runRegen()` button function only set `N1="run"`. But `setValue()` from Apps Script does NOT fire installable onEdit triggers — only user edits do. So clicking the "Run Regen" button set the cell value but never dispatched the GitHub workflow.
+
+**Fix:** Added explicit `triggerGitHubWorkflow("regen-content")` call to `runRegen()`.
+
+### Changes 2 & 3: Planned (Not Yet Implemented)
+
+Detailed plans saved in `troubleshooting/regen-quality-improvements.md`. Root cause investigation found:
+
+**Regen image quality issues (Change 2):**
+- **Problem A:** Only the first of 3-5 Claude-generated search queries is used during regen. More queries = more candidates = better chance of finding a match.
+- **Problem B:** Regen feedback is buried in a raw JSON dump in the ranking prompt. The `image_rank.md` template has no mention of regen feedback. Claude Haiku scores purely on visual match, ignoring why the previous image was rejected.
+- **Problem C:** Claude Haiku misidentifies food subjects at thumbnail resolution (gave 8.0/10 to "lemon and vegetables in a bowl" for a lemon herb chicken pin).
+
+**Prompt storage (Change 3):**
+- Search queries and AI image prompts are never stored — only the image_id. Makes it impossible to debug why a search returned poor results or compare prompts across regens.
+
+### Code Review (Sr Staff Engineer)
+
+**Verdict: Ship it.** No critical bugs. API call signatures verified correct against `source_image()`, `gcs.upload_image()`, `sheets.update_content_row()`, and `blog_deployer.py` hero image discovery. All edge cases handled (missing blog data, missing slug, source_image failure, GCS unavailable). Blog results save logic correctly gated behind dirty flag.
+
+Low-severity warnings noted:
+- First blog regen defaults to stock sourcing (no `_hero_image_source` in original data) — safe fallback
+- No old GCS object cleanup (pin path does this) — negligible storage cost
+- If GCS unavailable, regen appears to succeed but thumbnail won't update
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `src/regen_content.py` | Blog regen routing, `_regen_blog_image()` function, blog results load/save |
+| `src/apps-script/trigger.gs` | `runRegen()` now directly dispatches workflow |
+| `troubleshooting/regen-quality-improvements.md` | **New** — Detailed plans for Changes 2 & 3 |
+
+### Status
+
+Change 1 implemented and reviewed. Changes 2 & 3 planned and documented, pending review.

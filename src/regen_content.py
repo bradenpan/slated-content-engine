@@ -10,12 +10,16 @@ Regen types:
 - regen_copy:  Re-generate copy + re-render pin with existing hero image.
 - regen:       Both — new image + new copy + full re-render.
 
+Blog rows support regen_image only (re-source hero photo, upload to GCS).
+Blog copy regen is not supported — blog text lives in MDX files.
+
 User feedback from column L is incorporated into the regeneration prompts
 so the new output addresses the reviewer's specific concerns.
 """
 
 import json
 import logging
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -90,6 +94,16 @@ def regen() -> None:
     generated_pins = pin_results.get("generated", [])
     pin_index = {p["pin_id"]: p for p in generated_pins if "pin_id" in p}
 
+    # Load blog generation results (for blog image regen)
+    blog_results_path = DATA_DIR / "blog-generation-results.json"
+    blog_results: dict = {}
+    blog_results_dirty = False
+    if blog_results_path.exists():
+        try:
+            blog_results = json.loads(blog_results_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError) as e:
+            logger.error("Failed to load blog generation results: %s", e)
+
     # Step 3: Process each regen request
     regen_results: list[dict] = []
 
@@ -105,28 +119,130 @@ def regen() -> None:
             regen_type, item_id, item_type, feedback[:80],
         )
 
-        # Blog items cannot be regenerated via this workflow
+        # --- Blog image regen ---
         if item_type == "blog":
-            logger.warning("Blog regen not supported for %s, resetting to pending_review", item_id)
+            # Blog copy regen is not supported (blog text is MDX)
+            if regen_type == "regen_copy":
+                logger.warning("Blog copy regen not supported for %s", item_id)
+                try:
+                    sheets.update_content_row(
+                        row_index=row_index,
+                        status="pending_review",
+                        notes="Blog copy regen not supported — only image regen available",
+                        feedback="",
+                    )
+                except Exception as e:
+                    logger.error("Failed to update blog row %s: %s", item_id, e)
+                regen_results.append({
+                    "pin_id": item_id,
+                    "type": item_type,
+                    "regen_type": regen_type,
+                    "old_score": None,
+                    "new_score": None,
+                    "error": "Blog copy regen not supported",
+                })
+                continue
+
+            # For "regen" (both), treat as regen_image with a note
+            effective_regen_type = "regen_image"
+
+            blog_data = blog_results.get(item_id)
+            if not blog_data:
+                logger.warning("Blog data not found for %s in blog-generation-results.json", item_id)
+                try:
+                    sheets.update_content_row(
+                        row_index=row_index,
+                        status="pending_review",
+                        notes="Regen failed — blog data not found in results JSON",
+                        feedback="",
+                    )
+                except Exception:
+                    pass
+                regen_results.append({
+                    "pin_id": item_id,
+                    "type": item_type,
+                    "regen_type": regen_type,
+                    "old_score": None,
+                    "new_score": None,
+                    "error": "Blog data not found",
+                })
+                continue
+
             try:
-                sheets.update_content_row(
-                    row_index=row_index,
-                    status="pending_review",
-                    notes="Blog regen not supported — approve or reject manually",
-                    feedback="",
+                blog_result = _regen_blog_image(
+                    blog_data=blog_data,
+                    post_id=item_id,
+                    feedback=feedback,
+                    claude=claude,
+                    stock_api=stock_api,
+                    image_gen_api=image_gen_api,
+                    gcs=gcs,
+                    used_image_ids=used_image_ids,
                 )
             except Exception as e:
-                logger.error("Failed to reset blog row %s: %s", item_id, e)
+                logger.error("Failed to regenerate blog image for %s: %s", item_id, e)
+                try:
+                    sheets.update_content_row(
+                        row_index=row_index,
+                        status="pending_review",
+                        notes=f"Blog regen failed — {str(e)[:100]}",
+                        feedback="",
+                    )
+                except Exception:
+                    pass
+                regen_results.append({
+                    "pin_id": item_id,
+                    "type": item_type,
+                    "regen_type": effective_regen_type,
+                    "old_score": None,
+                    "new_score": None,
+                    "error": str(e)[:200],
+                })
+                continue
+
+            new_image_url = blog_result.get("image_url")
+            new_score = blog_result.get("quality_score")
+
+            # Update blog_results in-place for later save
+            if blog_result.get("image_source"):
+                blog_data["_hero_image_source"] = blog_result["image_source"]
+                blog_data["_hero_image_id"] = blog_result.get("image_id", "")
+                blog_data["_hero_quality_score"] = new_score
+                blog_data["_hero_regen_feedback"] = feedback
+                blog_data["_hero_regen_timestamp"] = datetime.now().isoformat()
+                blog_results_dirty = True
+
+            # Update Content Queue row
+            update_kwargs: dict = {
+                "row_index": row_index,
+                "status": "pending_review",
+                "feedback": "",
+            }
+            if new_score is not None:
+                update_kwargs["notes"] = f"Blog regen {new_score:.1f}"
+            else:
+                update_kwargs["notes"] = "Blog regen"
+            if regen_type == "regen":
+                update_kwargs["notes"] += " (image only — blog copy regen N/A)"
+
+            if new_image_url:
+                update_kwargs["thumbnail"] = f'=IMAGE("{new_image_url}")'
+
+            try:
+                sheets.update_content_row(**update_kwargs)
+            except Exception as e:
+                logger.error("Failed to update Sheet row for blog %s: %s", item_id, e)
+
             regen_results.append({
                 "pin_id": item_id,
                 "type": item_type,
-                "regen_type": regen_type,
+                "regen_type": effective_regen_type,
                 "old_score": None,
-                "new_score": None,
-                "error": "Blog regen not supported",
+                "new_score": new_score,
             })
             continue
 
+        # --- Pin regen ---
         pin_data = pin_index.get(item_id)
         if not pin_data:
             logger.warning(
@@ -252,6 +368,17 @@ def regen() -> None:
         logger.info("Saved updated pin generation results")
     except OSError as e:
         logger.error("Failed to save pin generation results: %s", e)
+
+    # Save updated blog results (if any blog regens ran)
+    if blog_results_dirty:
+        try:
+            blog_results_path.write_text(
+                json.dumps(blog_results, indent=2, ensure_ascii=False),
+                encoding="utf-8",
+            )
+            logger.info("Saved updated blog generation results")
+        except OSError as e:
+            logger.error("Failed to save blog generation results: %s", e)
 
     # Step 7: Reset trigger and notify
     try:
@@ -529,6 +656,107 @@ def _extract_drive_file_id(drive_url: str) -> str:
         return file_id
     except (IndexError, ValueError):
         return ""
+
+
+def _regen_blog_image(
+    blog_data: dict,
+    post_id: str,
+    feedback: str,
+    claude: ClaudeAPI,
+    stock_api: ImageStockAPI,
+    image_gen_api: ImageGenAPI,
+    gcs: GcsAPI,
+    used_image_ids: list[str],
+) -> dict:
+    """
+    Regenerate the hero image for a blog post.
+
+    Blog images are raw stock/AI photos (not rendered through pin templates).
+    The hero is saved with a slug-based filename so blog_deployer.py can
+    find it at deploy time.
+
+    Returns:
+        dict with "image_url" (GCS public URL), "quality_score", "image_source",
+        "image_id".  image_url is None if upload failed.
+    """
+    slug = blog_data.get("slug", "")
+    title = blog_data.get("title", "")
+
+    if not slug:
+        raise ValueError(f"Blog {post_id} has no slug in blog-generation-results.json")
+
+    logger.info("Regenerating blog hero image for %s (slug=%s)", post_id, slug)
+
+    # Build a pin_spec-like dict for source_image()
+    pin_spec = {
+        "pin_id": post_id,
+        "pin_topic": title,
+        "content_type": blog_data.get("content_type", ""),
+        "pillar": blog_data.get("pillar"),
+        "primary_keyword": title,  # Use title as primary keyword for blog heroes
+        "pin_template": "recipe-pin",  # Default template context for image search
+    }
+
+    if feedback:
+        pin_spec["_regen_feedback"] = feedback
+
+    # Determine image tier from previous source, defaulting to stock
+    prev_source = blog_data.get("_hero_image_source", "stock")
+    if prev_source in ("unsplash", "pexels", "stock"):
+        image_tier = "stock"
+    elif prev_source == "ai_generated":
+        image_tier = "ai"
+    else:
+        image_tier = "stock"
+
+    PIN_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+    image_path, image_source, image_id, quality_meta = source_image(
+        pin_spec=pin_spec,
+        image_tier=image_tier,
+        claude=claude,
+        stock_api=stock_api,
+        image_gen_api=image_gen_api,
+        used_image_ids=used_image_ids,
+        output_dir=PIN_OUTPUT_DIR,
+    )
+
+    result: dict = {
+        "image_url": None,
+        "quality_score": quality_meta.get("image_quality_score"),
+        "image_source": image_source,
+        "image_id": image_id,
+    }
+
+    if not image_path:
+        logger.error("Image sourcing failed for blog %s — no image returned", post_id)
+        return result
+
+    # Save hero with slug name so blog_deployer.py can find it
+    slug_hero = PIN_OUTPUT_DIR / f"{slug}-hero{Path(image_path).suffix}"
+    if str(image_path) != str(slug_hero):
+        import shutil
+        shutil.copy2(image_path, slug_hero)
+        logger.info("Saved blog hero as %s", slug_hero.name)
+
+    if image_id:
+        used_image_ids.append(f"{image_source}:{image_id}")
+
+    # Upload the raw hero image to GCS (not a rendered pin)
+    # Use a timestamped name to bust Google Sheets =IMAGE() cache
+    if gcs.client:
+        ts = int(time.time())
+        remote_name = f"{post_id}-hero-{ts}{Path(image_path).suffix}"
+        image_url = gcs.upload_image(image_path, remote_name=remote_name)
+        if image_url:
+            result["image_url"] = image_url
+            logger.info("Uploaded blog hero %s to GCS: %s", post_id, image_url)
+        else:
+            logger.error("GCS upload failed for blog hero %s", post_id)
+    else:
+        logger.warning("GCS client not available, cannot upload blog hero for %s", post_id)
+
+    return result
 
 
 def _update_pin_results(
