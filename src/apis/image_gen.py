@@ -5,7 +5,7 @@ Tier 2 image source for the pipeline. Used for custom compositions,
 lifestyle scenes, or when stock photography doesn't have what's needed.
 
 Supports:
-- OpenAI gpt-image-1 (DALL-E) via OpenAI API
+- OpenAI gpt-image-1.5 via OpenAI API
 - Flux Pro via Replicate API
 
 Cost: ~$0.03-0.08 per image
@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 # Cost per image (approximate, for tracking)
 COST_PER_IMAGE = {
-    "openai": 0.08,    # gpt-image-1 at 1024x1536
+    "openai": 0.05,    # gpt-image-1.5 at 1024x1536 medium quality
     "replicate": 0.05,  # Flux Pro approximate
 }
 
@@ -281,11 +281,11 @@ class ImageGenAPI:
                 "Content-Type": "application/json",
             },
             json={
-                "model": "gpt-image-1",
+                "model": "gpt-image-1.5",
                 "prompt": prompt,
                 "n": 1,
                 "size": size_str,
-                "quality": "high",
+                "quality": "medium",
             },
             timeout=120,
         )

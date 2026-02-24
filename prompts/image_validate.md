@@ -56,6 +56,14 @@ Evaluate the provided AI-generated image for quality and suitability as a hero i
 - Composition works with side panel or overlay text
 - Not too literal or cliché
 
+### Regen-Specific Validation
+If a `_regen_feedback` field is present in the PIN_SPEC above, it means the previous image was rejected by a human reviewer. In addition to the standard criteria:
+
+1. **Read the feedback carefully.** It describes what was wrong with the previous image.
+2. **Check if the new image addresses the complaint.** If feedback said "wrong food — this is pasta not chicken," verify the image shows the correct food subject.
+3. **Penalize repeated failures.** If the new image exhibits the same defect described in the feedback, score 1-3 regardless of other qualities.
+4. **Note in your feedback** whether the reviewer's complaint was addressed or not.
+
 ---
 ## SCORING SCALE
 

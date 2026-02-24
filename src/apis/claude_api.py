@@ -411,6 +411,12 @@ class ClaudeAPI:
                 "For food: prefer overhead/flat-lay compositions, warm lighting, rustic surfaces."
             )
 
+        subject_hint = pin_spec.get("_image_subject_hint", "")
+        if subject_hint:
+            system_msg += (
+                f" The image should depict: {subject_hint}."
+            )
+
         if regen_feedback:
             system_msg += (
                 f" IMPORTANT: The previous image was rejected by the reviewer with this "

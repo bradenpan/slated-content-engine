@@ -126,6 +126,13 @@ def generate_pin_content(
                 failures.append({"pin_id": pin_id, "error": "No copy generated"})
                 continue
 
+            # Add alt_text visual description for image sourcing
+            alt_text = pin_copy.get("alt_text", "")
+            if alt_text:
+                # First sentence is the visual description; second is SEO keywords
+                visual_desc = alt_text.split(".")[0].strip()
+                pin_spec["_image_subject_hint"] = visual_desc
+
             # Determine image source tier
             image_tier = pin_spec.get("image_source_tier", "stock")
 
@@ -219,6 +226,10 @@ def generate_pin_content(
                 "image_low_confidence": quality_meta.get("image_low_confidence", False),
                 "image_source_original": quality_meta.get("image_source_original", image_source),
                 "image_quality_issues": quality_meta.get("image_quality_issues", []),
+                # AI comparison image (for side-by-side review in Content Queue)
+                "_ai_hero_image_path": quality_meta.get("_ai_hero_image_path"),
+                "_ai_image_id": quality_meta.get("_ai_image_id"),
+                "_ai_image_score": quality_meta.get("_ai_image_score"),
             }
 
             generated_pins.append(pin_data)
@@ -678,20 +689,49 @@ def _source_pin_image(
     output_dir: Path,
 ) -> tuple[Optional[Path], str, str, dict]:
     """
-    Source an image for a pin, dispatching to the appropriate tier.
+    Source an image for a pin, always generating AI alongside stock search
+    for Tier 1/2 pins so the user can compare both in the Content Queue.
 
     Returns:
         tuple: (image_path, image_source, image_id, quality_meta)
     """
-    return source_image(
-        pin_spec=pin_spec,
-        image_tier=image_tier,
-        claude=claude,
-        stock_api=stock_api,
-        image_gen_api=image_gen_api,
-        used_image_ids=used_image_ids,
-        output_dir=output_dir,
+    if image_tier in ("template", "Tier 3"):
+        # Skip AI generation for template-only pins
+        return source_image(
+            pin_spec=pin_spec, image_tier=image_tier, claude=claude,
+            stock_api=stock_api, image_gen_api=image_gen_api,
+            used_image_ids=used_image_ids, output_dir=output_dir,
+        )
+
+    # For Tier 1/2 pins: run stock search as normal
+    winner_path, winner_source, winner_id, quality_meta = source_image(
+        pin_spec=pin_spec, image_tier=image_tier, claude=claude,
+        stock_api=stock_api, image_gen_api=image_gen_api,
+        used_image_ids=used_image_ids, output_dir=output_dir,
     )
+
+    # Always generate an AI image alongside (if winner wasn't already AI)
+    if winner_source != "ai_generated":
+        try:
+            pin_id = pin_spec.get("pin_id", "unknown")
+            ai_path, _, ai_id, ai_meta = _source_ai_image(
+                pin_spec, claude, image_gen_api, output_dir,
+                filename_prefix=f"{pin_id}-ai-hero",
+            )
+            # Store AI image data in quality_meta for later extraction
+            quality_meta["_ai_hero_image_path"] = str(ai_path) if ai_path else None
+            quality_meta["_ai_image_id"] = ai_id
+            quality_meta["_ai_image_score"] = ai_meta.get("image_quality_score")
+        except Exception as e:
+            logger.warning("AI image generation failed for %s (non-fatal): %s",
+                         pin_spec.get("pin_id"), e)
+    else:
+        # Winner IS AI — store same path as the AI comparison image
+        quality_meta["_ai_hero_image_path"] = str(winner_path) if winner_path else None
+        quality_meta["_ai_image_id"] = winner_id
+        quality_meta["_ai_image_score"] = quality_meta.get("image_quality_score")
+
+    return winner_path, winner_source, winner_id, quality_meta
 
 
 def _source_stock_image(
@@ -889,6 +929,7 @@ def _source_ai_image(
     image_gen_api: ImageGenAPI,
     output_dir: Path,
     quality_meta: Optional[dict] = None,
+    filename_prefix: Optional[str] = None,
 ) -> tuple[Optional[Path], str, str, dict]:
     """
     Source an image via AI generation (Tier 2) with quality validation.
@@ -906,6 +947,8 @@ def _source_ai_image(
         image_gen_api: Image generation API client.
         output_dir: Output directory for generated images.
         quality_meta: Optional pre-populated quality metadata (from stock fallback).
+        filename_prefix: Optional prefix for the output filename.
+                         Defaults to "{pin_id}-hero".
 
     Returns:
         tuple: (image_path, "ai_generated", prompt_hash, quality_meta)
@@ -944,7 +987,8 @@ def _source_ai_image(
     logger.info("AI image prompt for %s: '%s'", pin_id, image_prompt[:100])
 
     # Generate the image
-    image_filename = f"{pin_id}-hero.png"
+    prefix = filename_prefix or f"{pin_id}-hero"
+    image_filename = f"{prefix}.png"
     output_path = output_dir / image_filename
 
     generated_path = image_gen_api.generate(
@@ -976,7 +1020,7 @@ def _source_ai_image(
         else:
             modified_prompt = image_prompt
 
-        regen_filename = f"{pin_id}-hero-regen.png"
+        regen_filename = f"{prefix}-regen.png"
         regen_output_path = output_dir / regen_filename
 
         try:

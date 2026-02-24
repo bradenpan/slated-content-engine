@@ -75,6 +75,15 @@ def publish() -> None:
             logger.error("GCS upload failed: %s (%s)", e, type(e).__name__)
             pin_image_urls = {}
 
+    # Upload AI hero images for column M (GCS only)
+    ai_image_urls: dict[str, str] = {}
+    if gcs.client and generated_pins:
+        try:
+            ai_image_urls = gcs.upload_ai_hero_images(generated_pins, PIN_OUTPUT_DIR)
+            logger.info("Uploaded %d AI hero images to GCS", len(ai_image_urls))
+        except Exception as e:
+            logger.warning("AI hero image upload failed (non-critical): %s", e)
+
     # Fall back to Drive if GCS didn't produce results
     drive: DriveAPI | None = None
     if not pin_image_urls:
@@ -102,7 +111,7 @@ def publish() -> None:
 
     # Save image URLs back to pin-generation-results.json so the regen
     # workflow can download hero images on a fresh runner
-    if pin_image_urls:
+    if pin_image_urls or ai_image_urls:
         for pin in generated_pins:
             pid = pin.get("pin_id", "")
             if pid in pin_image_urls:
@@ -119,6 +128,8 @@ def publish() -> None:
                         pin["_drive_download_url"] = (
                             f"https://drive.google.com/uc?id={_fid}&export=download"
                         )
+            if pid in ai_image_urls:
+                pin["_ai_image_url"] = ai_image_urls[pid]
         try:
             pin_results_path.write_text(
                 json.dumps(pin_data, indent=2, ensure_ascii=False),
@@ -195,6 +206,7 @@ def publish() -> None:
             blog_image_urls=blog_image_urls,
             blog_previews=blog_previews,
             quality_gate_stats=quality_gate_stats,
+            ai_image_urls=ai_image_urls,
         )
 
         # Set row heights for rows with images so previews are visible
@@ -218,11 +230,12 @@ def publish() -> None:
                 height_px=200,
             )
 
-        # Write regen trigger cells: M1 = label, N1 = trigger value
+        # Write regen trigger cells: N1 = label, O1 = trigger value
+        # (Column M is now AI Image)
         try:
             sheets.sheets.values().update(
                 spreadsheetId=sheets.sheet_id,
-                range=f"'{TAB_CONTENT_QUEUE}'!M1:N1",
+                range=f"'{TAB_CONTENT_QUEUE}'!N1:O1",
                 valueInputOption="RAW",
                 body={"values": [["Regen \u2192", "idle"]]},
             ).execute()

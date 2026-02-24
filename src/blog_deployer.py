@@ -123,7 +123,8 @@ class BlogDeployer:
 
         approved_pins = [
             item for item in approvals
-            if item.get("type") == "pin" and item.get("status") == "approved"
+            if item.get("type") == "pin"
+            and item.get("status") in ("approved", "use_ai_image")
         ]
 
         logger.info(
@@ -259,7 +260,8 @@ class BlogDeployer:
         ]
         approved_pins = [
             item for item in approvals
-            if item.get("type") == "pin" and item.get("status") == "approved"
+            if item.get("type") == "pin"
+            and item.get("status") in ("approved", "use_ai_image")
         ]
 
         logger.info(
@@ -373,7 +375,8 @@ class BlogDeployer:
         ]
         approved_pins = [
             item for item in approvals
-            if item.get("type") == "pin" and item.get("status") == "approved"
+            if item.get("type") == "pin"
+            and item.get("status") in ("approved", "use_ai_image")
         ]
 
         # Step 3: Verify blog post URLs on production
@@ -417,6 +420,32 @@ class BlogDeployer:
                     )
         except Exception as e:
             logger.error("Failed to update Sheet with live URLs: %s", e)
+
+        # Step 4b: Process use_ai_image pins — swap AI hero into primary slot
+        use_ai_pins = [p for p in approved_pins if p.get("status") == "use_ai_image"]
+        if use_ai_pins:
+            # Load full pin data for swap processing
+            pin_results_path = DATA_DIR / "pin-generation-results.json"
+            full_pin_data = {}
+            if pin_results_path.exists():
+                try:
+                    pin_results = json.loads(pin_results_path.read_text(encoding="utf-8"))
+                    for pin in pin_results.get("generated", []):
+                        full_pin_data[pin["pin_id"]] = pin
+                except (json.JSONDecodeError, KeyError) as e:
+                    logger.warning("Could not load pin generation results for swap: %s", e)
+
+            if full_pin_data:
+                self._process_ai_image_swaps(use_ai_pins, full_pin_data)
+                # Save updated pin data back
+                try:
+                    pin_results_path.write_text(
+                        json.dumps(pin_results, indent=2, ensure_ascii=False),
+                        encoding="utf-8",
+                    )
+                    logger.info("Saved updated pin data after AI image swaps")
+                except OSError as e:
+                    logger.error("Failed to save pin data after swaps: %s", e)
 
         # Step 5: Create pin schedule
         if approved_pins:
@@ -710,6 +739,84 @@ class BlogDeployer:
         logger.info("Created pin schedule with %d pins at %s", len(schedule), schedule_path)
 
         return len(schedule)
+
+    def _process_ai_image_swaps(
+        self,
+        use_ai_pins: list[dict],
+        full_pin_data: dict,
+    ) -> None:
+        """
+        For pins marked use_ai_image, swap the AI hero image into the
+        primary slot, re-render the pin, and upload to GCS.
+
+        Args:
+            use_ai_pins: Approved pin items with status "use_ai_image".
+            full_pin_data: Dict of pin_id -> full pin data (modified in-place).
+        """
+        from src.pin_assembler import PinAssembler
+        from src.apis.gcs_api import GcsAPI
+
+        assembler = PinAssembler()
+        gcs = GcsAPI()
+
+        for pin_item in use_ai_pins:
+            pin_id = pin_item.get("id") or pin_item.get("pin_id", "")
+            pin_data = full_pin_data.get(pin_id, {})
+            ai_image_url = pin_data.get("_ai_image_url", "")
+
+            if not ai_image_url:
+                logger.warning("No AI image URL for %s, skipping swap", pin_id)
+                try:
+                    self.slack.notify(
+                        f"Warning: Pin {pin_id} was set to use_ai_image but no AI image "
+                        f"was available. This pin will use the original stock image instead.",
+                        level="warning",
+                    )
+                except Exception:
+                    pass
+                continue
+
+            try:
+                import requests
+
+                # Download AI hero image from GCS
+                ai_hero_path = GENERATED_PINS_DIR / f"{pin_id}-ai-hero.png"
+                response = requests.get(ai_image_url, timeout=30)
+                response.raise_for_status()
+                ai_hero_path.write_bytes(response.content)
+
+                # Re-render pin template with AI hero
+                template_type = pin_data.get("template", "recipe-pin")
+                text_overlay = pin_data.get("text_overlay", {})
+                headline = text_overlay.get("headline", "") if isinstance(text_overlay, dict) else str(text_overlay)
+                subtitle = text_overlay.get("sub_text", "") if isinstance(text_overlay, dict) else ""
+
+                rendered_path = assembler.assemble_pin(
+                    template_type=template_type,
+                    hero_image_path=ai_hero_path,
+                    headline=headline,
+                    subtitle=subtitle,
+                    variant=pin_data.get("treatment_number", 1),
+                    output_path=GENERATED_PINS_DIR / f"{pin_id}.png",
+                )
+
+                # Upload re-rendered pin to GCS
+                new_url = gcs.upload_single_image(
+                    rendered_path, f"{pin_id}.png"
+                )
+
+                # Update pin_data in-place
+                pin_data["hero_image_path"] = str(ai_hero_path)
+                pin_data["image_path"] = str(rendered_path)
+                pin_data["image_source"] = "ai_generated"
+                if new_url:
+                    pin_data["_drive_image_url"] = new_url
+                    pin_data["_drive_download_url"] = new_url
+
+                logger.info("Swapped AI image for pin %s", pin_id)
+
+            except Exception as e:
+                logger.error("Failed to swap AI image for pin %s: %s", pin_id, e)
 
     def _append_to_content_log(
         self,

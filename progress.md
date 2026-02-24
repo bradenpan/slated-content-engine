@@ -974,3 +974,83 @@ Low-severity warnings noted:
 ### Status
 
 Change 1 implemented and reviewed. Changes 2 & 3 planned and documented, pending review.
+
+---
+
+## Image Quality Improvement — Side-by-Side AI Comparison (2026-02-24)
+
+### Problem
+
+~55% of generated pins were rejected in the last batch. Root causes:
+1. Wrong food subjects in stock images (e.g., pasta photo for a chicken recipe)
+2. Broken scoring — images score 8-9 but are actually bad (Claude Haiku misidentifies food at thumbnail resolution)
+3. Expensive AI generation ($0.25/image due to gpt-image-1 at high quality + portrait)
+4. No way to compare stock vs AI side-by-side before approving
+
+### Solution
+
+Nine coordinated changes across the pipeline:
+
+1. **Cost reduction:** Switch from gpt-image-1 ($0.08-0.25) to gpt-image-1.5 medium ($0.05/image)
+2. **Always-on AI comparison:** For every Tier 1/2 pin, generate an AI image alongside the stock search winner — both appear in the Content Queue for side-by-side review
+3. **Better image targeting:** Use alt_text visual descriptions as subject hints for both stock search queries and AI image prompts
+4. **New sheet column:** Column M ("AI Image") shows the AI alternative thumbnail next to the stock winner in column I
+5. **New approval status:** `use_ai_image` — reviewer can pick the AI image instead of stock, triggering automatic swap during promotion
+6. **Apps Script update:** `use_ai_image` treated as terminal status (alongside approved/rejected) so deploy-to-preview fires correctly. Regen trigger shifted from N1/col14 to O1/col15 since column M is now AI Image
+7. **Regen feedback in validation:** `image_validate.md` prompt now explicitly checks whether regen feedback was addressed, penalizing repeated failures
+8. **GCS upload methods:** New `upload_ai_hero_images()` and `upload_single_image()` for AI hero image storage
+9. **AI image swap on promote:** When a pin has `use_ai_image` status, `blog_deployer.py` downloads the AI hero, re-renders the pin template with it, uploads to GCS, and updates pin-generation-results.json
+
+### Column Layout Change
+
+The Content Queue sheet column layout changed:
+
+| Column | Before | After |
+|--------|--------|-------|
+| A-L | ID through Feedback | Same (unchanged) |
+| M | Regen label ("Regen →") | **AI Image** (new) |
+| N | Regen trigger value | Regen label ("Regen →") |
+| O | — | Regen trigger value |
+
+**This requires updating the Apps Script in your Google Sheet** (see below).
+
+### Content Queue Statuses
+
+Pins in column J now support these statuses:
+- `pending_review` — Not yet reviewed
+- `approved` — Use the stock/current image as-is
+- `use_ai_image` — Swap in the AI image from column M before deploying
+- `rejected` — Don't publish this pin
+- `regen_image` / `regen_copy` — Request regeneration (with feedback in column L)
+
+All three (`approved`, `rejected`, `use_ai_image`) are terminal — once all rows are terminal, the deploy-to-preview workflow fires.
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `src/apis/image_gen.py` | Model → gpt-image-1.5, quality → medium, cost → $0.05 |
+| `src/generate_pin_content.py` | Always-gen AI image for Tier 1/2, alt_text injection, `_ai_hero_image_path`/`_ai_image_id`/`_ai_image_score` in pin_data, `filename_prefix` param on `_source_ai_image` |
+| `src/apis/claude_api.py` | `_image_subject_hint` appended to image prompt system message |
+| `src/apis/sheets_api.py` | `CQ_COL_AI_IMAGE=12`, header includes "AI Image", `write_content_queue` accepts `ai_image_urls`, `update_content_row` accepts `ai_image`, regen trigger N1→O1, read ranges A:L→A:M |
+| `src/apis/gcs_api.py` | `upload_ai_hero_images()` + `upload_single_image()` methods |
+| `src/publish_content_queue.py` | Upload AI heroes to GCS, pass `ai_image_urls` to sheet write, save `_ai_image_url` to pin results JSON, regen trigger cells M1:N1→N1:O1 |
+| `src/blog_deployer.py` | `use_ai_image` in all approved pin filters (deploy_approved, deploy_to_preview, promote), `_process_ai_image_swaps()` method |
+| `src/apps-script/trigger.gs` | `use_ai_image` in terminal statuses, regen trigger col 14→15, `runRegen()` N1→O1 |
+| `prompts/image_validate.md` | Regen-specific validation section (penalize repeated failures, check feedback addressed) |
+
+### Code Review Fixes (2026-02-24)
+
+Two independent Sr Staff Engineer code reviews identified 2 critical, 1 medium, and 2 minor issues. All fixed:
+
+| Fix | Severity | File | What |
+|-----|----------|------|------|
+| C1 | Critical | `.github/workflows/promote-and-schedule.yml` | Added Node.js 22 + Puppeteer install steps + `GCS_BUCKET_NAME` env var. Without this, `_process_ai_image_swaps()` silently fails because PinAssembler needs Puppeteer to render HTML→PNG. |
+| C2 | Critical | `src/blog_deployer.py` | Added Slack warning when `use_ai_image` pin has no AI URL available. Previously skipped silently — user would never know the swap didn't happen. |
+| MEDIUM-1 | Medium | `src/generate_pin_content.py` | Regen filename changed from `{pin_id}-hero-regen.png` to `{prefix}-regen.png`. Prevents filename collision between stock-flow and AI-flow regens. |
+| MEDIUM-2 | Minor | `src/apis/sheets_api.py` | Added `ai_image` param to `update_content_row()` docstring. |
+| M3 | Minor | `src/apis/sheets_api.py` | `read_content_approvals()` logging now counts `use_ai_image` in approved total. |
+
+### Status
+
+All 9 original changes + 5 review fixes implemented and verified (all Python files compile clean).
