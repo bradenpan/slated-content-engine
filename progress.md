@@ -1051,6 +1051,14 @@ Two independent Sr Staff Engineer code reviews identified 2 critical, 1 medium, 
 | MEDIUM-2 | Minor | `src/apis/sheets_api.py` | Added `ai_image` param to `update_content_row()` docstring. |
 | M3 | Minor | `src/apis/sheets_api.py` | `read_content_approvals()` logging now counts `use_ai_image` in approved total. |
 
+### Regen AI Comparison Fix (2026-02-24)
+
+Regen was calling `source_image()` (simple tier router, no AI comparison) instead of generating AI alongside stock. Fixed `src/regen_content.py`:
+- Import `_source_ai_image` from generate_pin_content
+- After primary image sourcing in `_regen_item()`, generate AI comparison image for Tier 1/2 pins via `_source_ai_image()`
+- Upload AI comparison to GCS and write `=IMAGE()` formula to column M via `update_content_row(ai_image=...)`
+- Persist `_ai_hero_image_path`, `_ai_image_id`, `_ai_image_score`, `_ai_image_url` in `_update_pin_results()`
+
 ### Status
 
-All 9 original changes + 5 review fixes implemented and verified (all Python files compile clean).
+All 9 original changes + 5 review fixes + regen AI comparison fix implemented and verified.
