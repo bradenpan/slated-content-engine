@@ -57,7 +57,12 @@
     "content_type": "recipe",
     "hero_image": "/assets/blog/15-minute-teriyaki-salmon-bowls.jpg",
     "status": "success",
-    "error": null
+    "error": null,
+    "_hero_image_source": "unsplash",
+    "_hero_image_id": "unsplash:jGlJNIFUDqE",
+    "_hero_quality_score": 7.5,
+    "_hero_regen_feedback": "this is sushi. generate image for salmon teriyaki bowls. That is a bowl with salmon, rice, and vegetables. no noodles.",
+    "_hero_regen_timestamp": "2026-02-24T19:41:54.788790"
   },
   "W9-P07": {
     "slug": "creamy-tuscan-chicken-pasta",
@@ -97,6 +102,11 @@
     "content_type": "recipe",
     "hero_image": "/assets/blog/high-protein-turkey-meatball-bowls.jpg",
     "status": "success",
-    "error": null
+    "error": null,
+    "_hero_image_source": "unsplash",
+    "_hero_image_id": "unsplash:vRMyLOFkrRc",
+    "_hero_quality_score": 8.5,
+    "_hero_regen_feedback": "this is just vegetables. this needs to be an image for turkey meatballs with vegetables and rice (or quinoa)",
+    "_hero_regen_timestamp": "2026-02-24T19:42:37.102685"
   }
 }
