@@ -229,6 +229,14 @@ def regen() -> None:
             if new_image_url:
                 update_kwargs["thumbnail"] = f'=IMAGE("{new_image_url}")'
 
+            # Write AI comparison image to column M
+            ai_image_url = blog_result.get("ai_image_url")
+            if ai_image_url:
+                update_kwargs["ai_image"] = f'=IMAGE("{ai_image_url}")'
+            elif new_image_url and blog_result.get("image_source") == "ai_generated":
+                # Winner IS AI — show it in the AI column too
+                update_kwargs["ai_image"] = f'=IMAGE("{new_image_url}")'
+
             try:
                 sheets.update_content_row(**update_kwargs)
             except Exception as e:
@@ -347,12 +355,12 @@ def regen() -> None:
             ai_hero_path = Path(ai_hero_path_str)
             if ai_hero_path.exists() and gcs.client:
                 try:
-                    ai_url = gcs.upload_image(ai_hero_path, remote_name=f"ai-heroes/{pin_id}-ai-hero.png")
+                    ai_url = gcs.upload_image(ai_hero_path, remote_name=f"ai-heroes/{item_id}-ai-hero.png")
                     if ai_url:
                         update_kwargs["ai_image"] = f'=IMAGE("{ai_url}")'
                         new_pin_data["_ai_image_url"] = ai_url
                 except Exception as e:
-                    logger.warning("AI hero upload failed for %s (non-fatal): %s", pin_id, e)
+                    logger.warning("AI hero upload failed for %s (non-fatal): %s", item_id, e)
 
         try:
             sheets.update_content_row(**update_kwargs)
@@ -527,7 +535,7 @@ def _regen_item(
                 used_image_ids.append(f"{image_source}:{image_id}")
 
             # Generate AI comparison image for Tier 1/2 (if winner wasn't already AI)
-            if image_source != "ai_generated" and image_tier in ("stock", "Tier 1"):
+            if image_source != "ai_generated" and image_tier == "stock":
                 try:
                     ai_path, _, ai_id, ai_meta = _source_ai_image(
                         pin_spec, claude, image_gen_api, PIN_OUTPUT_DIR,
@@ -755,6 +763,7 @@ def _regen_blog_image(
 
     result: dict = {
         "image_url": None,
+        "ai_image_url": None,
         "quality_score": quality_meta.get("image_quality_score"),
         "image_source": image_source,
         "image_id": image_id,
@@ -773,6 +782,24 @@ def _regen_blog_image(
 
     if image_id:
         used_image_ids.append(f"{image_source}:{image_id}")
+
+    # Generate AI comparison image (for side-by-side review in Content Queue)
+    if image_path and image_source != "ai_generated":
+        try:
+            ai_path, _, ai_id, ai_meta = _source_ai_image(
+                pin_spec, claude, image_gen_api, PIN_OUTPUT_DIR,
+                filename_prefix=f"{post_id}-ai-hero",
+            )
+            if ai_path and gcs.client:
+                ai_remote = f"ai-heroes/{post_id}-ai-hero.png"
+                ai_url = gcs.upload_image(ai_path, remote_name=ai_remote)
+                if ai_url:
+                    result["ai_image_url"] = ai_url
+        except Exception as e:
+            logger.warning("AI comparison image failed for blog %s (non-fatal): %s", post_id, e)
+    elif image_path and image_source == "ai_generated":
+        # Winner IS AI — it will become the comparison image after GCS upload below
+        pass
 
     # Upload the raw hero image to GCS (not a rendered pin)
     # Use a timestamped name to bust Google Sheets =IMAGE() cache

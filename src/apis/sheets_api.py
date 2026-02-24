@@ -284,6 +284,7 @@ class SheetsAPI:
         blog_previews: dict = None,
         quality_gate_stats: dict = None,
         ai_image_urls: dict = None,
+        blog_ai_image_urls: dict = None,
     ) -> None:
         """
         Write generated blog posts and pins to the "Content Queue" tab.
@@ -313,6 +314,7 @@ class SheetsAPI:
         blog_image_urls = blog_image_urls or {}
         blog_previews = blog_previews or {}
         ai_image_urls = ai_image_urls or {}
+        blog_ai_image_urls = blog_ai_image_urls or {}
 
         logger.info("Writing content queue: %d blog posts, %d pins...", len(blog_posts), len(pins))
 
@@ -344,7 +346,7 @@ class SheetsAPI:
                 "pending_review",
                 "",  # Notes
                 "",  # Feedback
-                "",  # AI Image (N/A for blogs)
+                f'=IMAGE("{blog_ai_image_urls[post_id]}")' if post_id in blog_ai_image_urls else "",
             ])
 
         # Pins

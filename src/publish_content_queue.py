@@ -139,6 +139,19 @@ def publish() -> None:
         except OSError as e:
             logger.error("Failed to save image URLs to pin results: %s", e)
 
+    # Build blog -> AI image mapping from pin data
+    # Each blog's hero image comes from its first associated pin, so reuse
+    # that pin's AI comparison image for the blog row in column M.
+    blog_ai_image_urls: dict[str, str] = {}
+    if ai_image_urls:
+        for pin in generated_pins:
+            source_post_id = pin.get("source_post_id", "")
+            pid = pin.get("pin_id", "")
+            if source_post_id and source_post_id not in blog_ai_image_urls and pid in ai_image_urls:
+                blog_ai_image_urls[source_post_id] = ai_image_urls[pid]
+        if blog_ai_image_urls:
+            logger.info("Mapped %d blog AI comparison images from associated pins", len(blog_ai_image_urls))
+
     # Upload blog hero images for Sheet preview
     if upload_backend == "gcs" and gcs.client and blog_results:
         try:
@@ -207,6 +220,7 @@ def publish() -> None:
             blog_previews=blog_previews,
             quality_gate_stats=quality_gate_stats,
             ai_image_urls=ai_image_urls,
+            blog_ai_image_urls=blog_ai_image_urls,
         )
 
         # Set row heights for rows with images so previews are visible

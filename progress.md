@@ -1062,3 +1062,77 @@ Regen was calling `source_image()` (simple tier router, no AI comparison) instea
 ### Status
 
 All 9 original changes + 5 review fixes + regen AI comparison fix implemented and verified.
+
+---
+
+## Phase 8.1: Blog AI Comparison Images + Regen Crash Fix
+
+**Date:** 2026-02-24
+
+### Problem
+
+The regen-content workflow crashed mid-cycle with:
+```
+NameError: name 'pin_id' is not defined (line 355)
+```
+
+The crash was caused by a variable name error (`pin_id` instead of `item_id`) in the AI hero upload section of `regen()`. This code was added in the regen AI comparison fix above but used the wrong variable name in the outer `regen()` scope.
+
+Beyond the crash, a full audit revealed that **blog posts never receive AI comparison images** — neither during initial content generation nor during regen. The user requirement is that both pins AND blog posts always show AI comparison images in column M of the Content Queue.
+
+### Root Cause Analysis
+
+Three gaps identified:
+
+1. **Crash bug (line 355):** `pin_id` referenced in `regen()` function scope where only `item_id` exists. Already fixed on disk but not committed/pushed to GitHub.
+
+2. **Blog AI images missing in initial publish:** `sheets_api.py:write_content_queue()` hardcoded `""` for blog rows' AI Image column. Blog hero images come from the first associated pin's hero image — that pin already has an AI comparison image, but it was never mapped to the blog row.
+
+3. **Blog AI images missing in regen:** `_regen_blog_image()` sourced new hero images but never called `_source_ai_image()` to generate an AI comparison. The `regen()` blog section never wrote to column M.
+
+### Fix 1: Crash bug (already on disk)
+
+Lines 350 and 355 of `regen_content.py` had `pin_id` changed to `item_id` in a previous session. Just needed committing.
+
+### Fix 2: Blog AI comparison in regen path
+
+**File: `src/regen_content.py`**
+
+**A) `_regen_blog_image()` — AI comparison generation after hero sourcing:**
+- Added `ai_image_url` field to result dict (initialized to `None`)
+- After hero image sourcing + slug copy + used_image_ids tracking, added AI comparison block:
+  - If winner is NOT `ai_generated`: calls `_source_ai_image()` with `{post_id}-ai-hero` prefix, uploads to GCS as `ai-heroes/{post_id}-ai-hero.png`, stores URL in `result["ai_image_url"]`
+  - If winner IS `ai_generated`: the hero image upload below will provide the URL (handled in caller)
+  - All AI generation is non-fatal — wrapped in try/except with warning log
+
+**B) `regen()` blog section — column M write:**
+- After building `update_kwargs`, reads `ai_image_url` from `blog_result`
+- If present, writes `=IMAGE("{ai_url}")` to column M via `update_kwargs["ai_image"]`
+- Special case: if image_source is `ai_generated` (winner IS AI), writes the hero URL to column M too
+
+### Fix 3: Blog AI comparison in initial publish path
+
+**File: `src/publish_content_queue.py`**
+- After uploading pin AI hero images, builds `blog_ai_image_urls` mapping by looking up each blog post's first associated pin (via `source_post_id`) and using that pin's AI image URL
+- Passes `blog_ai_image_urls` to `sheets.write_content_queue()`
+
+**File: `src/apis/sheets_api.py`**
+- `write_content_queue()` accepts new `blog_ai_image_urls` parameter
+- Blog row AI Image column (previously hardcoded `""`) now writes `=IMAGE("{url}")` if a mapping exists for the post_id
+
+### Fix 4: Dead code cleanup
+
+**File: `src/regen_content.py` line 530**
+- Changed `image_tier in ("stock", "Tier 1")` to `image_tier == "stock"` — `"Tier 1"` was dead code since `image_tier` is normalized to `"stock"` or `"ai"` at lines 497-503
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `src/regen_content.py` | AI comparison in `_regen_blog_image()`, column M write in blog regen section, dead code cleanup |
+| `src/publish_content_queue.py` | Build blog→AI image mapping from first associated pin, pass to sheets |
+| `src/apis/sheets_api.py` | Accept `blog_ai_image_urls` param, write to column M for blog rows |
+
+### Status
+
+All fixes implemented and compiled. Pending review.
