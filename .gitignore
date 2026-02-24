@@ -35,6 +35,8 @@ desktop.ini
 data/generated_posts/
 data/generated_pins/
 *.png
+!data/generated/pins/*-hero.png
+!data/generated/blog/*.png
 !templates/pins/shared/brand-elements/*.png
 
 # Node.js (Puppeteer)

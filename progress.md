@@ -1136,3 +1136,117 @@ Lines 350 and 355 of `regen_content.py` had `pin_id` changed to `item_id` in a p
 ### Status
 
 All fixes implemented and compiled. Pending review.
+
+---
+
+## Phase 8.2: Blog Hero Images Missing/Stale on Deploy
+
+**Date:** 2026-02-24
+
+### Problem
+
+Deploy-to-preview committed wrong blog hero images to goslated.com. Two root causes:
+
+1. **4 blog images missing entirely** — `*.png` in `.gitignore` (line 37) blocked all PNGs from git. Hero images saved as `.png` were silently excluded by `git add data/`.
+2. **Remaining blog images used originals instead of regenerated versions** — When regen produces a `.png` but the original was `.jpg`, both coexist on disk. `blog_deployer.py` iterates extensions in order `[".jpg", ".jpeg", ".png", ".webp"]` and finds the stale `.jpg` first, ignoring the regenerated `.png`.
+
+**Pipeline flow:** generate → commit → regen → commit → deploy (checks out git, finds files on disk). If the correct files are in git, deploy works. No need for fallback download logic.
+
+### Fix 1: `.gitignore` — Allow hero image PNGs
+
+Lines 38-39 already added in a previous session (on disk, not yet committed):
+```
+!data/generated/pins/*-hero.png
+!data/generated/blog/*.png
+```
+These negation rules un-ignore hero PNGs specifically, while keeping the global `*.png` exclusion for rendered pin templates (which are large and uploaded to GCS instead).
+
+### Fix 2: `src/regen_content.py` — Delete stale hero images after regen
+
+**Location:** `_regen_blog_image()`, after saving hero copy (line 783)
+
+After saving the hero image with the new extension, added cleanup of stale hero files with different extensions:
+
+```python
+# Clean up stale hero images with different extensions
+for old in slug_hero.parent.glob(f"{slug}-hero.*"):
+    if old.suffix != slug_hero.suffix:
+        old.unlink()
+        logger.info("Removed stale hero %s (replaced by %s)", old.name, slug_hero.name)
+```
+
+This ensures that when regen produces a `.png` replacing a `.jpg` original (or vice versa), only the new file remains. The deployer's extension-order iteration then finds the correct image regardless of format.
+
+### Fix 3: `src/blog_deployer.py` — Remove GCS download fallback
+
+**Deleted:** Lines 633-649 (the `# If not on disk, try downloading from GCS` block)
+
+This fallback was added as a workaround for the `.gitignore` exclusion problem. Now that PNGs are properly committed to git, the deployer's filesystem-only hero search is sufficient. Removing the fallback:
+- Eliminates a `requests` import dependency in the deploy path
+- Removes network I/O during deploy (faster, more reliable)
+- Keeps the deploy path simple: files are either in git or they're not
+
+### Fix 4: `_hero_gcs_url` metadata (no change)
+
+`regen_content.py` line 215 stores `blog_data["_hero_gcs_url"] = new_image_url`. Left as-is — harmless debugging metadata, useful for tracing image provenance.
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `.gitignore` | Allow PNG hero images (lines 38-39, already on disk) |
+| `src/regen_content.py` | Delete stale hero images with mismatched extensions after regen |
+| `src/blog_deployer.py` | Remove GCS fallback download block (-17 lines) |
+
+### Fix 5: `src/blog_deployer.py` — Remove dead `blog_results` load
+
+**Deleted:** Lines 596-603 loaded `blog-generation-results.json` into a `blog_results` variable with the comment "for GCS URL fallback". After removing the GCS fallback (Fix 3), this variable was never used. Removed entirely.
+
+### Fix 6: `src/blog_deployer.py` — Fix heroImage frontmatter extension mismatch
+
+**Problem:** All four blog post prompt templates (`prompts/blog_post_*.md`) hardcode `heroImage: "/assets/blog/{slug}.jpg"` in the frontmatter schema. Claude generates the MDX with this hardcoded `.jpg` extension. But the actual hero image may be `.png` (AI-generated images) or `.webp`. The deployer (`github_api.py:commit_multiple_posts`) commits the image file with its real extension to `public/assets/blog/{slug}{actual_ext}`, but the MDX is committed as-is with the hardcoded `.jpg`. If the extension doesn't match, the website gets a 404 for the hero image.
+
+**Fix:** In both `_deploy_blog_posts()` and `deploy_approved_posts()`, after finding the hero image on disk, update the MDX content to replace the heroImage frontmatter extension with the actual file extension:
+
+```python
+if hero_image_path:
+    actual_ext = Path(hero_image_path).suffix
+    mdx_content = re.sub(
+        r'(heroImage:\s*"/assets/blog/' + re.escape(slug) + r')\.[a-z]+"',
+        rf'\1{actual_ext}"',
+        mdx_content,
+    )
+```
+
+This ensures the MDX committed to goslated.com always references the correct image file. The regex matches the slug exactly (escaped for safety) and replaces only the extension portion.
+
+Both deploy entry points are covered:
+- `_deploy_blog_posts()` — main path (deploy-to-preview workflow)
+- `deploy_approved_posts()` — alternative entry point (directory-based deploy)
+- `promote_to_production()` — NOT affected (does a git merge, doesn't re-commit MDX)
+
+### Files Changed (Updated)
+
+| File | Change |
+|------|--------|
+| `.gitignore` | Allow PNG hero images (lines 38-39, already on disk) |
+| `src/regen_content.py` | Delete stale hero images with mismatched extensions after regen |
+| `src/blog_deployer.py` | Remove GCS fallback (-17 lines), remove dead `blog_results` load (-8 lines), add heroImage frontmatter extension fix in both deploy paths, add `import re` |
+
+### Fix 7: `src/regen_content.py` — Sync pin-schedule.json after regen
+
+**Problem:** When a pin is regenerated, `regen_content.py` deletes the old GCS object (line 642), uploads a new image with a new URL, and updates `pin-generation-results.json`. But `pin-schedule.json` (which `post_pins.py` reads to know what to post) is never updated. The schedule retains the old URL pointing to a deleted GCS object. When `post_pins.py` sends this dead URL to the Pinterest API, the pin fails to post.
+
+Same class of bug as the blog hero issue — stale reference persisting after regen. Also affects copy regen: if title/description changed, the schedule would still have the old text.
+
+**Fix:** After saving updated pin results (Step 6), added Step 6b: load `pin-schedule.json`, find entries matching regenerated pin IDs, update `title`, `description`, `alt_text`, `image_path`, `image_url`, `image_source`, and `image_id` from the freshly-updated `pin-generation-results.json`, and write back. Only updates successfully-regenerated pins (filters out entries with `error` key).
+
+### Re-deploy Steps
+
+1. Commit and push these changes
+2. Re-run regen workflow (re-sources images; `git add data/` now picks up PNGs)
+3. Re-run deploy-to-preview (overwrites files at same paths on develop branch, now with correct heroImage frontmatter)
+
+### Status
+
+All fixes implemented. Reviewed by two Sr Staff Engineer agents — all blocking issues addressed.

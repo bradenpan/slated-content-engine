@@ -5,6 +5,8 @@
 - **NEVER display, log, or reference the contents of secret files** in conversation output.
 - If you need to edit .env (e.g., add a new variable), use the Edit tool with a targeted old_string/new_string — never Read the full file first.
 - **Do NOT add Co-Authored-By lines** or any Claude/AI co-author attribution to git commits.
+- **NEVER spawn sub-agents with `bypassPermissions` mode.** All agents must use default permissions so the user retains approval control over tool calls.
+- **Plan files and any generated files must use descriptive names** that reflect their content (e.g., `regen-ai-comparison-fix.md`, not `humming-growing-beaver.md`). No random/cute names.
 
 ## Project Overview
 This is the Slated Pinterest automation pipeline. It generates blog posts and pins via AI, deploys them to goslated.com, posts pins to Pinterest, pulls analytics, and runs weekly/monthly reviews.

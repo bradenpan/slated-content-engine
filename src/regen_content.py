@@ -211,6 +211,8 @@ def regen() -> None:
                 blog_data["_hero_quality_score"] = new_score
                 blog_data["_hero_regen_feedback"] = feedback
                 blog_data["_hero_regen_timestamp"] = datetime.now().isoformat()
+                if new_image_url:
+                    blog_data["_hero_gcs_url"] = new_image_url
                 blog_results_dirty = True
 
             # Update Content Queue row
@@ -390,6 +392,42 @@ def regen() -> None:
         logger.info("Saved updated pin generation results")
     except OSError as e:
         logger.error("Failed to save pin generation results: %s", e)
+
+    # Step 6b: Update pin-schedule.json with regenerated data
+    regen_pin_ids = {r["pin_id"] for r in regen_results if r["type"] == "pin" and not r.get("error")}
+    if regen_pin_ids:
+        schedule_path = DATA_DIR / "pin-schedule.json"
+        if schedule_path.exists():
+            try:
+                schedule = json.loads(schedule_path.read_text(encoding="utf-8"))
+                # Build lookup from updated pin results
+                updated_pins = {}
+                for pin in pin_results.get("generated", []):
+                    if pin["pin_id"] in regen_pin_ids:
+                        updated_pins[pin["pin_id"]] = pin
+
+                changed = 0
+                for entry in schedule:
+                    pid = entry.get("pin_id", "")
+                    if pid in updated_pins:
+                        src = updated_pins[pid]
+                        entry["title"] = src.get("title", entry.get("title", ""))
+                        entry["description"] = src.get("description", entry.get("description", ""))
+                        entry["alt_text"] = src.get("alt_text", entry.get("alt_text", ""))
+                        entry["image_path"] = src.get("image_path", entry.get("image_path", ""))
+                        entry["image_url"] = src.get("_drive_download_url", entry.get("image_url", ""))
+                        entry["image_source"] = src.get("image_source", entry.get("image_source", ""))
+                        entry["image_id"] = src.get("image_id", entry.get("image_id", ""))
+                        changed += 1
+
+                if changed:
+                    schedule_path.write_text(
+                        json.dumps(schedule, indent=2, ensure_ascii=False),
+                        encoding="utf-8",
+                    )
+                    logger.info("Updated pin-schedule.json for %d regenerated pins", changed)
+            except (json.JSONDecodeError, OSError, KeyError) as e:
+                logger.error("Failed to update pin-schedule.json: %s", e)
 
     # Save updated blog results (if any blog regens ran)
     if blog_results_dirty:
@@ -779,6 +817,12 @@ def _regen_blog_image(
         import shutil
         shutil.copy2(image_path, slug_hero)
         logger.info("Saved blog hero as %s", slug_hero.name)
+
+    # Clean up stale hero images with different extensions
+    for old in slug_hero.parent.glob(f"{slug}-hero.*"):
+        if old.suffix != slug_hero.suffix:
+            old.unlink()
+            logger.info("Removed stale hero %s (replaced by %s)", old.name, slug_hero.name)
 
     if image_id:
         used_image_ids.append(f"{image_source}:{image_id}")

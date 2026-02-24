@@ -20,6 +20,7 @@ Content generation runs Monday; daily posting starts Tuesday.
 
 import json
 import logging
+import re
 from datetime import date, datetime
 from pathlib import Path
 from typing import Optional
@@ -525,6 +526,15 @@ class BlogDeployer:
                     hero_image_path = candidate
                     break
 
+            # Update heroImage frontmatter to match actual image extension
+            if hero_image_path:
+                actual_ext = Path(hero_image_path).suffix
+                mdx_content = re.sub(
+                    r'(heroImage:\s*"/assets/blog/' + re.escape(slug) + r')\.[a-z]+"',
+                    rf'\1{actual_ext}"',
+                    mdx_content,
+                )
+
             posts_to_deploy.append({
                 "slug": slug,
                 "mdx_content": mdx_content,
@@ -607,7 +617,7 @@ class BlogDeployer:
 
             mdx_content = mdx_path.read_text(encoding="utf-8")
 
-            # Check for hero image
+            # Check for hero image on disk first
             hero_image_path = None
             for ext in [".jpg", ".jpeg", ".png", ".webp"]:
                 candidate_paths = [
@@ -620,6 +630,18 @@ class BlogDeployer:
                         break
                 if hero_image_path:
                     break
+
+            if not hero_image_path:
+                logger.warning("No hero image found for blog %s", slug)
+
+            # Update heroImage frontmatter to match actual image extension
+            if hero_image_path:
+                actual_ext = Path(hero_image_path).suffix
+                mdx_content = re.sub(
+                    r'(heroImage:\s*"/assets/blog/' + re.escape(slug) + r')\.[a-z]+"',
+                    rf'\1{actual_ext}"',
+                    mdx_content,
+                )
 
             posts_for_commit.append({
                 "slug": slug,
