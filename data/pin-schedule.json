@@ -53,7 +53,7 @@
     "template": "recipe-pin",
     "treatment_number": 1,
     "source_post_id": "W9-P01",
-    "image_source": "unsplash",
+    "image_source": "ai_generated",
     "image_id": "unsplash:j9V7fkKLZKk",
     "status": "scheduled"
   },
@@ -256,7 +256,7 @@
     "template": "recipe-pin",
     "treatment_number": 1,
     "source_post_id": "W9-P03",
-    "image_source": "pexels",
+    "image_source": "ai_generated",
     "image_id": "pexels:5107161",
     "status": "scheduled"
   },
@@ -459,7 +459,7 @@
     "template": "recipe-pin",
     "treatment_number": 1,
     "source_post_id": "W9-P10",
-    "image_source": "pexels",
+    "image_source": "ai_generated",
     "image_id": "pexels:10977258",
     "status": "scheduled"
   },
@@ -488,7 +488,7 @@
     "template": "recipe-pin",
     "treatment_number": 1,
     "source_post_id": "W9-P01",
-    "image_source": "pexels",
+    "image_source": "ai_generated",
     "image_id": "pexels:25884476",
     "status": "scheduled"
   },
@@ -517,7 +517,7 @@
     "template": "recipe-pin",
     "treatment_number": 1,
     "source_post_id": "W9-P02",
-    "image_source": "pexels",
+    "image_source": "ai_generated",
     "image_id": "pexels:5836623",
     "status": "scheduled"
   },
@@ -691,7 +691,7 @@
     "template": "tip-pin",
     "treatment_number": 1,
     "source_post_id": "W9-P08",
-    "image_source": "unsplash",
+    "image_source": "ai_generated",
     "image_id": "unsplash:IJO6dclrjOI",
     "status": "scheduled"
   },
