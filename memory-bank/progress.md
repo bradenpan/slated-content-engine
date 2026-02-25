@@ -1360,23 +1360,23 @@ All 4 fixes implemented and syntax-verified. Pending commit, push, and promote w
 
 ### Change
 
-Upgraded Claude model IDs to the latest 4.6 family (same pricing, better quality):
+Upgraded Claude model IDs to the latest 4.6 family and corrected pricing:
 
 | Role | Old Model ID | New Model ID |
 |------|-------------|-------------|
-| Routine (Sonnet) | `claude-sonnet-4-20250514` | `claude-sonnet-4-6-20250514` |
-| Deep (Opus) | `claude-opus-4-20250514` | `claude-opus-4-6-20250610` |
+| Routine (Sonnet) | `claude-sonnet-4-20250514` | `claude-sonnet-4-6` |
+| Deep (Opus) | `claude-opus-4-20250514` | `claude-opus-4-6` |
 | Fast/Vision (Haiku) | `claude-haiku-4-5-20251001` | No change (already current) |
 
 ### Files Changed
 
 | File | Change |
 |------|--------|
-| `src/apis/claude_api.py` | Updated `MODEL_ROUTINE` and `MODEL_DEEP` to 4.6 model IDs |
+| `src/apis/claude_api.py` | Updated `MODEL_ROUTINE` and `MODEL_DEEP` to 4.6 model IDs (non-dated aliases); corrected `COST_PER_MTK` pricing |
 
 ### Cost Impact
 
-No cost change — same pricing tiers, upgraded model quality.
+Opus 4.6 is $5/$25 per MTK — 67% cheaper than Opus 4's $15/$75. Haiku 4.5 corrected to $1/$5 (was $0.80/$4). Sonnet 4.6 unchanged at $3/$15.
 
 ### Status
 
