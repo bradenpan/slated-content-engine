@@ -1250,3 +1250,43 @@ Same class of bug as the blog hero issue — stale reference persisting after re
 ### Status
 
 All fixes implemented. Reviewed by two Sr Staff Engineer agents — all blocking issues addressed.
+
+---
+
+## Phase 5: Hero Image Backfill + Frontmatter Slug Fix
+
+**Date:** 2026-02-24
+**Commits:** `df5e8cb`, `d53c78e`
+
+### Problem
+
+After the regen image fixes (Phase 4), the correct hero images existed in GCS but were not committed to git. The deploy-to-preview workflow was deploying blog posts with old/missing hero images.
+
+Additionally, 2 of 10 blog posts (W9-P01 and W9-P02) had a **slug mismatch bug**: the MDX file name (e.g., `shrimp-avocado-tacos.mdx`) differed from the frontmatter slug (e.g., `weekly-plan-spring-dinners-under-30-minutes`). The deployer was committing hero images to `public/assets/blog/{file-slug}.jpg` but the MDX `heroImage` frontmatter referenced `public/assets/blog/{frontmatter-slug}.jpg`, causing broken images on the deployed site.
+
+### Fix 1: Hero Image Backfill from Google Sheet
+
+Downloaded all 10 correct blog hero images from GCS URLs in the Content Queue spreadsheet:
+- 8 "approved" rows → stock hero from column I
+- 2 "use_ai_image" rows (W9-P06, W9-P10) → AI hero from column M
+
+Updated `src/backfill_hero_images.py` to support `--xlsx` flag for local runs when Google Sheets API credentials aren't available locally:
+```
+python -m src.backfill_hero_images --xlsx path/to/export.xlsx --run
+```
+
+### Fix 2: Deploy Images Using Frontmatter Slug (Permanent Fix)
+
+**Root cause:** `blog_deployer._deploy_blog_posts()` passed the file slug to `github_api.commit_multiple_posts()`, which used it for the image commit path. Weekly plan posts have different file slugs vs frontmatter slugs.
+
+**Fix:** The deployer now extracts the frontmatter slug from the MDX content and passes it as `image_slug` to the GitHub API. The image is committed to the path the site actually expects.
+
+| File | Change |
+|------|--------|
+| `src/blog_deployer.py` | Extract frontmatter slug via regex, pass as `image_slug` in both batch and individual commit paths, use `fm_slug` for heroImage extension regex |
+| `src/apis/github_api.py` | `commit_multiple_posts()` and `commit_blog_post()` accept optional `image_slug` param, use it for the deployed image path (defaults to `slug` when they match) |
+| `src/backfill_hero_images.py` | Added `--xlsx` flag to read from local spreadsheet export instead of requiring Sheets API credentials |
+
+### Why This Won't Happen Again
+
+The frontmatter slug extraction is permanent — every future deploy reads the actual slug from the MDX frontmatter and uses it for the image commit path. When file slug and frontmatter slug match (most posts), it's a no-op. When they differ (weekly plan posts), the image lands at the correct path.

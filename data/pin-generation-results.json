@@ -97,7 +97,8 @@
       ],
       "_ai_hero_image_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/pins/W9-02-ai-hero.png",
       "_ai_image_id": "ai_502a1d580170",
-      "_ai_image_score": 8.5
+      "_ai_image_score": 8.5,
+      "_ai_image_url": "https://storage.googleapis.com/slated-pipeline-pins/ai-heroes/W9-02-ai-hero.png"
     },
     {
       "pin_id": "W9-03",
@@ -391,7 +392,8 @@
       ],
       "_ai_hero_image_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/pins/W9-09-ai-hero.png",
       "_ai_image_id": "ai_49cef0a5d732",
-      "_ai_image_score": 8.5
+      "_ai_image_score": 8.5,
+      "_ai_image_url": "https://storage.googleapis.com/slated-pipeline-pins/ai-heroes/W9-09-ai-hero.png"
     },
     {
       "pin_id": "W9-10",
@@ -532,7 +534,8 @@
       ],
       "_ai_hero_image_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/pins/W9-12-hero-regen.png",
       "_ai_image_id": "ai_1b525585534c",
-      "_ai_image_score": 8.5
+      "_ai_image_score": 8.5,
+      "_ai_image_url": "https://storage.googleapis.com/slated-pipeline-pins/ai-heroes/W9-12-ai-hero.png"
     },
     {
       "pin_id": "W9-13",
@@ -709,7 +712,8 @@
       ],
       "_ai_hero_image_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/pins/W9-16-ai-hero.png",
       "_ai_image_id": "ai_d45d45990570",
-      "_ai_image_score": 8.5
+      "_ai_image_score": 8.5,
+      "_ai_image_url": "https://storage.googleapis.com/slated-pipeline-pins/ai-heroes/W9-16-ai-hero.png"
     },
     {
       "pin_id": "W9-17",
@@ -769,7 +773,8 @@
       ],
       "_ai_hero_image_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/pins/W9-17-ai-hero.png",
       "_ai_image_id": "ai_826a6e3c59f1",
-      "_ai_image_score": 8.5
+      "_ai_image_score": 8.5,
+      "_ai_image_url": "https://storage.googleapis.com/slated-pipeline-pins/ai-heroes/W9-17-ai-hero.png"
     },
     {
       "pin_id": "W9-18",
@@ -829,7 +834,8 @@
       ],
       "_ai_hero_image_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/pins/W9-18-ai-hero.png",
       "_ai_image_id": "ai_3341e152740a",
-      "_ai_image_score": 8.5
+      "_ai_image_score": 8.5,
+      "_ai_image_url": "https://storage.googleapis.com/slated-pipeline-pins/ai-heroes/W9-18-ai-hero.png"
     },
     {
       "pin_id": "W9-19",
@@ -1134,7 +1140,8 @@
       ],
       "_ai_hero_image_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/pins/W9-24-ai-hero.png",
       "_ai_image_id": "ai_7715d8afcfe3",
-      "_ai_image_score": 8.5
+      "_ai_image_score": 8.5,
+      "_ai_image_url": "https://storage.googleapis.com/slated-pipeline-pins/ai-heroes/W9-24-ai-hero.png"
     },
     {
       "pin_id": "W9-25",
