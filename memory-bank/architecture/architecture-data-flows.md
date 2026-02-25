@@ -40,7 +40,7 @@ Plan → Generate → Review → Deploy → Post → Analyze → (feeds next Pla
 | 3b. Pin Generation | Workflow | `generate_pin_content.py` | `data/generated/pins/`, `data/pin-generation-results.json` |
 | 3c. Publish Queue | Workflow | `publish_content_queue.py` | GCS URLs, Content Queue sheet |
 | 4. Content Review | Human in Sheet | — | Status per row in Column J |
-| 4b. Regen (optional) | Sheet N1 = "run" | `regen_content.py` | Updated pins/images/sheet rows |
+| 4b. Regen (optional) | Sheet O1 = "run" (via button or manual) | `regen_content.py` | Updated pins/images/sheet rows |
 | 5. Deploy Preview | All rows terminal | `blog_deployer.py` → `deploy_to_preview()` | Blogs on goslated.com develop branch |
 | 6. Production Approval | Sheet B4 = "approved" | Apps Script → `promote-and-schedule.yml` | — |
 | 7. Promote & Schedule | Workflow | `blog_deployer.py` → `promote_to_production()` | `data/pin-schedule.json`, `data/content-log.jsonl` |
@@ -259,15 +259,15 @@ if extra_context:
     context.update(extra_context)                         # Includes background_image_url
 ```
 
-**In `build_template_context()` (pin_assembler.py:576-582):**
+**In `build_template_context()` (generate_pin_content.py:554-621):**
 ```python
 # Non-recipe templates need background_image_url
 if template_type != "recipe-pin" and image_path:
     context["background_image_url"] = str(image_path)
 ```
 
-**At render time (`_prepare_html()`, pin_assembler.py:296-304):**
-Both `hero_image_url` and `background_image_url` are converted from local file paths to data URIs:
+**At render time (`_inject_variables()`, pin_assembler.py:296-304):**
+Both `hero_image_url` and `background_image_url` are converted from local file paths to data URIs (called by `_prepare_html()`):
 ```python
 image_vars = ["hero_image_url", "background_image_url"]
 for var in image_vars:
@@ -282,8 +282,9 @@ for var in image_vars:
 ```python
 # Lines ~165-180
 template_context = build_template_context(
-    pin_copy=pin_copy,
     template_type=template_type,
+    pin_copy=pin_copy,
+    pin_spec=pin_spec,
     image_path=image_path,      # hero image local path
 )
 rendered_pin_path = assembler.assemble_pin(
@@ -395,41 +396,39 @@ rendered_pin_path = assembler.assemble_pin(
 - `_ai_hero_image_path` — Local path to AI comparison hero (set during generation)
 - `_ai_image_id`, `_ai_image_score` — AI comparison metadata
 
-### pin-schedule.json
+### pin-schedule.json (flat list)
 ```json
-{
-  "2026-02-25": {
-    "morning": [{
-      "pin_id": "W12-01",
-      "title": "25-Minute Chicken Tacos",
-      "description": "Quick weeknight chicken tacos...",
-      "alt_text": "Overhead view of chicken tacos...",
-      "board_id": "123456789",
-      "board_name": "Quick Family Dinners",
-      "link": "https://goslated.com/blog/easy-weeknight-chicken-tacos",
-      "image_path": "data/generated/pins/W12-01.png",
-      "image_url": "https://storage.googleapis.com/bucket/W12-01.png",
-      "scheduled_date": "2026-02-25",
-      "scheduled_slot": "morning",
-      "pillar": 1,
-      "pin_type": "primary",
-      "primary_keyword": "easy chicken tacos",
-      "secondary_keywords": ["weeknight tacos"],
-      "blog_slug": "easy-weeknight-chicken-tacos",
-      "content_type": "recipe",
-      "funnel_layer": "discovery",
-      "template": "recipe-pin",
-      "treatment_number": 1,
-      "source_post_id": "W12-P01",
-      "image_source": "ai_generated",
-      "image_id": "ai_a1b2c3d4e5f6",
-      "status": "scheduled"
-    }],
-    "afternoon": [],
-    "evening": []
+[
+  {
+    "pin_id": "W12-01",
+    "title": "25-Minute Chicken Tacos",
+    "description": "Quick weeknight chicken tacos...",
+    "alt_text": "Overhead view of chicken tacos...",
+    "board_id": "123456789",
+    "board_name": "Quick Family Dinners",
+    "link": "https://goslated.com/blog/easy-weeknight-chicken-tacos",
+    "image_path": "data/generated/pins/W12-01.png",
+    "image_url": "https://storage.googleapis.com/bucket/W12-01.png",
+    "scheduled_date": "2026-02-25",
+    "scheduled_slot": "morning",
+    "pillar": 1,
+    "pin_type": "primary",
+    "primary_keyword": "easy chicken tacos",
+    "secondary_keywords": ["weeknight tacos"],
+    "blog_slug": "easy-weeknight-chicken-tacos",
+    "content_type": "recipe",
+    "funnel_layer": "discovery",
+    "template": "recipe-pin",
+    "treatment_number": 1,
+    "source_post_id": "W12-P01",
+    "image_source": "ai_generated",
+    "image_id": "ai_a1b2c3d4e5f6",
+    "status": "scheduled"
   }
-}
+]
 ```
+
+**Note:** `post_pins.py` handles both list and dict formats (`schedule if isinstance(schedule, list) else schedule.get("pins", [])`) but the current writer (`_create_pin_schedule()`) outputs a flat list. Pins are filtered at load time by `scheduled_date` + `scheduled_slot`.
 
 **CRITICAL:** `image_url` comes from `_drive_download_url` in pin-generation-results.json (set at `blog_deployer.py:745`). This is the GCS public URL that Pinterest will fetch the image from.
 
@@ -616,7 +615,7 @@ Column M ("AI Image") removed. Regen trigger shifts from N1:O1 to M1:N1.
 6. Git commit + push pin-schedule.json and content-log.jsonl
 ```
 
-### _create_pin_schedule() Field Mapping (blog_deployer.py:736-761)
+### _create_pin_schedule() Field Mapping (blog_deployer.py:701-772)
 
 | pin-schedule.json field | Source (from pin-generation-results.json) |
 |------------------------|------------------------------------------|
@@ -648,8 +647,10 @@ Column M ("AI Image") removed. Regen trigger shifts from N1:O1 to M1:N1.
 
 ```
 1. load_scheduled_pins(today_str, time_slot)
-   → Reads pin-schedule.json
+   → Reads pin-schedule.json (flat list)
    → Filters by scheduled_date + scheduled_slot
+   → Note: Weekly plan assigns "evening-1" and "evening-2" slots;
+     the "evening" workflow matches both via startswith("evening")
 
 2. For each scheduled pin:
    a. Resolve board_id from board_name
@@ -673,7 +674,7 @@ Column M ("AI Image") removed. Regen trigger shifts from N1:O1 to M1:N1.
 &utm_content={pin_id}                   # e.g., "W12-01"
 ```
 
-The board name is slugified: `re.sub(r"[^a-z0-9]+", board_name.lower()).strip("-")`
+The board name is slugified: `re.sub(r"[^a-z0-9]+", "-", board_name.lower()).strip("-")`
 
 ---
 
@@ -717,7 +718,6 @@ pull_analytics.py:
 |-----|-------------|-------|------------|----------|
 | Weekly Review | B3 | `"approved"` | `generate-content` | generate-content.yml |
 | Weekly Review | B4 | `"approved"` | `promote-and-schedule` | promote-and-schedule.yml |
-| Weekly Review | B5 | `"regen"` | `regen-plan` | regen-plan.yml (NEW) |
 | Content Queue | Column J (all rows) | All terminal | `deploy-to-preview` | deploy-and-schedule.yml |
 | Content Queue | O1 (→ N1 after simplification) | `"run"` | `regen-content` | regen-content.yml |
 
@@ -739,8 +739,8 @@ pull_analytics.py:
 
 ### Model Constants (claude_api.py)
 ```python
-MODEL_ROUTINE = "claude-sonnet-4-20250514"    # $3/$15 per MTk
-MODEL_DEEP    = "claude-opus-4-20250514"      # $15/$75 per MTk
+MODEL_ROUTINE = "claude-sonnet-4-6"           # $3/$15 per MTk
+MODEL_DEEP    = "claude-opus-4-6"             # $5/$25 per MTk
 MODEL_HAIKU   = "claude-haiku-4-5-20251001"   # $0.80/$4 per MTk
 ```
 
@@ -785,8 +785,11 @@ Monday ~morning (human)
         └─ publish_content_queue.py (GCS upload + Content Queue sheet)
 
 Monday-Tuesday (human)
-  └─ Review Content Queue, set statuses, optionally regen
-     └─ If regen needed: set N1 = "run" → regen-content.yml
+  └─ Review Content Queue, set statuses in Column J, write feedback in Column L
+     └─ If regen needed: click "Run Regen" button (or set O1 = "run")
+        └─ Apps Script → regen-content.yml
+           └─ regen_content.py (re-source images/copy with feedback, re-render, re-upload to GCS, update Sheet)
+           └─ Rows reset to "pending_review" for re-review
      └─ When all rows terminal → Apps Script → deploy-and-schedule.yml
         └─ blog_deployer.deploy_to_preview()
 
@@ -817,7 +820,6 @@ Tuesday-Monday (automated)
 | `daily-post-afternoon.yml` | Cron: 3pm ET | post pins |
 | `daily-post-evening.yml` | Cron: 8pm ET | post pins |
 | `monthly-review.yml` | Cron: 1st Monday | monthly analysis |
-| `regen-plan.yml` | Dispatch: `regen-plan` | plan regen (NEW) |
 
 ---
 
