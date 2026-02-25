@@ -93,19 +93,22 @@ class GitHubAPI:
         mdx_content: str,
         hero_image_path: Optional[Path] = None,
         commit_message: Optional[str] = None,
+        image_slug: Optional[str] = None,
     ) -> str:
         """
         Commit a blog post (MDX file + optional hero image) to goslated.com repo.
 
         Creates/updates files at:
         - content/blog/{slug}.mdx
-        - public/assets/blog/{slug}.jpg (if hero image provided)
+        - public/assets/blog/{image_slug}.jpg (if hero image provided)
 
         Args:
-            slug: Blog post slug (e.g., "30-minute-chicken-stir-fry").
+            slug: Blog post slug for the MDX file name.
             mdx_content: Complete MDX file content with frontmatter.
             hero_image_path: Local path to the hero image file.
             commit_message: Custom commit message. Auto-generated if None.
+            image_slug: Slug for the deployed image path. Defaults to slug.
+                         Use when the frontmatter slug differs from the file slug.
 
         Returns:
             str: The commit SHA.
@@ -113,6 +116,7 @@ class GitHubAPI:
         Raises:
             GitHubAPIError: If the commit fails.
         """
+        img_slug = image_slug or slug
         files = [{"path": f"content/blog/{slug}.mdx", "content": mdx_content}]
 
         if hero_image_path and Path(hero_image_path).exists():
@@ -121,7 +125,7 @@ class GitHubAPI:
 
             extension = Path(hero_image_path).suffix or ".jpg"
             files.append({
-                "path": f"public/assets/blog/{slug}{extension}",
+                "path": f"public/assets/blog/{img_slug}{extension}",
                 "content": image_data,
                 "is_binary": True,
             })
@@ -176,7 +180,9 @@ class GitHubAPI:
         More efficient than individual commits for batch deployments.
 
         Args:
-            posts: List of dicts with keys: slug, mdx_content, hero_image_path (optional).
+            posts: List of dicts with keys: slug, mdx_content, hero_image_path (optional),
+                   image_slug (optional, defaults to slug — used for the deployed image path
+                   when the frontmatter slug differs from the file slug).
             commit_message: Commit message. Auto-generated if None.
 
         Returns:
@@ -186,6 +192,7 @@ class GitHubAPI:
 
         for post in posts:
             slug = post["slug"]
+            image_slug = post.get("image_slug", slug)
             files.append({
                 "path": f"content/blog/{slug}.mdx",
                 "content": post["mdx_content"],
@@ -197,7 +204,7 @@ class GitHubAPI:
                     image_data = f.read()
                 extension = Path(hero_path).suffix or ".jpg"
                 files.append({
-                    "path": f"public/assets/blog/{slug}{extension}",
+                    "path": f"public/assets/blog/{image_slug}{extension}",
                     "content": image_data,
                     "is_binary": True,
                 })

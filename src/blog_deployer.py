@@ -617,6 +617,10 @@ class BlogDeployer:
 
             mdx_content = mdx_path.read_text(encoding="utf-8")
 
+            # Extract frontmatter slug (may differ from file slug for weekly plans)
+            fm_slug_match = re.search(r'^slug:\s*"(.+?)"', mdx_content, re.MULTILINE)
+            fm_slug = fm_slug_match.group(1) if fm_slug_match else slug
+
             # Check for hero image on disk first
             hero_image_path = None
             for ext in [".jpg", ".jpeg", ".png", ".webp"]:
@@ -638,13 +642,14 @@ class BlogDeployer:
             if hero_image_path:
                 actual_ext = Path(hero_image_path).suffix
                 mdx_content = re.sub(
-                    r'(heroImage:\s*"/assets/blog/' + re.escape(slug) + r')\.[a-z]+"',
+                    r'(heroImage:\s*"/assets/blog/' + re.escape(fm_slug) + r')\.[a-z]+"',
                     rf'\1{actual_ext}"',
                     mdx_content,
                 )
 
             posts_for_commit.append({
                 "slug": slug,
+                "image_slug": fm_slug,
                 "mdx_content": mdx_content,
                 "hero_image_path": hero_image_path,
             })
@@ -678,6 +683,7 @@ class BlogDeployer:
                 try:
                     commit_sha = self.github.commit_blog_post(
                         slug=post["slug"],
+                        image_slug=post.get("image_slug"),
                         mdx_content=post["mdx_content"],
                         hero_image_path=post.get("hero_image_path"),
                     )
