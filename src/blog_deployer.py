@@ -119,7 +119,8 @@ class BlogDeployer:
         # Step 2: Filter to approved blog posts
         approved_blogs = [
             item for item in approvals
-            if item.get("type") == "blog" and item.get("status") == "approved"
+            if item.get("type") == "blog"
+            and item.get("status") in ("approved", "use_ai_image")
         ]
 
         approved_pins = [
@@ -257,7 +258,8 @@ class BlogDeployer:
 
         approved_blogs = [
             item for item in approvals
-            if item.get("type") == "blog" and item.get("status") == "approved"
+            if item.get("type") == "blog"
+            and item.get("status") in ("approved", "use_ai_image")
         ]
         approved_pins = [
             item for item in approvals
@@ -372,7 +374,8 @@ class BlogDeployer:
 
         approved_blogs = [
             item for item in approvals
-            if item.get("type") == "blog" and item.get("status") == "approved"
+            if item.get("type") == "blog"
+            and item.get("status") in ("approved", "use_ai_image")
         ]
         approved_pins = [
             item for item in approvals
@@ -381,9 +384,17 @@ class BlogDeployer:
         ]
 
         # Step 3: Verify blog post URLs on production
-        deployed_slugs = [
-            b.get("slug") or b.get("id", "") for b in approved_blogs
-        ]
+        # Use frontmatter slugs for verification (may differ from file slugs)
+        deployed_slugs = []
+        for b in approved_blogs:
+            file_slug = b.get("slug") or b.get("id", "")
+            mdx_path = GENERATED_BLOG_DIR / f"{file_slug}.mdx"
+            if mdx_path.exists():
+                mdx_text = mdx_path.read_text(encoding="utf-8")
+                fm_match = re.search(r'^slug:\s*"(.+?)"', mdx_text, re.MULTILINE)
+                deployed_slugs.append(fm_match.group(1) if fm_match else file_slug)
+            else:
+                deployed_slugs.append(file_slug)
         if deployed_slugs:
             results["verification_results"] = self.verify_urls(
                 deployed_slugs, max_wait=DEPLOY_VERIFY_TIMEOUT
@@ -576,7 +587,7 @@ class BlogDeployer:
         for slug in slugs:
             try:
                 is_live = self.github.verify_deployment(
-                    slug=slug,
+                    slug,
                     max_wait_seconds=max_wait,
                 )
                 results[slug] = is_live
@@ -866,6 +877,25 @@ class BlogDeployer:
         log_path = DATA_DIR / "content-log.jsonl"
         today_str = date.today().isoformat()
 
+        # Load existing entry IDs to avoid duplicates on rerun
+        # Collect both schedule_id (per-pin, new entries) and source_post_id (old entries)
+        existing_ids = set()
+        if log_path.exists():
+            try:
+                for line in log_path.read_text(encoding="utf-8").splitlines():
+                    if not line.strip():
+                        continue
+                    try:
+                        existing_entry = json.loads(line)
+                        for key in ("schedule_id", "source_post_id"):
+                            val = existing_entry.get(key, "")
+                            if val:
+                                existing_ids.add(val)
+                    except json.JSONDecodeError:
+                        continue
+            except OSError:
+                pass
+
         # Load full pin generation results for complete data
         pin_results_path = DATA_DIR / "pin-generation-results.json"
         full_pin_data = {}
@@ -878,15 +908,23 @@ class BlogDeployer:
                 pass
 
         entries_written = 0
+        skipped_dupes = 0
 
         with open(log_path, "a", encoding="utf-8") as f:
             for pin_item in pin_data:
                 pin_id = pin_item.get("id") or pin_item.get("pin_id", "")
                 full = full_pin_data.get(pin_id, {})
 
+                # Skip if already logged (dedup for reruns)
+                source_post = full.get("source_post_id", "")
+                if (pin_id and pin_id in existing_ids) or (source_post and source_post in existing_ids):
+                    skipped_dupes += 1
+                    continue
+
                 entry = {
                     "date": today_str,
                     "posted_date": today_str,  # weekly_analysis.py filters on this field
+                    "schedule_id": pin_id,  # Per-pin unique ID (e.g., "W9-01") for dedup
                     "pin_id": None,  # Set when actually posted to Pinterest
                     "blog_slug": full.get("blog_slug", ""),
                     "blog_title": full.get("title", pin_item.get("title", "")),
@@ -911,6 +949,8 @@ class BlogDeployer:
                 f.write(json.dumps(entry, ensure_ascii=False) + "\n")
                 entries_written += 1
 
+        if skipped_dupes:
+            logger.info("Skipped %d duplicate entries in content-log.jsonl", skipped_dupes)
         logger.info("Appended %d entries to content-log.jsonl", entries_written)
         return entries_written
 

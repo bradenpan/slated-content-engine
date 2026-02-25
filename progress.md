@@ -1290,3 +1290,68 @@ python -m src.backfill_hero_images --xlsx path/to/export.xlsx --run
 ### Why This Won't Happen Again
 
 The frontmatter slug extraction is permanent — every future deploy reads the actual slug from the MDX frontmatter and uses it for the image commit path. When file slug and frontmatter slug match (most posts), it's a no-op. When they differ (weekly plan posts), the image lands at the correct path.
+
+---
+
+## Phase 8.3: Promote Workflow Bug Fixes
+
+**Date:** 2026-02-24
+
+### Problem
+
+The first promote-to-production workflow run failed:
+1. **All 8 blog URL verifications failed** — every blog returned `False` despite being live on goslated.com
+2. **All 7 `use_ai_image` pins skipped the AI image swap** — pins scheduled with stock photos instead of chosen AI images
+3. **Content log would get duplicates on rerun** — no dedup protection in `_append_to_content_log()`
+
+### Root Cause Analysis (from GitHub Actions logs)
+
+**All 8 blog failures had the same error:**
+```
+ERROR __main__: Verification error for shrimp-avocado-tacos:
+  GitHubAPI.verify_deployment() got an unexpected keyword argument 'slug'
+```
+
+The `verify_urls()` method called `self.github.verify_deployment(slug=slug, ...)` but the actual parameter in `github_api.py` is named `slug_or_urls`, not `slug`. This caused a `TypeError` on every single call, caught silently by the `except Exception` block. No blog URL was ever actually checked.
+
+### Fix 1: `verify_urls()` keyword argument bug (ROOT CAUSE)
+
+**File:** `src/blog_deployer.py` line 590
+
+Changed `slug=slug` to positional argument `slug`. This was a simple parameter name mismatch — the function signature uses `slug_or_urls` as the positional parameter name.
+
+### Fix 2: Frontmatter slug for production verification
+
+**File:** `src/blog_deployer.py` lines 386-397
+
+Even after Fix 1, P01 and P02 would fail because `promote_to_production()` built verification URLs from file slugs (column F), not frontmatter slugs. The blog URL uses the frontmatter slug.
+
+Same pattern as the `_deploy_blog_posts()` fix from Phase 5: reads each MDX file, extracts frontmatter slug via `re.search(r'^slug:\s*"(.+?)"', mdx_text, re.MULTILINE)`, falls back to file slug if not found or MDX missing.
+
+### Fix 3: Blog status filter excludes `use_ai_image`
+
+**File:** `src/blog_deployer.py` lines 122, 261, 376
+
+Three locations filtered blogs with `item.get("status") == "approved"`, excluding P06 and P10 which have status `use_ai_image`. Pins already used `in ("approved", "use_ai_image")` — blogs didn't.
+
+Changed all 3 to `item.get("status") in ("approved", "use_ai_image")`.
+
+### Fix 4: Content log dedup for safe reruns
+
+**File:** `src/blog_deployer.py` lines 877-892
+
+`_append_to_content_log()` now loads existing `source_post_id` values before appending. Skips any pin whose ID already exists. Logs count of skipped duplicates.
+
+### AI image swap (no code change needed)
+
+The `_ai_image_url` field was already populated in `pin-generation-results.json` from the spreadsheet in a prior session. Rerunning promote will trigger the swap now that `use_ai_image` blogs/pins are included.
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `src/blog_deployer.py` | Fix keyword arg in `verify_urls()`, frontmatter slug in `promote_to_production()`, `use_ai_image` in 3 blog filters, dedup in `_append_to_content_log()` |
+
+### Status
+
+All 4 fixes implemented and syntax-verified. Pending commit, push, and promote workflow rerun.
