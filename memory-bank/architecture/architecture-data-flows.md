@@ -22,6 +22,7 @@
 13. [LLM Model Calls](#13-llm-model-calls)
 14. [Workflow Execution Order](#14-workflow-execution-order)
 15. [Cross-File Dependency Map](#15-cross-file-dependency-map)
+16. [Environment Variables](#16-environment-variables)
 
 ---
 
@@ -530,6 +531,18 @@ CQ_COL_AI_IMAGE   = 12  # M
 
 Column M ("AI Image") removed. Regen trigger shifts from N1:O1 to M1:N1.
 
+### Column Shift Impact (Simplification)
+
+| Location | Current | After |
+|----------|---------|-------|
+| `sheets_api.py` `CQ_COL_AI_IMAGE` | `= 12` (Column M) | DELETED |
+| `sheets_api.py` `read_content_approvals()` range | `A:M` | `A:L` |
+| `sheets_api.py` `read_regen_requests()` range | `A:M` | `A:L` |
+| `sheets_api.py` `reset_regen_trigger()` cell | `O1` | `N1` |
+| `publish_content_queue.py` regen trigger range | `N1:O1` | `M1:N1` |
+| `trigger.gs` `onSheetEdit()` column check | `getColumn() === 15` | `getColumn() === 14` |
+| `trigger.gs` `runRegen()` cell | `"O1"` | `"N1"` |
+
 ### Terminal Statuses (for deploy gate)
 **Current:** `["approved", "rejected", "use_ai_image"]`
 **After simplification:** `["approved", "rejected"]`
@@ -876,6 +889,26 @@ publish_content_queue.py imports from:
   - drive_api (fallback upload)
   - sheets_api (Content Queue write)
 ```
+
+---
+
+## 16. Environment Variables
+
+### Required for all workflows
+- `ANTHROPIC_API_KEY` — Claude API
+- `OPENAI_API_KEY` — Image generation (gpt-image-1.5) + image prompts (gpt-5-mini)
+- `GOOGLE_SHEETS_CREDENTIALS_JSON` — Sheets + GCS authentication
+- `GOOGLE_SHEET_ID` — Target spreadsheet
+- `GCS_BUCKET_NAME` — Google Cloud Storage bucket
+- `PINTEREST_ACCESS_TOKEN` — Pinterest API
+- `PINTEREST_ENVIRONMENT` — "production" or "sandbox"
+- `SLACK_WEBHOOK_URL` — Notifications
+- `GITHUB_TOKEN` — Git operations on goslated.com repo
+- `GOSLATED_REPO` — Target repo for blog deployment
+
+### Optional
+- `IMAGE_GEN_PROVIDER` — "openai" (default) or "replicate"
+- `REPLICATE_API_TOKEN` — Only if using Flux Pro
 
 ---
 
