@@ -1381,3 +1381,48 @@ Opus 4.6 is $5/$25 per MTK — 67% cheaper than Opus 4's $15/$75. Haiku 4.5 corr
 ### Status
 
 Complete.
+
+## Phase 10: Pinterest Rate Limit Header Parsing Fix
+
+### Problem
+
+Pinterest changed their `X-RateLimit-Limit` response header from a simple integer (`"100"`) to an RFC 9110 structured format:
+```
+100, 100;w=1;name="safety_net_app_id_user_id", 1000;w=60;name="org_read_app_id_user_id"
+```
+The code did `int(header_value)` on the full string, causing a `ValueError` crash. Since `_update_rate_limits()` is called on every `_make_request()`, this broke **all** Pinterest API calls — blocking all 3 daily posting workflows and both analytics workflows.
+
+### Root Cause
+
+`pinterest_api.py:_update_rate_limits()` (lines 491, 493, 495) and `_get_retry_after()` (line 522) parsed rate limit headers with bare `int()` calls. The structured header format contains commas and semicolons that `int()` cannot parse.
+
+### Fix
+
+Added `PinterestAPI._parse_rate_limit_value()` static method that:
+1. Splits the header by `,` to get the first token
+2. Splits by `;` to strip metadata (weights, names)
+3. Parses the numeric part with `int()`
+4. Returns `None` on parse failure (graceful degradation, no crash)
+
+Applied the same defensive parsing pattern to `image_stock.py` for Unsplash and Pexels rate limit headers (not currently broken, but same fragile `int()` pattern).
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `src/apis/pinterest_api.py` | Added `_parse_rate_limit_value()` helper; refactored `_update_rate_limits()` and `_get_retry_after()` to use it |
+| `src/apis/image_stock.py` | Defensive parsing for Unsplash (line 207) and Pexels (line 265) rate limit headers |
+
+### Affected Workflows
+
+| Workflow | Impact |
+|----------|--------|
+| `daily-post-morning.yml` | Blocked — `post_pins morning` crashes at `list_boards()` |
+| `daily-post-afternoon.yml` | Blocked — same crash path |
+| `daily-post-evening.yml` | Blocked — same crash path |
+| `weekly-review.yml` | Blocked — `pull_analytics` crashes at first API call |
+| `monthly-review.yml` | Blocked — same crash path |
+
+### Status
+
+Complete. Morning workflow should be manually rerun after merge.

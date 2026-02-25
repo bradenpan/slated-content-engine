@@ -201,11 +201,15 @@ class ImageStockAPI:
             timeout=15,
         )
 
-        # Track rate limits
+        # Track rate limits (handle structured header formats)
         remaining = response.headers.get("X-Ratelimit-Remaining")
         if remaining:
-            self._unsplash_remaining = int(remaining)
-            if self._unsplash_remaining < 10:
+            try:
+                self._unsplash_remaining = int(remaining.split(",")[0].split(";")[0].strip())
+            except (ValueError, TypeError):
+                logger.warning("Could not parse Unsplash rate limit header: %s", remaining)
+                self._unsplash_remaining = None
+            if self._unsplash_remaining is not None and self._unsplash_remaining < 10:
                 logger.warning("Unsplash rate limit low: %d requests remaining.", self._unsplash_remaining)
 
         if response.status_code != 200:
@@ -259,11 +263,15 @@ class ImageStockAPI:
             timeout=15,
         )
 
-        # Track rate limits
+        # Track rate limits (handle structured header formats)
         remaining = response.headers.get("X-Ratelimit-Remaining")
         if remaining:
-            self._pexels_remaining = int(remaining)
-            if self._pexels_remaining < 20:
+            try:
+                self._pexels_remaining = int(remaining.split(",")[0].split(";")[0].strip())
+            except (ValueError, TypeError):
+                logger.warning("Could not parse Pexels rate limit header: %s", remaining)
+                self._pexels_remaining = None
+            if self._pexels_remaining is not None and self._pexels_remaining < 20:
                 logger.warning("Pexels rate limit low: %d requests remaining.", self._pexels_remaining)
 
         if response.status_code != 200:

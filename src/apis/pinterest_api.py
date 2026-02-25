@@ -481,18 +481,39 @@ class PinterestAPI:
             f"Request failed after all retries. Last error: {last_exception}",
         )
 
+    @staticmethod
+    def _parse_rate_limit_value(header_value: str) -> Optional[int]:
+        """Parse a rate limit header, handling structured formats.
+
+        Pinterest may return simple integers ("100") or structured values like:
+        '100, 100;w=1;name="safety_net_app_id_user_id", 1000;w=60;name="org_read"'
+        Extracts the first numeric value from the header.
+        """
+        if not header_value:
+            return None
+        first_token = header_value.split(",")[0].strip()
+        numeric_part = first_token.split(";")[0].strip()
+        try:
+            return int(numeric_part)
+        except (ValueError, TypeError):
+            logger.warning("Could not parse rate limit header: %s", header_value)
+            return None
+
     def _update_rate_limits(self, response: requests.Response) -> None:
         """Extract and log rate limit info from response headers."""
         limit = response.headers.get("X-RateLimit-Limit")
         remaining = response.headers.get("X-RateLimit-Remaining")
         reset = response.headers.get("X-RateLimit-Reset")
 
-        if limit:
-            self._rate_limit_limit = int(limit)
-        if remaining:
-            self._rate_limit_remaining = int(remaining)
-        if reset:
-            self._rate_limit_reset = int(reset)
+        parsed = self._parse_rate_limit_value(limit)
+        if parsed is not None:
+            self._rate_limit_limit = parsed
+        parsed = self._parse_rate_limit_value(remaining)
+        if parsed is not None:
+            self._rate_limit_remaining = parsed
+        parsed = self._parse_rate_limit_value(reset)
+        if parsed is not None:
+            self._rate_limit_reset = parsed
 
         if self._rate_limit_remaining is not None and self._rate_limit_limit is not None:
             pct_remaining = (self._rate_limit_remaining / self._rate_limit_limit) * 100
@@ -517,9 +538,11 @@ class PinterestAPI:
         Uses the X-RateLimit-Reset header if available, otherwise
         falls back to exponential backoff.
         """
-        reset_timestamp = response.headers.get("X-RateLimit-Reset")
+        reset_timestamp = self._parse_rate_limit_value(
+            response.headers.get("X-RateLimit-Reset")
+        )
         if reset_timestamp:
-            wait_seconds = int(reset_timestamp) - int(time.time())
+            wait_seconds = reset_timestamp - int(time.time())
             if wait_seconds > 0:
                 return min(wait_seconds + 1, 120)  # Cap at 2 minutes
 
