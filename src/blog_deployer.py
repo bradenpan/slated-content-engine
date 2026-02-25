@@ -384,17 +384,9 @@ class BlogDeployer:
         ]
 
         # Step 3: Verify blog post URLs on production
-        # Use frontmatter slugs for verification (may differ from file slugs)
-        deployed_slugs = []
-        for b in approved_blogs:
-            file_slug = b.get("slug") or b.get("id", "")
-            mdx_path = GENERATED_BLOG_DIR / f"{file_slug}.mdx"
-            if mdx_path.exists():
-                mdx_text = mdx_path.read_text(encoding="utf-8")
-                fm_match = re.search(r'^slug:\s*"(.+?)"', mdx_text, re.MULTILINE)
-                deployed_slugs.append(fm_match.group(1) if fm_match else file_slug)
-            else:
-                deployed_slugs.append(file_slug)
+        deployed_slugs = [
+            b.get("slug") or b.get("id", "") for b in approved_blogs
+        ]
         if deployed_slugs:
             results["verification_results"] = self.verify_urls(
                 deployed_slugs, max_wait=DEPLOY_VERIFY_TIMEOUT
