@@ -37,8 +37,8 @@ PROMPTS_DIR = Path(__file__).parent.parent.parent / "prompts"
 STRATEGY_DIR = Path(__file__).parent.parent.parent / "strategy"
 
 # Model selection -- using the latest model IDs
-MODEL_ROUTINE = "claude-sonnet-4-20250514"
-MODEL_DEEP = "claude-opus-4-20250514"
+MODEL_ROUTINE = "claude-sonnet-4-6-20250514"
+MODEL_DEEP = "claude-opus-4-6-20250610"
 MODEL_HAIKU = "claude-haiku-4-5-20251001"
 
 # Approximate costs per million tokens (for cost tracking)

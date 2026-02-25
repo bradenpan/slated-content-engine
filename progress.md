@@ -11,7 +11,7 @@ Plan → Generate → Review → Deploy → Post → Analyze → (feeds next Pla
 ```
 
 **Orchestration:** GitHub Actions (cron + webhook triggers)
-**LLM:** Claude API (Sonnet for routine, Opus for deep analysis, Haiku for image evaluation)
+**LLM:** Claude API (Sonnet 4.6 for routine, Opus 4.6 for deep analysis, Haiku 4.5 for image evaluation)
 **Content:** Blog posts (MDX) + pin images (stock/AI/template) + pin copy
 **Deployment:** goslated.com via GitHub/Vercel (blogs), Pinterest API (pins)
 **Coordination:** Google Sheets (human review + automation triggers), Slack (notifications)
@@ -1355,3 +1355,29 @@ The `_ai_image_url` field was already populated in `pin-generation-results.json`
 ### Status
 
 All 4 fixes implemented and syntax-verified. Pending commit, push, and promote workflow rerun.
+
+## Phase 9: LLM Model Upgrades
+
+### Change
+
+Upgraded Claude model IDs to the latest 4.6 family (same pricing, better quality):
+
+| Role | Old Model ID | New Model ID |
+|------|-------------|-------------|
+| Routine (Sonnet) | `claude-sonnet-4-20250514` | `claude-sonnet-4-6-20250514` |
+| Deep (Opus) | `claude-opus-4-20250514` | `claude-opus-4-6-20250610` |
+| Fast/Vision (Haiku) | `claude-haiku-4-5-20251001` | No change (already current) |
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `src/apis/claude_api.py` | Updated `MODEL_ROUTINE` and `MODEL_DEEP` to 4.6 model IDs |
+
+### Cost Impact
+
+No cost change — same pricing tiers, upgraded model quality.
+
+### Status
+
+Complete.
