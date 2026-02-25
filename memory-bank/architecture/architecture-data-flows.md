@@ -916,33 +916,167 @@ publish_content_queue.py imports from:
 
 ## Appendix: Regen Content Flow
 
-### How regen_content.py Works
+Comprehensive documentation of `regen_content.py` based on the actual implementation.
+
+### A. Trigger Chain
 
 ```
-1. sheets.read_regen_requests()
-   → Reads Content Queue, filters for status.startswith("regen")
-   → Returns list of {pin_id, status, feedback}
-
-2. For each flagged item:
-   a. Load current pin data from pin-generation-results.json
-   b. Based on status:
-      - regen_image → Source new image (respects feedback), re-render pin
-      - regen_copy  → Generate new copy (respects feedback), re-render pin
-      - regen       → Both image and copy
-   c. Upload new rendered pin to GCS
-   d. [Current] Generate AI comparison image, upload to GCS
-   e. Update pin-generation-results.json in-place
-   f. Update Sheet row (thumbnail, title, description, notes, status → "pending_review")
-
-3. If pin-schedule.json exists, update image_url for affected pins
-
-4. Git commit + push updated files
-5. Slack notification
+Reviewer sets Column J status to regen_image/regen_copy/regen (in Content Queue)
+  → Reviewer clicks "Run Regen" button (or manually sets O1 = "run")
+  → Apps Script onSheetEdit() detects O1 = "run"
+  → Apps Script dispatches repository_dispatch: regen-content
+  → GitHub Actions regen-content.yml runs regen_content.py
+  → regen_content.py reads Column J statuses via sheets.read_regen_requests()
 ```
 
-### regen_content.py Key Imports from generate_pin_content.py
-- `source_image()` — Used for image regen (routes by tier)
-- `_source_ai_image()` — Used for AI comparison generation
-- `generate_copy_batch()` — Used for copy regen
-- `build_template_context()` — Used for re-rendering pins
-- `load_used_image_ids()` — Used for dedup during regen
+**Note:** The Apps Script `onSheetEdit()` trigger dispatches the workflow, but `regen_content.py` itself reads row statuses from Column J to determine which items to process. The O1 trigger cell is just the execution gate.
+
+### B. Full `regen()` Orchestration (7-step flow)
+
+```
+regen()
+  │
+  ├─ Step 1: Init API clients (Sheets, Claude, ImageStock, ImageGen, PinAssembler, GCS, Drive, Slack)
+  │           Load used_image_ids, brand_voice, keyword_targets
+  │
+  ├─ Step 2: sheets.read_regen_requests()
+  │           → Returns list of {id, status, feedback, type, row_index}
+  │           → Status starts with "regen" (regen_image, regen_copy, regen)
+  │           → If empty → reset trigger and return
+  │
+  ├─ Step 3: Load data files
+  │   ├─ pin-generation-results.json → pin_index {pin_id: pin_data}
+  │   └─ blog-generation-results.json → blog_results {post_id: blog_data}
+  │
+  ├─ Step 4: Process each request
+  │   ├─ Blog items → _regen_blog_image() (copy regen N/A, redirected to image-only)
+  │   └─ Pin items → _regen_item() (image, copy, or both)
+  │       └─ After: _update_pin_results() merges new data into pin_data in-place
+  │       └─ After: sheets.update_content_row() updates Sheet row
+  │
+  ├─ Step 5: Save updated files
+  │   ├─ pin-generation-results.json (always)
+  │   ├─ blog-generation-results.json (if any blog regens ran)
+  │   └─ pin-schedule.json (update 7 fields for affected pins, if file exists)
+  │
+  ├─ Step 6: sheets.reset_regen_trigger() → sets O1 back to "idle"
+  │
+  └─ Step 7: slack.notify_regen_complete(regen_results)
+```
+
+### C. Pin Regen: `_regen_item()`
+
+Regenerates a single pin's image, copy, or both.
+
+```
+_regen_item(pin_data, regen_type, feedback, claude, stock_api, image_gen_api, assembler, gcs, drive, ...)
+  │
+  ├─ Build pin_spec from pin_data (including image_source_tier from image_source)
+  │   └─ Attach _regen_feedback if feedback provided
+  │
+  ├─ [regen_copy / regen] Regenerate copy:
+  │   └─ generate_copy_batch(claude, [copy_spec], ...) with _copy_feedback
+  │       → Updates title, description, alt_text, text_overlay in new_pin_data
+  │       → On failure: sets _copy_regen_failed flag, preserves original copy
+  │
+  ├─ [regen_image / regen] Regenerate image:
+  │   ├─ Normalize image_source to tier (stock/unsplash/pexels → "stock", ai_generated → "ai")
+  │   ├─ source_image(pin_spec, image_tier, ...) → routes by tier
+  │   │   → Returns (image_path, image_source, image_id, quality_meta)
+  │   ├─ Update new_pin_data: hero_image_path, image_source, image_id, quality scores
+  │   └─ Generate AI comparison image (if winner is not AI):
+  │       └─ _source_ai_image(pin_spec, ..., filename_prefix="{pin_id}-ai-hero")
+  │           → Stores _ai_hero_image_path, _ai_image_id, _ai_image_score
+  │
+  ├─ Resolve hero image (download from GCS/Drive if not on local disk — fresh runner)
+  │
+  ├─ Re-render pin:
+  │   ├─ build_template_context() for template-specific vars
+  │   ├─ assembler.assemble_pin() → {pin_id}.png
+  │   └─ Upload rendered pin (GCS first, Drive fallback)
+  │       → Updates _drive_image_url, _drive_download_url in new_pin_data
+  │
+  ├─ Upload AI comparison hero to GCS → writes ai_image= to Column M
+  │
+  └─ Update Content Queue row:
+      └─ sheets.update_content_row(row_index, status="pending_review",
+           thumbnail, title, description, notes, ai_image, feedback="")
+```
+
+**Returns:** `{"pin_data": new_pin_data, "image_url": new_gcs_url}`
+
+### D. Blog Image Regen: `_regen_blog_image()`
+
+Blog copy regen is not supported (blog text lives in MDX files). Blog items with `regen` or `regen_copy` status are redirected to image-only regen.
+
+```
+_regen_blog_image(blog_data, post_id, feedback, claude, stock_api, image_gen_api, gcs, ...)
+  │
+  ├─ Build pin_spec from blog_data (title as primary_keyword, default template "recipe-pin")
+  │   └─ Attach _regen_feedback if feedback provided
+  │
+  ├─ Determine tier from previous _hero_image_source (stock/unsplash/pexels → "stock", ai → "ai")
+  │
+  ├─ source_image(pin_spec, image_tier, ...) → sourced hero image
+  │
+  ├─ Save hero with slug-based filename: {slug}-hero.{ext}
+  │   └─ shutil.copy2() from pin_id-named path to slug-named path
+  │   └─ Clean up stale heroes with different extensions
+  │
+  ├─ Generate AI comparison image (if winner is not AI):
+  │   └─ _source_ai_image(..., filename_prefix="{post_id}-ai-hero")
+  │       → Upload to GCS as ai-heroes/{post_id}-ai-hero.png
+  │       → result["ai_image_url"] = gcs_url
+  │
+  ├─ Upload raw hero to GCS (timestamped: {post_id}-hero-{ts}.{ext})
+  │   └─ Timestamp busts Google Sheets =IMAGE() cache
+  │
+  └─ Update blog-generation-results.json metadata:
+      _hero_image_source, _hero_image_id, _hero_quality_score,
+      _hero_regen_feedback, _hero_regen_timestamp, _hero_gcs_url
+```
+
+**Returns:** `{"image_url", "ai_image_url", "quality_score", "image_source", "image_id"}`
+
+### E. Pin-Schedule.json Updates
+
+When `pin-schedule.json` exists (post-promote), regen updates **7 fields** for affected pins (lines 413-420):
+
+| # | Field | Source in pin-generation-results.json |
+|---|-------|--------------------------------------|
+| 1 | `title` | `title` |
+| 2 | `description` | `description` |
+| 3 | `alt_text` | `alt_text` |
+| 4 | `image_path` | `image_path` |
+| 5 | `image_url` | `_drive_download_url` |
+| 6 | `image_source` | `image_source` |
+| 7 | `image_id` | `image_id` |
+
+### F. Error Handling
+
+| Scenario | Behavior |
+|----------|----------|
+| Pin data not found in results JSON | → `pending_review` with error note, skip item |
+| Blog data not found in results JSON | → `pending_review` with error note, skip item |
+| Blog copy regen requested | → Not supported, status reset with warning note |
+| Image sourcing returns None | → Error logged, hero_image_path not updated |
+| Hero image not on disk (fresh CI runner) | → Download from GCS (preferred) or Drive (fallback) |
+| GCS upload fails | → Fall back to Drive upload for rendered pin |
+| AI comparison image generation fails | → Non-fatal warning, pin regen continues without comparison |
+| Copy regen fails | → `_copy_regen_failed` flag set, original copy preserved |
+| Hero unavailable for re-render | → `_copy_regen_no_rerender` flag, copy updated but pin image not re-rendered |
+| Pin assembly/render fails | → Error logged, image_url remains None |
+| Sheet row update fails | → Error logged, continues to next item |
+| pin-schedule.json update fails | → Error logged, schedule not updated (pins still work from previous data) |
+
+### G. Imports from `generate_pin_content.py`
+
+| Import | Usage | Private? |
+|--------|-------|----------|
+| `generate_copy_batch` | Copy regen — generates new title/description/alt_text/text_overlay | Public |
+| `load_used_image_ids` | Image dedup — loads 90-day window of used image IDs | Public |
+| `source_image` | Image regen — routes by tier to stock or AI sourcing | Public |
+| `_source_ai_image` | AI comparison generation — generates side-by-side AI alternative | Private |
+| `_load_brand_voice` | Copy regen context — loads brand voice from strategy files | Private |
+| `_load_keyword_targets` | Copy regen context — loads keyword target data | Private |
+| `build_template_context` | Pin re-rendering — builds template-specific variables for pin assembly | Public |

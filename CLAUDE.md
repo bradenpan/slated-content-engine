@@ -7,6 +7,8 @@
 - **Do NOT add Co-Authored-By lines** or any Claude/AI co-author attribution to git commits.
 - **NEVER spawn sub-agents with `bypassPermissions` mode.** All agents must use default permissions so the user retains approval control over tool calls.
 - **Plan files and any generated files must use descriptive names** that reflect their content (e.g., `regen-ai-comparison-fix.md`, not `humming-growing-beaver.md`). No random/cute names.
+- **NEVER make assumptions about how external systems behave.** Before writing code that depends on how goslated.com, Vercel, Pinterest, or any external service works (routing, URL structure, API behavior, deployment timing), VERIFY the actual behavior first — check the deployed site, read the service's config, or ask the user. Do not guess. Wrong assumptions cause production failures.
+- **NEVER speculate about root causes.** When diagnosing a failure, gather evidence (logs, HTTP responses, actual behavior) BEFORE proposing a fix. If you don't have evidence, say so and ask the user where to find it. Do not theorize and then build fixes on top of unverified theories.
 
 ## Project Overview
 This is the Slated Pinterest automation pipeline. It generates blog posts and pins via AI, deploys them to goslated.com, posts pins to Pinterest, pulls analytics, and runs weekly/monthly reviews.

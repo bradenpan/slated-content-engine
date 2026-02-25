@@ -214,6 +214,51 @@ After deleting `source_image()`, this import will crash. Update imports to use t
 
 **Update `generate_image_prompt()` call sites** — remove `image_source` parameter (coordinated with claude_api.py signature change).
 
+##### Detailed Line-Level Change Catalog for `regen_content.py`
+
+**Import statement (line 37):** Delete `source_image` from import list. The `source_image()` function is being deleted from `generate_pin_content.py`. The import of `_source_ai_image` stays (used for direct AI sourcing).
+```python
+# Line 37: Remove this line entirely
+source_image,
+```
+
+**Three `ai_image=` parameter writes to remove:**
+- Line 237: `update_kwargs["ai_image"] = f'=IMAGE("{ai_image_url}")'` (blog regen, AI comparison image URL)
+- Line 240: `update_kwargs["ai_image"] = f'=IMAGE("{new_image_url}")'` (blog regen, AI winner shown in AI column)
+- Lines 354-365: entire AI hero upload block (`ai_hero_path` check → `gcs.upload_image()` → `update_kwargs["ai_image"]` write) in pin regen path
+
+**Two `source_image()` call sites to replace with direct `_source_ai_image()` calls:**
+- `_regen_item()` line 553: `source_image(pin_spec, image_tier, claude, stock_api, ...)` → Replace with template check → `_source_ai_image()` directly
+- `_regen_blog_image()` line 792: `source_image(pin_spec, image_tier, claude, stock_api, ...)` → Same replacement — direct `_source_ai_image()` call
+
+**Tier routing removal (lines 500, 542-561):**
+- Line 500: Delete `"image_source_tier": pin_data.get("image_source", "stock")` from the `pin_spec` dict
+- Lines 542-549: Delete the entire tier normalization block (`original_source → image_tier` mapping: stock/unsplash/pexels → "stock", ai_generated → "ai", default → "stock")
+- Lines 550-561: Delete `source_image()` call and replace with: `if pin_template == "infographic-pin": template-only, else: _source_ai_image()`
+
+**`_update_pin_results()` keys_to_update list (lines 891-897):**
+- Remove from list: `_ai_hero_image_path`, `_ai_image_id`, `_ai_image_score`, `_ai_image_url`, `image_quality_score`, `image_low_confidence`, `image_quality_issues`
+- Keep: `title`, `description`, `alt_text`, `text_overlay`, `image_path`, `hero_image_path`, `image_source`, `image_id`, `image_retries`, `_drive_image_url`, `_drive_download_url`
+
+**`_regen_blog_image()` AI comparison block (lines 830-847):**
+- Delete entire block that generates AI comparison image for blogs (the `if image_source != "ai_generated"` branch that calls `_source_ai_image()` and uploads to GCS)
+- Delete the `elif image_source == "ai_generated": pass` branch
+- Delete `ai_image_url` from result dict initialization (line 804) and population
+
+**AI comparison generation in `_regen_item()` (lines 575-591):**
+- Delete the entire block that generates AI comparison when winner is not AI (`if image_source != "ai_generated" and image_tier == "stock"`)
+- Delete the `elif image_source == "ai_generated"` block that copies winner to comparison fields
+- Remove all `_ai_hero_image_path`, `_ai_image_id`, `_ai_image_score` population from `new_pin_data`
+
+**Quality metadata population in `_regen_item()` (lines 567-570):**
+- Remove: `image_quality_score`, `image_low_confidence`, `image_quality_issues` population from `new_pin_data`
+- Keep: `image_retries` population
+
+**`ImageStockAPI` import (line 31) and instantiation (line 66):**
+- Line 31: Delete `from src.apis.image_stock import ImageStockAPI`
+- Line 66: Delete `stock_api = ImageStockAPI()`
+- Remove `stock_api` parameter from `_regen_item()` and `_regen_blog_image()` signatures and all calls
+
 #### `src/blog_deployer.py`
 **Remove `use_ai_image` from approval filters** — **6 locations across 3 methods** (each method filters blogs AND pins separately):
 - `deploy_approved_content()` — Lines 123 (blogs) + 129 (pins)
@@ -263,7 +308,7 @@ No changes needed — `image_source_tier` is not validated or referenced in plan
 
 #### Files NOT changed (verify they still work)
 - `src/post_pins.py` — uses `image_url` from pin-schedule.json. Still populated.
-- `src/weekly_analysis.py` / `src/monthly_review.py` — `image_source` in content-log.jsonl will always be "ai_generated". Aggregation still works (just one bucket).
+- `src/weekly_analysis.py` / `src/monthly_review.py` — `image_source` in content-log.jsonl will always be "ai_generated". Aggregation still works (single bucket). Note: historical content-log entries may still contain "stock"/"pexels"/"unsplash" sources from previous weeks. Reports will show the transition (multiple buckets shrinking to one) but this is not a functional break — aggregation handles any number of distinct values.
 - `src/pin_assembler.py` — receives `hero_image_path`. Source-agnostic.
 - `src/apis/image_stock.py` — no longer imported. Keep file for potential future use.
 - `src/apis/image_gen.py` — unchanged. Still uses gpt-image-1.5.
@@ -337,6 +382,10 @@ Pin rows don't need individual feedback — pins derive from blogs, so replacing
 8. Reset B5 to "idle"
 9. Send Slack notification
 
+**Timing constraint:** Plan regen (B5) is designed for the review phase BEFORE content generation (B3). If triggered after content generation has already run, the updated plan won't affect the current week's generated content — user would need to re-approve B3 to regenerate content from the updated plan. This is by design, not a bug.
+
+**Sheet preservation:** `regen_weekly_plan.py` must preserve B3/B4 cell values when re-writing the Weekly Review sheet. Only blog summary rows and B5 trigger cell should be modified.
+
 **Reuses existing code:**
 - `generate_weekly_plan.py:identify_replaceable_posts()` — maps post → derived pins + slots
 - `generate_weekly_plan.py:splice_replacements()` — swaps posts/pins in-place
@@ -361,7 +410,7 @@ Pin rows don't need individual feedback — pins derive from blogs, so replacing
 - **Endpoint:** `https://api.openai.com/v1/chat/completions`
 
 ### Current State
-Two methods in `claude_api.py` call Claude Sonnet (`MODEL_ROUTINE` = `claude-sonnet-4-20250514`, $3/$15 per MTk):
+Two methods in `claude_api.py` call Claude Sonnet (`MODEL_ROUTINE` = `claude-sonnet-4-6`, $3/$15 per MTk):
 1. `generate_image_prompt()` (line ~360) — writes the text prompt for AI image generation
 2. `generate_pin_copy()` (line 196) — generates title, description, alt text, text overlay for batches of 6 pins
 
@@ -455,6 +504,16 @@ def _call_openai_gpt5_mini(self, prompt: str, system: str, max_tokens: int = 500
 - Verify `sheets_api.py` read ranges are `A:L` (not `A:M`) in `read_content_approvals()` and `read_regen_requests()`
 - Verify `reset_regen_trigger()` writes to `N1` (not `O1`)
 - Verify `publish_content_queue.py` writes regen trigger to `M1:N1` (not `N1:O1`)
+
+**Regen-specific tests:**
+- Verify `regen_content.py` imports compile (no reference to deleted `source_image`, no `ImageStockAPI`)
+- Verify regen image path calls `_source_ai_image()` directly (no tier routing, no `source_image()` call)
+- Verify regen does NOT pass `ai_image=` to `update_content_row()` (no Column M writes)
+- Verify regen does NOT generate AI comparison images (no `_source_ai_image()` calls with `filename_prefix` containing "ai-hero")
+- Verify regen pin-schedule.json update still works (7 fields: title, description, alt_text, image_path, image_url, image_source, image_id) — lines 413-420
+- Verify blog image regen still functions without AI comparison generation
+- Verify `_update_pin_results()` `keys_to_update` list no longer includes deleted quality/AI fields (`_ai_hero_image_path`, `_ai_image_id`, `_ai_image_score`, `_ai_image_url`, `image_quality_score`, `image_low_confidence`, `image_quality_issues`)
+- Verify `_build_regen_quality_note()` simplified to match `_build_quality_note()` changes (no `image_low_confidence` / `image_quality_issues` references)
 
 ### Change 4
 - Write plan with blog rows including Status/Feedback columns

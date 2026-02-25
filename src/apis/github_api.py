@@ -261,7 +261,7 @@ class GitHubAPI:
                     continue
 
                 try:
-                    response = requests.head(url, timeout=10, allow_redirects=True)
+                    response = requests.get(url, timeout=10, allow_redirects=True)
                     if response.status_code == 200:
                         verified.add(url)
                         logger.info("URL is live: %s", url)
