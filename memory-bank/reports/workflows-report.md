@@ -28,8 +28,8 @@ Date: 2026-02-20
 ### daily-post-morning.yml -- Daily 10am ET
 - **Cron:** `0 15 * * *` (15:00 UTC = 10:00 AM ET)
 - **Manual:** `workflow_dispatch`
-- **Steps:** Checkout -> Python 3.11 setup -> install deps -> Google credentials decode -> Pinterest token refresh -> post 1 pin for morning slot (with 0-90 min jitter) -> commit updated content log
-- **Purpose:** Posts 1 pin from the approved schedule. The script applies random jitter (0-90 minutes from the trigger time) to avoid bot-like patterns.
+- **Steps:** Checkout -> Python 3.11 setup -> install deps -> Google credentials decode -> Pinterest token refresh -> post 1 pin for morning slot (with 0-15 min jitter) -> commit updated content log
+- **Purpose:** Posts 1 pin from the approved schedule. The script applies random jitter (0-15 minutes from the trigger time) to avoid bot-like patterns.
 
 ### daily-post-afternoon.yml -- Daily 3pm ET
 - **Cron:** `0 20 * * *` (20:00 UTC = 3:00 PM ET)
@@ -160,7 +160,7 @@ Every workflow has a final failure step:
 
 All jobs set `timeout-minutes: 30`. The content generation workflow is the longest-running (est. 15-20 min), well within this limit.
 
-**Note on the previous skeleton's daily posting timeout:** The original skeletons set daily posting jobs to `timeout-minutes: 120` to accommodate the full jitter window (up to 90 min). I set these to 30 minutes because the jitter happens inside the Python script (via `time.sleep()`), and 30 minutes is sufficient for a 90-min sleep + posting. However, if the jitter exceeds 30 minutes, the job will be killed. If jitter values above 30 minutes are common, increase the daily posting timeout to `timeout-minutes: 120`. This is a tradeoff: longer timeouts consume more GitHub Actions minutes. Since jitter is uniformly distributed from 0-90 minutes, the median jitter is ~45 minutes, which exceeds the 30-minute timeout. **Recommendation: increase the daily posting workflow timeouts to 120 minutes, or reduce the maximum jitter to 25 minutes.** I have left them at 30 minutes per the spec, but this needs to be reconciled with the jitter implementation.
+**Note on daily posting timeouts:** With `INITIAL_JITTER_MAX = 900` (0-15 minutes), the daily posting jobs comfortably fit within `timeout-minutes: 30` for morning/afternoon slots. The evening slot has `timeout-minutes: 45` to accommodate initial jitter (up to 15 min) + inter-pin jitter (up to 20 min) + posting overhead.
 
 ---
 
@@ -396,22 +396,18 @@ Assuming the pinterest-pipeline repo is **private**, here is the estimated month
 | monthly-review.yml | 1x/month | 5-10 min | 5-10 min |
 | **Total** | | | **367-625 min/month** |
 
-**Important caveat on daily posting workflows:** The above estimates assume the jitter `time.sleep()` call happens within the Python script and counts against billable minutes. A 90-minute maximum jitter means the daily posting jobs could each consume up to 92 minutes. In the worst case (all three slots hitting maximum jitter every day), daily posting alone would consume:
+**Important caveat on daily posting workflows:** The above estimates assume the jitter `time.sleep()` call happens within the Python script and counts against billable minutes. With the 15-minute maximum jitter (`INITIAL_JITTER_MAX = 900`), the daily posting jobs could each consume up to 18 minutes. In the worst case (all three slots hitting maximum jitter every day), daily posting alone would consume:
 
-- Worst case: 3 slots * 30 days * 92 min = 8,280 min/month (far exceeds free tier)
-- Average case: 3 slots * 30 days * 48 min (avg jitter ~45 min + 3 min posting) = 4,320 min/month (still exceeds free tier)
+- Worst case: 3 slots * 30 days * 18 min = 1,620 min/month (within free tier)
+- Average case: 3 slots * 30 days * 11 min (avg jitter ~7.5 min + 3 min posting) = 990 min/month (comfortably within free tier)
 
-**This is a problem.** The `time.sleep()` jitter inside the Python script counts as billable GitHub Actions time. At the current jitter range (0-90 minutes), the daily posting workflows alone will blow past the 2,000 minute/month free tier.
+**This is manageable.** With the 0-15 minute jitter range, the daily posting workflows stay within the 2,000 minute/month free tier in both average and worst-case scenarios, leaving headroom for the other workflows.
 
-**Recommendations to stay within free tier:**
+**If free tier becomes tight, options include:**
 
-1. **Reduce jitter maximum.** Change from 0-90 minutes to 0-15 minutes. This gives enough randomness to avoid exact-same-time posting without burning billable minutes on sleep. Estimated daily posting cost drops to 3 * 30 * 18 = 1,620 min/month, still tight but feasible with headroom.
+1. **Move jitter into the cron expression.** Instead of a single cron at the top of the window + sleep, randomize the cron trigger time each week (via a setup workflow that rewrites the cron). This is more complex but eliminates sleep-based minute waste.
 
-2. **Move jitter into the cron expression.** Instead of a single cron at the top of the window + sleep, randomize the cron trigger time each week (via a setup workflow that rewrites the cron). This is more complex but eliminates sleep-based minute waste.
-
-3. **Use a public repo.** Public repos get unlimited GitHub Actions minutes. Since the repo contains no secrets (those are in GitHub Secrets), this is safe. The pipeline code, templates, and strategy docs would be public.
-
-4. **Accept the overage.** GitHub charges $0.008/minute for overages on the Team plan. At ~3,000 min overage, that is ~$24/month. Not ideal but not catastrophic.
+2. **Use a public repo.** Public repos get unlimited GitHub Actions minutes. Since the repo contains no secrets (those are in GitHub Secrets), this is safe. The pipeline code, templates, and strategy docs would be public.
 
 If the repo is **public**, this is a non-issue -- all minutes are free.
 

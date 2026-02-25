@@ -1,7 +1,7 @@
 name: Daily Post -- Evening
 
 # Evening posting window: 8:00 PM ET (01:00 UTC next day)
-# Posts 2 pins with random jitter (0-90 min delay from trigger,
+# Posts 2 pins with random jitter (0-15 min delay from trigger,
 # 5-20 min gap between pins)
 # Peak Pinterest usage window (8-11 PM)
 on:

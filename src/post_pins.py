@@ -297,7 +297,7 @@ def apply_jitter(time_slot: str, pin_index: int = 0) -> None:
     """
     Sleep for a random duration to avoid bot detection.
 
-    First pin: random(0, 5400) seconds from window start.
+    First pin: random(0, 900) seconds (0-15 min) from window start.
     Subsequent pins: random(300, 1200) seconds between each.
 
     The jitter seed is derived from date + slot + pin_index, so it is
@@ -313,7 +313,7 @@ def apply_jitter(time_slot: str, pin_index: int = 0) -> None:
     rng = random.Random(seed)
 
     if pin_index == 0:
-        # Initial jitter: 0 to 90 minutes
+        # Initial jitter: 0 to 15 minutes
         jitter_seconds = rng.randint(0, INITIAL_JITTER_MAX)
         logger.info(
             "Applying initial jitter for %s slot: sleeping %d seconds (%.1f minutes)",

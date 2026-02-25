@@ -1,7 +1,7 @@
 name: Daily Post -- Morning
 
 # Morning posting window: 10:00 AM ET (15:00 UTC)
-# Posts 1 pin with random jitter (0-90 min delay from trigger)
+# Posts 1 pin with random jitter (0-15 min delay from trigger)
 on:
   schedule:
     - cron: '0 15 * * *'  # 15:00 UTC = 10:00 AM ET, daily

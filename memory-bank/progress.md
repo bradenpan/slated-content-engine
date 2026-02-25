@@ -870,7 +870,7 @@ Five bugs identified during the Phase 7 full pipeline review. All fixed.
 
 **Problem:** `generate_weekly_plan.py` creates exactly 28 pins (4/day x 7 days, validated by Check 7). But `post_pins.py:should_skip_window()` skipped 1 random posting window per week. If evening was skipped, 2 pins were lost; otherwise 1. Skipped pins were never retried or rescheduled — they silently never posted. Over a year, 52-104 pins wasted.
 
-**Fix:** Removed `should_skip_window()` entirely. The existing anti-bot jitter (0-90 min initial delay, 5-20 min between pins, seeded from date+slot) provides sufficient anti-pattern behavior without sacrificing content.
+**Fix:** Removed `should_skip_window()` entirely. The existing anti-bot jitter (0-15 min initial delay, 5-20 min between pins, seeded from date+slot) provides sufficient anti-pattern behavior without sacrificing content.
 
 **File changed:** `src/post_pins.py`
 

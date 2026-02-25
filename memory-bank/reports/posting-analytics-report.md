@@ -17,7 +17,7 @@ The main entry point is `post_pins(time_slot: str)` where time_slot is "morning"
 
 1. Initializes TokenManager, PinterestAPI, and SlackNotify
 2. Checks the weekly skip (one random window per week is dropped)
-3. Applies initial jitter (0-90 minute random sleep)
+3. Applies initial jitter (0-15 minute random sleep)
 4. Loads the pin schedule from `data/pin-schedule.json` and filters to today's date + current slot
 5. Builds a board name-to-ID mapping by calling `pinterest_api.list_boards()` once
 6. For each pin: runs idempotency check, verifies blog URL, constructs UTM link, creates pin via Pinterest API, updates content-log.jsonl and Google Sheet
@@ -100,7 +100,7 @@ Specialized analyses computed:
 The jitter system has three layers:
 
 ### Layer 1: Initial Window Jitter
-When a cron job fires at the start of a posting window (e.g., 10:00 AM ET), the script sleeps for `random(0, 5400)` seconds (0 to 90 minutes). This means the actual post lands anywhere between 10:00 and 11:30 AM.
+When a cron job fires at the start of a posting window (e.g., 10:00 AM ET), the script sleeps for `random(0, 900)` seconds (0 to 15 minutes). This means the actual post lands anywhere between 10:00 and 10:15 AM.
 
 The sleep duration is derived from a SHA-256 hash of `{date}:{slot}:{pin_index}`. This makes it:
 - **Reproducible** for debugging: same date + slot always produces the same jitter
