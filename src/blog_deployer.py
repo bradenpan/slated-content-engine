@@ -829,6 +829,7 @@ class BlogDeployer:
                     subtitle=subtitle,
                     variant=pin_data.get("treatment_number", 1),
                     output_path=GENERATED_PINS_DIR / f"{pin_id}.png",
+                    extra_context={"background_image_url": str(ai_hero_path)},
                 )
 
                 # Upload re-rendered pin to GCS
