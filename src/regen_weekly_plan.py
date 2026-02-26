@@ -92,7 +92,6 @@ def load_plan(plan_path: Path) -> dict:
 
 def build_regen_violations(
     regen_requests: list[dict],
-    plan: dict,
 ) -> list[dict]:
     """
     Convert sheet regen requests into the violation format expected by
@@ -103,7 +102,6 @@ def build_regen_violations(
 
     Args:
         regen_requests: Output from sheets.read_plan_regen_requests().
-        plan: The current weekly plan.
 
     Returns:
         list[dict]: Structured violations compatible with identify_replaceable_posts().
@@ -155,7 +153,7 @@ def regen_plan() -> None:
     plan = load_plan(plan_path)
 
     # Step 3: Build violations from regen requests and identify replaceable posts
-    violations = build_regen_violations(regen_requests, plan)
+    violations = build_regen_violations(regen_requests)
     replaceable = identify_replaceable_posts(plan, violations)
 
     if not replaceable:

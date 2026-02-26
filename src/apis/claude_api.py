@@ -484,6 +484,9 @@ class ClaudeAPI:
         """
         template = self.load_prompt_template("weekly_plan_replace.md")
 
+        # Make copies to avoid mutating caller's data
+        posts_to_replace = [dict(p) for p in posts_to_replace]
+
         # If reviewer feedback is provided, attach it to the posts for context
         if reviewer_feedback:
             for post in posts_to_replace:
