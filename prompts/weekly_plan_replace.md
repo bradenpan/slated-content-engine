@@ -12,7 +12,7 @@ Replace {{NUM_POSTS}} blog post(s) that violated content constraints. For each r
 1. Keep the **same `post_id`**, **pillar**, and **content_type** as the original.
 2. Choose a **completely different topic** that avoids all constraint violations.
 3. Generate replacement pins that fill the **exact same scheduled slots** (same `pin_id`, `scheduled_date`, `scheduled_slot`, `target_board`, `funnel_layer`).
-4. Only change topic-dependent fields: `topic`, `primary_keyword`, `secondary_keywords`, `schema_type`, `seasonal_hook`, `pin_topic`, `pin_template`, `image_source_tier`.
+4. Only change topic-dependent fields: `topic`, `primary_keyword`, `secondary_keywords`, `schema_type`, `seasonal_hook`, `pin_topic`, `pin_template`.
 
 ---
 ## CONSTRAINTS
@@ -36,7 +36,7 @@ Each post below was flagged. Replace it with a different topic in the same pilla
 ---
 ## PIN SLOTS TO FILL
 
-Each replacement post must generate pins that fill these exact slots. Keep `pin_id`, `scheduled_date`, `scheduled_slot`, `target_board`, and `funnel_layer` exactly as shown. Change `pin_topic`, `pin_template`, `image_source_tier`, `primary_keyword`, and `secondary_keywords` to match the new topic.
+Each replacement post must generate pins that fill these exact slots. Keep `pin_id`, `scheduled_date`, `scheduled_slot`, `target_board`, and `funnel_layer` exactly as shown. Change `pin_topic`, `pin_template`, `primary_keyword`, and `secondary_keywords` to match the new topic.
 
 {{SLOTS_TO_FILL}}
 
@@ -76,7 +76,6 @@ Return valid JSON with exactly this structure. No markdown code fences — retur
       "primary_keyword": "keyword",
       "secondary_keywords": ["kw2"],
       "target_board": "Board Name",
-      "image_source_tier": "stock",
       "treatment_number": 1,
       "funnel_layer": "discovery",
       "scheduled_date": "YYYY-MM-DD",
@@ -90,7 +89,6 @@ Return valid JSON with exactly this structure. No markdown code fences — retur
 - `content_type`: "weekly-plan" | "recipe" | "guide" | "listicle"
 - `pin_type`: "primary" | "recipe-pull" | "fresh-treatment"
 - `pin_template`: "recipe-pin" | "tip-pin" | "listicle-pin" | "problem-solution-pin" | "infographic-pin"
-- `image_source_tier`: "stock" | "ai" | "template"
 - `funnel_layer`: "discovery" | "consideration" | "conversion"
 - `scheduled_slot`: "morning" | "afternoon" | "evening-1" | "evening-2"
 - `schema_type`: "Recipe" | "Article" | "Article+Recipe"

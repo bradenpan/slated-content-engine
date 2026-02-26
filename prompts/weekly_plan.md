@@ -137,17 +137,6 @@ Available boards and their pillar mappings. Assign each pin to exactly one board
 Max 5 pins per board per week.
 
 ---
-## IMAGE SOURCE ASSIGNMENT
-
-Assign image source tier based on content type:
-- **Recipe pins** → Tier 1 (stock photo) preferred, Tier 2 (AI) as backup
-- **Lifestyle/aspirational** → Tier 2 (AI) preferred
-- **Tips/How-to** → Tier 3 (template-only) or Tier 1
-- **Listicle** → Tier 1 or Tier 3
-- **Problem-solution** → Tier 2 or Tier 3
-- **Infographic** → Tier 3 (template-only)
-
----
 ## CTA PILLAR VARIANTS
 
 Assign the correct CTA variant to each blog post based on its pillar:
@@ -204,7 +193,6 @@ Return valid JSON with exactly this structure. No markdown code fences around th
       "primary_keyword": "keyword to lead the pin title with",
       "secondary_keywords": ["kw2", "kw3"],
       "target_board": "Weekly Meal Plans & Meal Planning Tips",
-      "image_source_tier": "stock",
       "treatment_number": 1,
       "funnel_layer": "consideration",
       "scheduled_date": "YYYY-MM-DD",
@@ -218,7 +206,6 @@ Return valid JSON with exactly this structure. No markdown code fences around th
 - `content_type`: "weekly-plan" | "recipe" | "guide" | "listicle"
 - `pin_type`: "primary" | "recipe-pull" | "fresh-treatment"
 - `pin_template`: "recipe-pin" | "tip-pin" | "listicle-pin" | "problem-solution-pin" | "infographic-pin"
-- `image_source_tier`: "stock" | "ai" | "template"
 - `funnel_layer`: "discovery" | "consideration" | "conversion"
 - `scheduled_slot`: "morning" | "afternoon" | "evening-1" | "evening-2"
 - `schema_type`: "Recipe" | "Article" | "Article+Recipe"
@@ -270,7 +257,6 @@ Return valid JSON with exactly this structure. No markdown code fences around th
   "primary_keyword": "weekly meal plan",
   "secondary_keywords": ["spring dinner ideas", "easy weeknight dinners"],
   "target_board": "Weekly Meal Plans & Meal Planning Tips",
-  "image_source_tier": "stock",
   "treatment_number": 1,
   "funnel_layer": "consideration",
   "scheduled_date": "2026-03-17",
@@ -290,7 +276,6 @@ Return valid JSON with exactly this structure. No markdown code fences around th
   "primary_keyword": "easy dinner ideas",
   "secondary_keywords": ["chicken dinner", "one pan meals"],
   "target_board": "Quick Weeknight Dinner Recipes",
-  "image_source_tier": "stock",
   "treatment_number": 1,
   "funnel_layer": "discovery",
   "scheduled_date": "2026-03-18",
@@ -310,7 +295,6 @@ Return valid JSON with exactly this structure. No markdown code fences around th
   "primary_keyword": "easy weeknight dinners",
   "secondary_keywords": ["dinner ideas for family", "quick weeknight dinners"],
   "target_board": "Easy Dinner Ideas for Families",
-  "image_source_tier": "stock",
   "treatment_number": 2,
   "funnel_layer": "discovery",
   "scheduled_date": "2026-03-21",

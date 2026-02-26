@@ -784,7 +784,6 @@ def _update_pin_results(
         "regen_type": regen_type,
         "feedback": feedback,
         "timestamp": datetime.now().isoformat(),
-        "previous_score": pin_data.get("image_quality_score"),
         "previous_image_source": pin_data.get("image_source"),
         "previous_title": pin_data.get("title"),
     }
