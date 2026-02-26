@@ -11,8 +11,8 @@ Plan → Generate → Review → Deploy → Post → Analyze → (feeds next Pla
 ```
 
 **Orchestration:** GitHub Actions (cron + webhook triggers)
-**LLM:** Claude API (Sonnet 4.6 for routine, Opus 4.6 for deep analysis, Haiku 4.5 for image evaluation)
-**Content:** Blog posts (MDX) + pin images (stock/AI/template) + pin copy
+**LLM:** Claude Sonnet 4.6 (routine), Claude Opus 4.6 (deep analysis), GPT-5 Mini (pin copy + image prompts, Claude fallback)
+**Content:** Blog posts (MDX) + pin images (AI-generated via gpt-image-1.5) + pin copy
 **Deployment:** goslated.com via GitHub/Vercel (blogs), Pinterest API (pins)
 **Coordination:** Google Sheets (human review + automation triggers), Slack (notifications)
 **Measurement:** Pinterest Analytics API, weekly/monthly Claude-driven analysis
@@ -38,32 +38,33 @@ Plan → Generate → Review → Deploy → Post → Analyze → (feeds next Pla
 - `generate_weekly_plan.py` — Claude-driven content planning with strategy/analytics/memory context
 - `generate_blog_posts.py` — Blog post orchestrator (4 types: recipe, guide, listicle, weekly-plan)
 - `blog_generator.py` — Individual blog MDX generation with frontmatter + Schema.org
-- `generate_pin_content.py` — Pin copy generation + image sourcing (3-tier) + assembly
+- `generate_pin_content.py` — Pin copy generation (GPT-5 Mini) + AI image generation + assembly
 - `pin_assembler.py` — HTML/CSS template → PNG renderer via Puppeteer (5 template types, 3 variants each)
-- `publish_content_queue.py` — Drive upload + Sheet write + Slack notification
+- `publish_content_queue.py` — GCS upload (Drive fallback) + Sheet write + Slack notification
 - `blog_deployer.py` — GitHub commit to goslated.com → Vercel deploy → URL verification → pin schedule creation
 - `post_pins.py` — Daily Pinterest API posting with anti-bot jitter, idempotency, retry logic
 - `weekly_analysis.py` — Claude-driven weekly performance analysis
 - `monthly_review.py` — Claude Opus deep monthly strategy review
 - `pull_analytics.py` — Pinterest Analytics API pull (impressions, saves, clicks, outbound)
+- `regen_weekly_plan.py` — Plan-level feedback and regeneration orchestrator
 
 **API Wrappers (src/apis/)**
-- `claude_api.py` — Claude Sonnet/Opus/Haiku with prompt templates, vision support, token/cost tracking
+- `claude_api.py` — Claude Sonnet/Opus with prompt templates, GPT-5 Mini integration, token/cost tracking
 - `pinterest_api.py` — Pinterest v5 REST API (pins, boards, analytics)
 - `sheets_api.py` — Google Sheets (Weekly Review, Content Queue, Post Log, Dashboard tabs)
-- `drive_api.py` — Google Drive (pin image upload for inline Sheet previews)
+- `gcs_api.py` — Google Cloud Storage (primary pin/hero image upload for inline Sheet previews)
+- `drive_api.py` — Google Drive (fallback pin image upload for inline Sheet previews)
 - `github_api.py` — GitHub Git Data API (atomic multi-file blog commits)
-- `image_stock.py` — Unsplash + Pexels stock photo search/download/dedup
-- `image_gen.py` — OpenAI DALL-E / Replicate Flux Pro image generation
+- `image_gen.py` — AI image generation via gpt-image-1.5 (Replicate Flux Pro as alternate provider)
 - `slack_notify.py` — Slack webhook notifications (Block Kit)
 - `token_manager.py` — Pinterest OAuth 2.0 token auto-refresh
 
 **Workflows (.github/workflows/)**
 - `weekly-review.yml`, `generate-content.yml`, `deploy-and-schedule.yml`, `promote-and-schedule.yml`
 - `daily-post-morning.yml`, `daily-post-afternoon.yml`, `daily-post-evening.yml`
-- `monthly-review.yml`
+- `monthly-review.yml`, `regen-plan.yml`, `regen-content.yml`, `setup-boards.yml`
 
-**Prompt Templates (prompts/)** — 12 templates covering planning, blog generation, pin copy, image sourcing, image quality, and performance analysis
+**Prompt Templates (prompts/)** — 10 templates covering planning (weekly plan + replacement), blog generation (4 types), pin copy, image prompts, and performance analysis (weekly + monthly)
 
 **Strategy (strategy/)** — Content strategy, brand voice, board structure, keyword lists, seasonal calendar, CTA variants, product overview
 
@@ -1426,3 +1427,63 @@ Applied the same defensive parsing pattern to `image_stock.py` for Unsplash and 
 ### Status
 
 Complete. Morning workflow should be manually rerun after merge.
+
+## Phase 11: Pipeline Simplification
+
+**Date:** 2026-02-26
+**Branch:** `pipeline-simplification` → merged to `main`
+**PR:** [#1](https://github.com/bradenpan/slated-pinterest-bot/pull/1)
+**Scope:** 35 files changed, 763 insertions, 2,011 deletions (net -1,248 lines)
+
+### Phase A: Image Pipeline Simplification (HIGH risk)
+
+Removed the entire stock photo pipeline (Unsplash/Pexels search, Claude Haiku ranking, Claude Sonnet validation, AI comparison images). All images now AI-generated via gpt-image-1.5 — no more stock photos.
+
+**Key changes:**
+- Deleted `src/apis/image_stock.py`, `prompts/image_rank.md`, `prompts/image_search.md`, `prompts/image_validate.md`
+- Removed Column M (AI Image) from Content Queue — now 12 columns (A-L) instead of 13 (A-M)
+- Switched pin copy generation and image prompt generation to GPT-5 Mini (Claude Sonnet fallback)
+- Removed `upload_ai_hero_images()` from `gcs_api.py`, `upload_single_image()` dead code
+- Removed `_process_ai_image_swaps()` from `blog_deployer.py` (kept `use_ai_image` as backwards-compat status alias)
+- Shifted regen trigger from O1 to N1 in Content Queue, column 15→14 in `trigger.gs`
+- Added configurable model ID via `OPENAI_CHAT_MODEL` env var (defaults to `gpt-5-mini`)
+- Added JSON code-fence stripping for GPT-5 Mini responses in `_source_ai_image()`
+- Added rate limit retry (429) with Retry-After header support for GPT-5 Mini
+- Increased GPT-5 Mini timeout to 90s for pin copy batch operations
+- Moved `_parse_json_response()` inside try/except for pin copy so parse failures fall back to Claude
+- Removed `UNSPLASH_ACCESS_KEY` and `PEXELS_API_KEY` from all workflow files
+- Removed Node.js + Puppeteer steps from `promote-and-schedule.yml` (only needed for deleted `_process_ai_image_swaps`)
+
+### Phase B: Blog Post Double Title Fix (LOW risk)
+
+- Removed `# {Title}` H1 from all 4 blog post prompt templates (recipe, guide, listicle, weekly-plan)
+- Removed duplicate H1 from all 4 example templates
+- Added H1 stripping safety net in `blog_generator.py` — strips any H1 matching frontmatter title
+
+### Phase C: Plan-Level Feedback & Regeneration (LOW risk)
+
+- New `src/regen_weekly_plan.py` — orchestrator for plan-level regen (320 lines)
+- New `.github/workflows/regen-plan.yml` — workflow triggered by `repository_dispatch: regen-plan`
+- Extended `sheets_api.py` with `read_plan_regen_requests()`, `reset_plan_regen_trigger()`, weekly review Status/Feedback columns, B5 trigger
+- Extended `claude_api.py` `generate_replacement_posts()` with `reviewer_feedback` param
+- Added `notify_plan_regen_complete()` to `slack_notify.py`
+- Added B5 watcher and `runPlanRegen()` function to `trigger.gs`
+
+### Risk Fixes (applied after main phases)
+
+- JSON code-fence stripping before `json.loads()` in `_source_ai_image()` (GPT-5 Mini wraps JSON in markdown fences)
+- `OPENAI_API_KEY` added to `regen-plan.yml` env block
+- GPT-5 Mini timeout: configurable parameter, 90s for batch pin copy, 30s default for image prompts
+- Rate limit retry with backoff for 429 responses (single retry, reads Retry-After header, caps at 30s)
+- Parse failure fallback: `_parse_json_response()` now inside try/except so malformed JSON from GPT-5 Mini falls back to Claude
+- Configurable model ID via `OPENAI_CHAT_MODEL` env var
+- Dead code cleanup: deleted `image_stock.py`, `upload_single_image()`, stale workflow secrets, stale comments
+
+### Post-Merge Required Action
+
+- Update Apps Script in Google Sheets (copy `src/apps-script/trigger.gs` into script editor)
+- Wires up B5 plan regen trigger and shifts content regen trigger O1→N1
+
+### Status
+
+Complete. Merged to main via PR #1.
