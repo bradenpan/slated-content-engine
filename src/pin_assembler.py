@@ -54,8 +54,8 @@ MAX_PNG_SIZE = 500 * 1024  # 500 KB
 _VARIANT_MAP = {1: "A", 2: "B", 3: "C", "1": "A", "2": "B", "3": "C"}
 
 # Valid template names and their variant labels
-# Note: Some variables (category_label, problem_label, solution_label, time_badge)
-# are prepared for Phase 3 — context is built but not yet consumed by HTML templates.
+# All template-specific variables (category_label, problem_label, solution_label,
+# time_badge) are injected via simple_vars and consumed by HTML templates.
 TEMPLATE_CONFIGS = {
     "recipe-pin": {
         "variants": ["A", "B", "C"],
@@ -122,8 +122,14 @@ def _escape_html(text: str) -> str:
     return html_module.escape(text, quote=True)
 
 
-def _build_list_items_html(items: list[str], variant: str) -> str:
-    """Build HTML for listicle pin list items based on variant."""
+def _build_list_items_html(items: list[str], variant: str, has_more: bool = False) -> str:
+    """Build HTML for listicle pin list items based on variant.
+
+    Args:
+        items: List of item strings to render.
+        variant: Template variant letter (A, B, or C).
+        has_more: If True, append an italic "...and more" row after the items.
+    """
     if not items:
         return ""
 
@@ -136,6 +142,15 @@ def _build_list_items_html(items: list[str], variant: str) -> str:
             f'  <span class="list-item-text">{escaped}</span>'
             f'</div>'
         )
+
+    if has_more:
+        html_parts.append(
+            f'<div class="list-item-row list-item-more">'
+            f'  <span class="list-item-number"></span>'
+            f'  <span class="list-item-text" style="font-style: italic; opacity: 0.7;">...and more</span>'
+            f'</div>'
+        )
+
     return "\n".join(html_parts)
 
 
@@ -308,8 +323,9 @@ class PinAssembler:
         # Handle listicle list_items (array of strings -> HTML)
         if template_name == "listicle-pin" and "{{list_items}}" in result:
             items = context.get("list_items", [])
+            has_more = bool(context.get("has_more_items", False))
             if isinstance(items, list):
-                items_html = _build_list_items_html(items, variant)
+                items_html = _build_list_items_html(items, variant, has_more=has_more)
             else:
                 items_html = _escape_html(str(items))
             result = result.replace("{{list_items}}", items_html)
@@ -334,6 +350,9 @@ class PinAssembler:
             "problem_text", "solution_text",
             "title", "footer_text",
             "cta_text",
+            "time_badge",
+            "category_label",
+            "problem_label", "solution_label",
         ]
         for var in simple_vars:
             placeholder = "{{" + var + "}}"
@@ -350,6 +369,17 @@ class PinAssembler:
             result = result.replace(
                 'class="tip-c-bullet-card tip-bullet-optional"',
                 'class="tip-c-bullet-card tip-bullet-optional hidden"'
+            )
+
+        # Hide time badge if no time_badge provided
+        if template_name == "recipe-pin" and not context.get("time_badge"):
+            result = result.replace(
+                'class="recipe-time-badge"',
+                'class="recipe-time-badge hidden"'
+            )
+            result = result.replace(
+                'class="recipe-time-badge recipe-time-badge-dark"',
+                'class="recipe-time-badge recipe-time-badge-dark hidden"'
             )
 
         # Hide CTA if no cta_text provided

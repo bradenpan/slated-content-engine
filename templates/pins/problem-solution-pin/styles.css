@@ -29,6 +29,14 @@
     text-align: center;
 }
 
+.variant-a .ps-a-problem-inner .text-headline {
+    font-weight: 500;
+}
+
+.variant-a .ps-a-solution-inner .text-headline {
+    font-weight: 800;
+}
+
 .variant-a .ps-a-divider {
     width: 100%;
     height: 10px;
@@ -103,6 +111,14 @@
     flex-shrink: 0;
 }
 
+.variant-b .ps-b-problem-area .text-headline {
+    font-weight: 500;
+}
+
+.variant-b .ps-b-solution-card .text-headline {
+    font-weight: 800;
+}
+
 .variant-b .ps-b-arrow {
     display: flex;
     flex-direction: column;
@@ -174,6 +190,14 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
+}
+
+.variant-c .ps-c-problem-area .text-headline {
+    font-weight: 500;
+}
+
+.variant-c .ps-c-solution-area .text-display {
+    font-weight: 800;
 }
 
 .variant-c .ps-c-icon {

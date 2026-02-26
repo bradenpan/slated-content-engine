@@ -521,7 +521,7 @@ def build_template_context(
     pin_topic = pin_spec.get("pin_topic", "")
 
     if template_type == "recipe-pin":
-        # Time badge — Prepared for Phase 3 — not yet injected into HTML templates
+        # Time badge — rendered in recipe-pin time badge element
         if isinstance(text_overlay, dict) and text_overlay.get("time_badge"):
             context["time_badge"] = text_overlay["time_badge"]
         # CTA text
@@ -538,7 +538,7 @@ def build_template_context(
             bullets = _extract_bullets(description, overlay_sub_text, pin_topic)
             for i, bullet in enumerate(bullets[:3], 1):
                 context[f"bullet_{i}"] = bullet
-        # Category label — Prepared for Phase 3 — not yet injected into HTML templates
+        # Category label — injected into {{category_label}} in tip-pin template
         if isinstance(text_overlay, dict) and text_overlay.get("category_label"):
             context["category_label"] = text_overlay["category_label"]
         else:
@@ -553,8 +553,8 @@ def build_template_context(
             items = text_overlay["list_items"]
             # Enforce max 5 items on pin (with "...and more" for longer lists)
             if len(items) > 5:
+                context["has_more_items"] = True
                 items = items[:5]
-                # Truncation is handled by assembler: appends "...and more" row
             context["list_items"] = items
         else:
             # Fallback: extract from description
@@ -579,8 +579,8 @@ def build_template_context(
             # Fallback: headline = problem, sub_text = solution
             context["problem_text"] = overlay_headline
             context["solution_text"] = overlay_sub_text or pin_copy.get("title", "")
-        # Section labels — Prepared for Phase 3 — not yet injected into HTML templates
-        # (defaults ensure {{problem_label}} / {{solution_label}} never render empty)
+        # Section labels — injected into {{problem_label}} / {{solution_label}} in template
+        # (defaults ensure labels never render empty)
         context["problem_label"] = text_overlay.get("problem_label", "The Problem") if isinstance(text_overlay, dict) else "The Problem"
         context["solution_label"] = text_overlay.get("solution_label", "The Answer") if isinstance(text_overlay, dict) else "The Answer"
         # CTA text
@@ -604,7 +604,7 @@ def build_template_context(
             context["footer_text"] = text_overlay["footer_text"]
         else:
             context["footer_text"] = overlay_sub_text or ""
-        # Category label — Prepared for Phase 3 — not yet injected into HTML templates
+        # Category label — injected into {{category_label}} in infographic-pin template
         if isinstance(text_overlay, dict) and text_overlay.get("category_label"):
             context["category_label"] = text_overlay["category_label"]
         else:
