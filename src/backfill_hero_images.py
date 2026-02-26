@@ -3,9 +3,13 @@ One-off script: download correct hero images from Google Sheet URLs
 and save them to data/generated/pins/{slug}-hero.{ext} so they can
 be committed to git and picked up by blog_deployer.
 
+DEPRECATION NOTE: This script is largely obsolete. All images are now
+AI-generated via gpt-image-1.5 and Column M (AI Image) no longer exists
+in the Content Queue. The script is retained for historical reference
+and possible one-off thumbnail backfills from column I only.
+
 For each blog row in the Content Queue:
   - status "approved"     -> use column I (Thumbnail) URL
-  - status "use_ai_image" -> use column M (AI Image) URL
 
 Usage:
     python -m src.backfill_hero_images                              # dry-run (Sheets API)
@@ -31,7 +35,6 @@ CQ_COL_TYPE = 1       # B
 CQ_COL_BLOG_URL = 5   # F (slug for blogs)
 CQ_COL_THUMBNAIL = 8  # I
 CQ_COL_STATUS = 9     # J
-CQ_COL_AI_IMAGE = 12  # M
 
 
 def _extract_url_from_formula(cell_value) -> str:
@@ -76,7 +79,7 @@ def _load_rows_from_sheets() -> list[list]:
     sheets = SheetsAPI()
     result = sheets.sheets.values().get(
         spreadsheetId=sheets.sheet_id,
-        range="'Content Queue'!A:M",
+        range="'Content Queue'!A:L",
         valueRenderOption="FORMULA",
     ).execute()
     return result.get("values", [])
@@ -130,11 +133,8 @@ def main():
         if status == "approved":
             raw = row[CQ_COL_THUMBNAIL] if len(row) > CQ_COL_THUMBNAIL else ""
             source_label = "thumbnail (col I)"
-        elif status == "use_ai_image":
-            raw = row[CQ_COL_AI_IMAGE] if len(row) > CQ_COL_AI_IMAGE else ""
-            source_label = "AI image (col M)"
         else:
-            print(f"  SKIP {item_id} ({slug}): status is '{status}', not approved/use_ai_image")
+            print(f"  SKIP {item_id} ({slug}): status is '{status}', not approved")
             skipped += 1
             continue
 

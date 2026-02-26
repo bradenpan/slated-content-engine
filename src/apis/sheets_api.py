@@ -56,7 +56,6 @@ CQ_COL_THUMBNAIL = 8    # I: Thumbnail URL or image reference
 CQ_COL_STATUS = 9       # J: content_status
 CQ_COL_NOTES = 10       # K: Reviewer notes
 CQ_COL_FEEDBACK = 11    # L: Reviewer feedback for regen
-CQ_COL_AI_IMAGE = 12    # M: AI-generated image thumbnail
 
 # Column indices for the Post Log tab
 PL_COL_PIN_ID = 0       # A: Internal pin ID
@@ -289,8 +288,6 @@ class SheetsAPI:
         blog_image_urls: dict = None,
         blog_previews: dict = None,
         quality_gate_stats: dict = None,
-        ai_image_urls: dict = None,
-        blog_ai_image_urls: dict = None,
     ) -> None:
         """
         Write generated blog posts and pins to the "Content Queue" tab.
@@ -305,29 +302,26 @@ class SheetsAPI:
             pins: List of generated pin metadata dicts.
                 Keys: pin_id, title, description, board_name, link, scheduled_date,
                       scheduled_slot, pillar, image_path, alt_text
-                Optional quality keys: _quality_note, image_quality_score,
-                      image_retries, image_low_confidence
+                Optional quality keys: _quality_note, image_retries
             pin_image_urls: Optional dict of pin_id -> public image URL.
                 When provided, writes =IMAGE(url) in thumbnail column.
             blog_image_urls: Optional dict of post_id -> public hero image URL.
                 When provided, writes =IMAGE(url) for blog post thumbnails.
             blog_previews: Optional dict of post_id -> blog description text.
                 When provided, writes preview in description column for blogs.
-            quality_gate_stats: Optional dict with stock_summary and ai_summary
-                strings. When provided, writes a summary row at the bottom.
+            quality_gate_stats: Optional dict with summary strings.
+                When provided, writes a summary row at the bottom.
         """
         pin_image_urls = pin_image_urls or {}
         blog_image_urls = blog_image_urls or {}
         blog_previews = blog_previews or {}
-        ai_image_urls = ai_image_urls or {}
-        blog_ai_image_urls = blog_ai_image_urls or {}
 
         logger.info("Writing content queue: %d blog posts, %d pins...", len(blog_posts), len(pins))
 
-        # Header row
+        # Header row (A-L, 12 columns)
         rows = [
             ["ID", "Type", "Title", "Description", "Board", "Blog URL",
-             "Schedule", "Pillar", "Thumbnail", "Status", "Notes", "Feedback", "AI Image"],
+             "Schedule", "Pillar", "Thumbnail", "Status", "Notes", "Feedback"],
         ]
 
         # Blog posts
@@ -352,7 +346,6 @@ class SheetsAPI:
                 "pending_review",
                 "",  # Notes
                 "",  # Feedback
-                f'=IMAGE("{blog_ai_image_urls[post_id]}")' if post_id in blog_ai_image_urls else "",
             ])
 
         # Pins
@@ -377,10 +370,6 @@ class SheetsAPI:
             # Per-pin quality note (populated by publish_content_queue.py)
             quality_note = str(pin.get("_quality_note", ""))
 
-            # AI image thumbnail for column M
-            ai_image_url = ai_image_urls.get(pin_id)
-            ai_thumbnail = f'=IMAGE("{ai_image_url}")' if ai_image_url else ""
-
             rows.append([
                 pin_id,
                 "pin",
@@ -394,7 +383,6 @@ class SheetsAPI:
                 "pending_review",
                 quality_note,
                 "",  # Feedback
-                ai_thumbnail,
             ])
 
         # Quality gate summary row at the bottom
@@ -403,7 +391,6 @@ class SheetsAPI:
             rows.append([
                 "QUALITY GATE STATS",
                 "",
-                quality_gate_stats.get("stock_summary", ""),
                 quality_gate_stats.get("ai_summary", ""),
                 "", "", "", "", "", "", "", "", "",
             ])
@@ -422,7 +409,7 @@ class SheetsAPI:
         try:
             result = self.sheets.values().get(
                 spreadsheetId=self.sheet_id,
-                range=f"'{TAB_CONTENT_QUEUE}'!A:M",
+                range=f"'{TAB_CONTENT_QUEUE}'!A:L",
             ).execute()
 
             values = result.get("values", [])
@@ -478,7 +465,7 @@ class SheetsAPI:
         try:
             result = self.sheets.values().get(
                 spreadsheetId=self.sheet_id,
-                range=f"'{TAB_CONTENT_QUEUE}'!A:M",
+                range=f"'{TAB_CONTENT_QUEUE}'!A:L",
             ).execute()
 
             values = result.get("values", [])
@@ -523,7 +510,6 @@ class SheetsAPI:
         status: Optional[str] = None,
         notes: Optional[str] = None,
         feedback: Optional[str] = None,
-        ai_image: Optional[str] = None,
     ) -> None:
         """
         Update specific cells in a Content Queue row by row index.
@@ -539,7 +525,6 @@ class SheetsAPI:
             status: New value for column J.
             notes: New value for column K.
             feedback: New value for column L (typically cleared after regen).
-            ai_image: New value for column M (e.g., '=IMAGE("url")').
         """
         updates: list[dict] = []
         col_map = {
@@ -549,7 +534,6 @@ class SheetsAPI:
             CQ_COL_STATUS: status,
             CQ_COL_NOTES: notes,
             CQ_COL_FEEDBACK: feedback,
-            CQ_COL_AI_IMAGE: ai_image,
         }
 
         for col_index, value in col_map.items():
@@ -578,11 +562,11 @@ class SheetsAPI:
             raise SheetsAPIError(f"Failed to update content row {row_index}: {e}") from e
 
     def reset_regen_trigger(self) -> None:
-        """Write 'idle' to cell O1 of Content Queue to reset the regen trigger."""
+        """Write 'idle' to cell N1 of Content Queue to reset the regen trigger."""
         try:
             self.sheets.values().update(
                 spreadsheetId=self.sheet_id,
-                range=f"'{TAB_CONTENT_QUEUE}'!O1",
+                range=f"'{TAB_CONTENT_QUEUE}'!N1",
                 valueInputOption="RAW",
                 body={"values": [["idle"]]},
             ).execute()
