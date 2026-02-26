@@ -30,7 +30,7 @@
 
 .list-item-text {
     font-family: var(--font-primary);
-    font-size: 26px;
+    font-size: 28px;
     font-weight: 400;
     line-height: 1.35;
 }
@@ -204,5 +204,5 @@
 
 .variant-c .list-item-number {
     color: var(--brand-accent);
-    font-size: 28px;
+    font-size: 30px;
 }

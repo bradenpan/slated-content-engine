@@ -331,6 +331,7 @@ class PinAssembler:
             "bullet_1", "bullet_2", "bullet_3",
             "problem_text", "solution_text",
             "title", "footer_text",
+            "cta_text",
         ]
         for var in simple_vars:
             placeholder = "{{" + var + "}}"
@@ -348,6 +349,11 @@ class PinAssembler:
                 'class="tip-c-bullet-card tip-bullet-optional"',
                 'class="tip-c-bullet-card tip-bullet-optional hidden"'
             )
+
+        # Hide CTA if no cta_text provided
+        if not context.get("cta_text"):
+            result = result.replace('class="pin-cta"', 'class="pin-cta hidden"')
+            result = result.replace('class="pin-cta pin-cta-light"', 'class="pin-cta pin-cta-light hidden"')
 
         return result
 
