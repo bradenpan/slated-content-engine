@@ -30,6 +30,7 @@ from pathlib import Path
 from typing import Optional
 
 import anthropic
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -252,13 +253,11 @@ class ClaudeAPI:
                 )
 
             logger.info("Generating pin copy batch %d-%d of %d...", i + 1, i + len(batch), len(pin_specs))
-            response_text = self._call_api(
-                prompt=prompt,
-                system=system,
-                model=MODEL_ROUTINE,
-                max_tokens=4096,
-                temperature=0.7,
-            )
+            try:
+                response_text = self._call_openai_gpt5_mini(prompt=prompt, system=system, max_tokens=4096, temperature=0.7)
+            except Exception as e:
+                logger.warning("GPT-5 Mini failed for pin copy, falling back to Claude: %s", str(e))
+                response_text = self._call_api(prompt=prompt, system=system, model=MODEL_ROUTINE, max_tokens=4096, temperature=0.7)
 
             batch_results = self._parse_json_response(response_text, "pin copy batch")
             if isinstance(batch_results, list):
@@ -425,13 +424,11 @@ class ClaudeAPI:
             )
 
         logger.info("Generating %s image prompt for: %s", image_source, pin_spec.get("topic", "unknown")[:50])
-        return self._call_api(
-            prompt=prompt,
-            system=system_msg,
-            model=MODEL_ROUTINE,
-            max_tokens=500,
-            temperature=0.8,
-        )
+        try:
+            return self._call_openai_gpt5_mini(prompt=prompt, system=system_msg, max_tokens=500, temperature=0.8)
+        except Exception as e:
+            logger.warning("GPT-5 Mini failed for image prompt, falling back to Claude: %s", str(e))
+            return self._call_api(prompt=prompt, system=system_msg, model=MODEL_ROUTINE, max_tokens=500, temperature=0.8)
 
     def generate_image_search_query(self, pin_spec: dict) -> str:
         """
@@ -876,6 +873,28 @@ class ClaudeAPI:
                 "issues": [], "feedback": "",
                 "disqualifiers": [],
             }
+
+    def _call_openai_gpt5_mini(self, prompt: str, system: str, max_tokens: int = 500, temperature: float = 0.8) -> str:
+        """Call GPT-5 Mini via OpenAI API. Returns response text or raises on failure."""
+        openai_key = os.environ.get("OPENAI_API_KEY", "")
+        if not openai_key:
+            raise ValueError("OPENAI_API_KEY not set")
+        response = requests.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers={"Authorization": f"Bearer {openai_key}", "Content-Type": "application/json"},
+            json={
+                "model": "gpt-5-mini",
+                "messages": [
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": prompt},
+                ],
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+            },
+            timeout=30,
+        )
+        response.raise_for_status()
+        return response.json()["choices"][0]["message"]["content"]
 
     def _call_api(
         self,
