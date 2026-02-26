@@ -455,11 +455,13 @@ class ClaudeAPI:
         content_memory: str,
         negative_keywords: list[str],
         recent_topics: list[str],
+        reviewer_feedback: Optional[dict] = None,
     ) -> dict:
         """
         Generate replacement blog posts and their derived pins for targeted
         topic replacement. Called when validate_plan() finds topic repetition
-        or negative keyword violations on specific posts.
+        or negative keyword violations on specific posts, OR when a human
+        reviewer flags posts for regen with feedback.
 
         Args:
             posts_to_replace: Blog post objects being replaced (with violations).
@@ -472,12 +474,26 @@ class ClaudeAPI:
             content_memory: Content memory summary markdown.
             negative_keywords: Keywords/topics to avoid.
             recent_topics: Recent topic strings to avoid repeating.
+            reviewer_feedback: Optional dict mapping post_id -> feedback string
+                               from human reviewer. When present, each post's
+                               feedback is included in the replacement context.
 
         Returns:
             dict: {"blog_posts": [...], "pins": [...]} with replacement objects
                   using the same post_id/pin_id values as the originals.
         """
         template = self.load_prompt_template("weekly_plan_replace.md")
+
+        # Make copies to avoid mutating caller's data
+        posts_to_replace = [dict(p) for p in posts_to_replace]
+
+        # If reviewer feedback is provided, attach it to the posts for context
+        if reviewer_feedback:
+            for post in posts_to_replace:
+                pid = post.get("post_id", "")
+                feedback = reviewer_feedback.get(pid, "")
+                if feedback:
+                    post["_reviewer_feedback"] = feedback
 
         # Format recent topics as a bullet list
         recent_topics_text = "\n".join(f"- {t}" for t in recent_topics) if recent_topics else "None (first run)."
@@ -499,13 +515,24 @@ class ClaudeAPI:
 
         prompt = self._render_template(template, context)
 
+        # Extend system message when reviewer feedback is present
+        feedback_instruction = ""
+        if reviewer_feedback and any(reviewer_feedback.values()):
+            feedback_instruction = (
+                " Some posts include a '_reviewer_feedback' field with specific "
+                "human reviewer feedback. Pay close attention to this feedback "
+                "when generating replacement topics — address the reviewer's "
+                "concerns directly."
+            )
+
         system = (
             "You are a Pinterest content strategist for Slated, a family meal planning app. "
             "You are replacing specific blog posts and their derived pins in an existing "
             "weekly content plan. The posts were flagged for topic repetition or negative "
             "keyword violations. Generate ONLY the replacement posts and pins. "
             "Maintain the same pillar, content type, and pin slot assignments. "
-            "Choose completely different topics that avoid the flagged issues. "
+            "Choose completely different topics that avoid the flagged issues."
+            f"{feedback_instruction} "
             "IMPORTANT: Output ONLY valid JSON. No explanations or text outside the JSON."
         )
 
