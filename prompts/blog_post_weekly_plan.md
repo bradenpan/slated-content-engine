@@ -83,8 +83,6 @@ recipes:
 ### Body Structure
 
 ```
-# {Plan Title}
-
 {2-3 sentence intro. Frame the plan: what this week covers, why these
 recipes work together, the theme/angle. Get to the plan fast.}
 

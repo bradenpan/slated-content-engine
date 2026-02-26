@@ -70,8 +70,6 @@ If `include_recipes` is false, omit the `recipes` array entirely.
 ### Body Structure (Recipe Listicle — include_recipes=true)
 
 ```
-# {Number} {Topic} {Benefit/Hook}
-
 {2-3 sentence intro. Frame the value of the list. Be specific about
 what the reader gets. Lead with a relatable problem or desire.}
 
@@ -119,8 +117,6 @@ to meal planning. This is where the plan-level framing comes in.}
 ### Body Structure (Non-Recipe Listicle — include_recipes=false)
 
 ```
-# {Number} {Topic} {Benefit/Hook}
-
 {2-3 sentence intro.}
 
 ## 1. {Entry Title}

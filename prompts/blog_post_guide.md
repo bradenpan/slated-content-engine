@@ -53,8 +53,6 @@ ctaPillarVariant: 1-5
 ### Body Structure
 
 ```
-# {Guide Title}
-
 {2-3 sentence intro. Frame the problem this guide solves. Be empathetic —
 acknowledge the struggle. Then signal that this guide provides a system
 or strategy, not just tips.}

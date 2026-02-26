@@ -21,8 +21,6 @@ keywords: ["weekly meal plan", "easy weeknight dinners", "family dinner plan", "
 ctaPillarVariant: 1
 ---
 
-# This Week's Family Dinner Plan -- 5 Easy Meals Under 30 Minutes
-
 Your whole week of dinners, planned. Five meals, none over 30 minutes, one grocery trip. Here is what is on the menu.
 
 ## This Week's Plan

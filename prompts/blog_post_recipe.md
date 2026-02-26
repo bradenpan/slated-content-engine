@@ -73,8 +73,6 @@ recipeInstructions:
 ### Body Structure
 
 ```
-# {Recipe Title}
-
 {2-3 sentence intro. No long preambles. Get to the point. Frame this as
 a real dinner for a real weeknight.}
 
