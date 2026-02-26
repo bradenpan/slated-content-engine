@@ -27,7 +27,7 @@ already-generated content.
 import json
 import logging
 import sys
-from collections import Counter, defaultdict
+from collections import Counter
 from pathlib import Path
 
 from src.apis.claude_api import ClaudeAPI
