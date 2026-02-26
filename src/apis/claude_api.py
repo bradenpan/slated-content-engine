@@ -254,7 +254,7 @@ class ClaudeAPI:
 
             logger.info("Generating pin copy batch %d-%d of %d...", i + 1, i + len(batch), len(pin_specs))
             try:
-                response_text = self._call_openai_gpt5_mini(prompt=prompt, system=system, max_tokens=4096, temperature=0.7)
+                response_text = self._call_openai_gpt5_mini(prompt=prompt, system=system, max_tokens=4096, temperature=0.7, timeout=60)
             except Exception as e:
                 logger.warning("GPT-5 Mini failed for pin copy, falling back to Claude: %s", str(e))
                 response_text = self._call_api(prompt=prompt, system=system, model=MODEL_ROUTINE, max_tokens=4096, temperature=0.7)
@@ -668,7 +668,7 @@ class ClaudeAPI:
         """Alias for run_monthly_review to match requirement naming."""
         return self.run_monthly_review(monthly_data, weekly_analyses, current_strategy, seasonal_context)
 
-    def _call_openai_gpt5_mini(self, prompt: str, system: str, max_tokens: int = 500, temperature: float = 0.8) -> str:
+    def _call_openai_gpt5_mini(self, prompt: str, system: str, max_tokens: int = 500, temperature: float = 0.8, timeout: int = 30) -> str:
         """Call GPT-5 Mini via OpenAI API. Returns response text or raises on failure."""
         openai_key = os.environ.get("OPENAI_API_KEY", "")
         if not openai_key:
@@ -685,7 +685,7 @@ class ClaudeAPI:
                 "max_tokens": max_tokens,
                 "temperature": temperature,
             },
-            timeout=30,
+            timeout=timeout,
         )
         response.raise_for_status()
         return response.json()["choices"][0]["message"]["content"]

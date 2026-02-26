@@ -639,7 +639,16 @@ def _source_ai_image(
         pin_spec, regen_feedback=regen_feedback,
     )
     try:
-        parsed = json.loads(image_prompt_raw)
+        # Strip markdown code fences if present (GPT-5 Mini may wrap JSON)
+        cleaned = image_prompt_raw.strip()
+        if cleaned.startswith("```"):
+            # Remove opening fence (with optional language tag like ```json)
+            cleaned = cleaned.split("\n", 1)[1] if "\n" in cleaned else cleaned[3:]
+        if cleaned.endswith("```"):
+            cleaned = cleaned[:-3]
+        cleaned = cleaned.strip()
+
+        parsed = json.loads(cleaned)
         if isinstance(parsed, dict) and "image_prompt" in parsed:
             image_prompt = parsed["image_prompt"]
         else:
