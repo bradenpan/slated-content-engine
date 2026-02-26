@@ -1,9 +1,9 @@
-name: Regenerate Content
+name: Regenerate Weekly Plan
 
-# Triggered by regen button in Google Sheet (via Apps Script -> repository_dispatch)
+# Triggered by plan regen button in Google Sheet (via Apps Script -> repository_dispatch)
 on:
   repository_dispatch:
-    types: [regen-content]
+    types: [regen-plan]
   workflow_dispatch:  # Manual fallback trigger
 
 concurrency:
@@ -11,24 +11,17 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  PINTEREST_APP_ID: ${{ secrets.PINTEREST_APP_ID }}
-  PINTEREST_APP_SECRET: ${{ secrets.PINTEREST_APP_SECRET }}
-  PINTEREST_ACCESS_TOKEN: ${{ secrets.PINTEREST_ACCESS_TOKEN }}
-  PINTEREST_REFRESH_TOKEN: ${{ secrets.PINTEREST_REFRESH_TOKEN }}
-  PINTEREST_ENVIRONMENT: production
   ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
   GOOGLE_SHEETS_CREDENTIALS_JSON: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS_JSON }}
   GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
   GOOGLE_SHEET_URL: ${{ secrets.GOOGLE_SHEET_URL }}
   SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-  GOSLATED_REPO: ${{ secrets.GOSLATED_REPO }}
-  GOSLATED_GITHUB_TOKEN: ${{ secrets.GOSLATED_GITHUB_TOKEN }}
-  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
 jobs:
-  regen-content:
+  regen-plan:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 15
 
     steps:
       - name: Checkout repository
@@ -45,24 +38,15 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
+      - name: Regenerate flagged plan posts
+        run: python -m src.regen_weekly_plan
 
-      - name: Install Puppeteer
-        # NEEDED -- pin_assembler.py calls render_pin.js (Puppeteer) to render HTML/CSS templates to PNG
-        run: npm install puppeteer
-
-      - name: Regenerate flagged content
-        run: python -m src.regen_content
-
-      - name: Commit regenerated content
+      - name: Commit updated plan
         run: |
           git config user.name "pinterest-pipeline-bot"
           git config user.email "bot@pinterest-pipeline.local"
           git add data/
-          git diff --staged --quiet || git commit -m "chore: regenerated content [skip ci]"
+          git diff --staged --quiet || git commit -m "chore: regenerated weekly plan posts [skip ci]"
           git pull --rebase
           git push
 

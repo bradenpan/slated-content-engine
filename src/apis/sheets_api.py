@@ -56,7 +56,6 @@ CQ_COL_THUMBNAIL = 8    # I: Thumbnail URL or image reference
 CQ_COL_STATUS = 9       # J: content_status
 CQ_COL_NOTES = 10       # K: Reviewer notes
 CQ_COL_FEEDBACK = 11    # L: Reviewer feedback for regen
-CQ_COL_AI_IMAGE = 12    # M: AI-generated image thumbnail
 
 # Column indices for the Post Log tab
 PL_COL_PIN_ID = 0       # A: Internal pin ID
@@ -151,10 +150,14 @@ class SheetsAPI:
         logger.info("Writing weekly review to Google Sheet...")
 
         # Build the review data rows
+        # Fixed rows: 1=Title, 2=blank, 3=STATUS, 4=PRODUCTION (written separately),
+        #             5=PLAN REGEN trigger
         rows = [
             ["Pinterest Weekly Review", "", "", datetime.utcnow().strftime("%Y-%m-%d")],
             [""],
             ["STATUS", "pending_review"],
+            [""],  # Row 4: placeholder — PRODUCTION/deploy status written by write_deploy_status()
+            ["PLAN REGEN", "idle"],  # Row 5: B5 is the plan regen trigger cell
             [""],
             ["=== PERFORMANCE SUMMARY ==="],
         ]
@@ -176,7 +179,7 @@ class SheetsAPI:
         blog_posts = content_plan.get("blog_posts", [])
         if blog_posts:
             rows.append(["Blog Posts Planned:", str(len(blog_posts))])
-            rows.append(["ID", "Type", "Topic", "Pillar", "Keywords"])
+            rows.append(["ID", "Type", "Topic", "Pillar", "Keywords", "Status", "Feedback"])
             for post in blog_posts:
                 rows.append([
                     str(post.get("post_id", "")),
@@ -184,6 +187,8 @@ class SheetsAPI:
                     str(post.get("topic", "")),
                     str(post.get("pillar", "")),
                     ", ".join([post.get("primary_keyword", "")] + post.get("secondary_keywords", [])),
+                    "",  # Status — blank = approved by default; user sets "regen" to request replacement
+                    "",  # Feedback — free text for reviewer notes on what to change
                 ])
 
         # Pins section
@@ -283,8 +288,6 @@ class SheetsAPI:
         blog_image_urls: dict = None,
         blog_previews: dict = None,
         quality_gate_stats: dict = None,
-        ai_image_urls: dict = None,
-        blog_ai_image_urls: dict = None,
     ) -> None:
         """
         Write generated blog posts and pins to the "Content Queue" tab.
@@ -299,29 +302,26 @@ class SheetsAPI:
             pins: List of generated pin metadata dicts.
                 Keys: pin_id, title, description, board_name, link, scheduled_date,
                       scheduled_slot, pillar, image_path, alt_text
-                Optional quality keys: _quality_note, image_quality_score,
-                      image_retries, image_low_confidence
+                Optional quality keys: _quality_note, image_retries
             pin_image_urls: Optional dict of pin_id -> public image URL.
                 When provided, writes =IMAGE(url) in thumbnail column.
             blog_image_urls: Optional dict of post_id -> public hero image URL.
                 When provided, writes =IMAGE(url) for blog post thumbnails.
             blog_previews: Optional dict of post_id -> blog description text.
                 When provided, writes preview in description column for blogs.
-            quality_gate_stats: Optional dict with stock_summary and ai_summary
-                strings. When provided, writes a summary row at the bottom.
+            quality_gate_stats: Optional dict with summary strings.
+                When provided, writes a summary row at the bottom.
         """
         pin_image_urls = pin_image_urls or {}
         blog_image_urls = blog_image_urls or {}
         blog_previews = blog_previews or {}
-        ai_image_urls = ai_image_urls or {}
-        blog_ai_image_urls = blog_ai_image_urls or {}
 
         logger.info("Writing content queue: %d blog posts, %d pins...", len(blog_posts), len(pins))
 
-        # Header row
+        # Header row (A-L, 12 columns)
         rows = [
             ["ID", "Type", "Title", "Description", "Board", "Blog URL",
-             "Schedule", "Pillar", "Thumbnail", "Status", "Notes", "Feedback", "AI Image"],
+             "Schedule", "Pillar", "Thumbnail", "Status", "Notes", "Feedback"],
         ]
 
         # Blog posts
@@ -346,7 +346,6 @@ class SheetsAPI:
                 "pending_review",
                 "",  # Notes
                 "",  # Feedback
-                f'=IMAGE("{blog_ai_image_urls[post_id]}")' if post_id in blog_ai_image_urls else "",
             ])
 
         # Pins
@@ -371,10 +370,6 @@ class SheetsAPI:
             # Per-pin quality note (populated by publish_content_queue.py)
             quality_note = str(pin.get("_quality_note", ""))
 
-            # AI image thumbnail for column M
-            ai_image_url = ai_image_urls.get(pin_id)
-            ai_thumbnail = f'=IMAGE("{ai_image_url}")' if ai_image_url else ""
-
             rows.append([
                 pin_id,
                 "pin",
@@ -388,7 +383,6 @@ class SheetsAPI:
                 "pending_review",
                 quality_note,
                 "",  # Feedback
-                ai_thumbnail,
             ])
 
         # Quality gate summary row at the bottom
@@ -397,7 +391,6 @@ class SheetsAPI:
             rows.append([
                 "QUALITY GATE STATS",
                 "",
-                quality_gate_stats.get("stock_summary", ""),
                 quality_gate_stats.get("ai_summary", ""),
                 "", "", "", "", "", "", "", "", "",
             ])
@@ -416,7 +409,7 @@ class SheetsAPI:
         try:
             result = self.sheets.values().get(
                 spreadsheetId=self.sheet_id,
-                range=f"'{TAB_CONTENT_QUEUE}'!A:M",
+                range=f"'{TAB_CONTENT_QUEUE}'!A:L",
             ).execute()
 
             values = result.get("values", [])
@@ -472,7 +465,7 @@ class SheetsAPI:
         try:
             result = self.sheets.values().get(
                 spreadsheetId=self.sheet_id,
-                range=f"'{TAB_CONTENT_QUEUE}'!A:M",
+                range=f"'{TAB_CONTENT_QUEUE}'!A:L",
             ).execute()
 
             values = result.get("values", [])
@@ -517,7 +510,6 @@ class SheetsAPI:
         status: Optional[str] = None,
         notes: Optional[str] = None,
         feedback: Optional[str] = None,
-        ai_image: Optional[str] = None,
     ) -> None:
         """
         Update specific cells in a Content Queue row by row index.
@@ -533,7 +525,6 @@ class SheetsAPI:
             status: New value for column J.
             notes: New value for column K.
             feedback: New value for column L (typically cleared after regen).
-            ai_image: New value for column M (e.g., '=IMAGE("url")').
         """
         updates: list[dict] = []
         col_map = {
@@ -543,7 +534,6 @@ class SheetsAPI:
             CQ_COL_STATUS: status,
             CQ_COL_NOTES: notes,
             CQ_COL_FEEDBACK: feedback,
-            CQ_COL_AI_IMAGE: ai_image,
         }
 
         for col_index, value in col_map.items():
@@ -572,17 +562,101 @@ class SheetsAPI:
             raise SheetsAPIError(f"Failed to update content row {row_index}: {e}") from e
 
     def reset_regen_trigger(self) -> None:
-        """Write 'idle' to cell O1 of Content Queue to reset the regen trigger."""
+        """Write 'idle' to cell N1 of Content Queue to reset the regen trigger."""
         try:
             self.sheets.values().update(
                 spreadsheetId=self.sheet_id,
-                range=f"'{TAB_CONTENT_QUEUE}'!O1",
+                range=f"'{TAB_CONTENT_QUEUE}'!N1",
                 valueInputOption="RAW",
                 body={"values": [["idle"]]},
             ).execute()
             logger.info("Reset regen trigger to 'idle'.")
         except Exception as e:
             raise SheetsAPIError(f"Failed to reset regen trigger: {e}") from e
+
+    def read_plan_regen_requests(self) -> list[dict]:
+        """
+        Read blog post rows from the Weekly Review tab where Status="regen".
+
+        The Weekly Review tab layout (after write_weekly_review) has blog post
+        rows with columns: A=ID, B=Type, C=Topic, D=Pillar, E=Keywords,
+        F=Status, G=Feedback. Blog rows start after the "Blog Posts Planned:"
+        label row and its header row.
+
+        Returns:
+            list[dict]: Blog posts flagged for regen, each with keys:
+                        post_id, content_type, topic, pillar, keywords,
+                        status, feedback, row_index (1-based sheet row).
+        """
+        try:
+            result = self.sheets.values().get(
+                spreadsheetId=self.sheet_id,
+                range=f"'{TAB_WEEKLY_REVIEW}'!A:G",
+            ).execute()
+
+            values = result.get("values", [])
+            if not values:
+                return []
+
+            items = []
+            in_blog_section = False
+            for i, row in enumerate(values, start=1):
+                if not row:
+                    continue
+
+                # Detect the blog header row to know we're in the blog section
+                cell_a = str(row[0]).strip() if row else ""
+                if cell_a == "ID" and len(row) >= 6 and str(row[5]).strip() == "Status":
+                    in_blog_section = True
+                    continue
+
+                # End of blog section: blank row, pins section header, or section marker
+                if in_blog_section and (
+                    not cell_a
+                    or cell_a.startswith("Pins Planned:")
+                    or cell_a.startswith("===")
+                ):
+                    in_blog_section = False
+                    continue
+
+                if not in_blog_section:
+                    continue
+
+                # Read the status column (F = index 5)
+                status = str(row[5]).strip().lower() if len(row) > 5 else ""
+                if status != "regen":
+                    continue
+
+                items.append({
+                    "row_index": i,
+                    "post_id": cell_a,
+                    "content_type": str(row[1]).strip() if len(row) > 1 else "",
+                    "topic": str(row[2]).strip() if len(row) > 2 else "",
+                    "pillar": str(row[3]).strip() if len(row) > 3 else "",
+                    "keywords": str(row[4]).strip() if len(row) > 4 else "",
+                    "status": status,
+                    "feedback": str(row[6]).strip() if len(row) > 6 else "",
+                })
+
+            logger.info("Found %d plan regen requests in Weekly Review.", len(items))
+            return items
+
+        except Exception as e:
+            logger.error("Failed to read plan regen requests: %s", e)
+            raise SheetsAPIError(f"Failed to read plan regen requests: {e}") from e
+
+    def reset_plan_regen_trigger(self) -> None:
+        """Write 'idle' to cell B5 of Weekly Review to reset the plan regen trigger."""
+        try:
+            self.sheets.values().update(
+                spreadsheetId=self.sheet_id,
+                range=f"'{TAB_WEEKLY_REVIEW}'!B5",
+                valueInputOption="RAW",
+                body={"values": [["idle"]]},
+            ).execute()
+            logger.info("Reset plan regen trigger to 'idle'.")
+        except Exception as e:
+            raise SheetsAPIError(f"Failed to reset plan regen trigger: {e}") from e
 
     def update_content_status(self, row_index: int, status: str) -> None:
         """

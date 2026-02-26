@@ -23,8 +23,6 @@ env:
   SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
   GOSLATED_REPO: ${{ secrets.GOSLATED_REPO }}
   GOSLATED_GITHUB_TOKEN: ${{ secrets.GOSLATED_GITHUB_TOKEN }}
-  UNSPLASH_ACCESS_KEY: ${{ secrets.UNSPLASH_ACCESS_KEY }}
-  PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
 jobs:
@@ -66,7 +64,7 @@ jobs:
 
       - name: Generate pin content (copy + images + rendered PNGs)
         # Step 2: Generate pin titles, descriptions, alt text, overlay text
-        # Source images (stock / AI / template-only)
+        # Generate AI images and render pin PNGs
         # Render final pin PNGs via Puppeteer
         run: python -m src.generate_pin_content
 

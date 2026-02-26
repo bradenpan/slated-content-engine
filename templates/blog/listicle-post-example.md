@@ -20,8 +20,6 @@ keywords: ["easy weeknight dinners", "quick family meals", "dinner ideas for fam
 ctaPillarVariant: 3
 ---
 
-# 7 Easy Weeknight Dinners Your Family Will Actually Eat
-
 Not seven *aspirational* dinners. Seven dinners that actually happen on a
 Tuesday when you are tired and the kids are hungry. All under 30 minutes.
 All family-tested.

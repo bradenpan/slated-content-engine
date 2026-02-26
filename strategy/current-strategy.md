@@ -381,14 +381,7 @@ Each template gets 2-3 visual variants (different color treatments, layout varia
 
 ### 5.3 Image Source Assignment
 
-| Content Type | Primary Image Source | Backup Source | Rationale |
-|---|---|---|---|
-| Recipe pins | Tier 1: Stock photo (Unsplash/Pexels) | Tier 2: AI generation | Food photography is more realistic from stock than AI. Stock is free. |
-| Lifestyle/aspirational | Tier 2: AI generation | Tier 1: Stock photo | Custom compositions for scenes stock may not have |
-| Tips/How-to | Tier 3: Template-only (brand palette backgrounds) | Tier 1: Stock photo | Value is in the text/information, not photography |
-| Listicle | Tier 1: Stock photo OR Tier 3: Template-only | — | Depends on whether the listicle is recipe-focused or tip-focused |
-| Problem-solution | Tier 3: Template-only OR Tier 2: AI generation | — | Clean design emphasizes the message |
-| Infographic | Tier 3: Template-only | — | Pure information design |
+All pin hero images are AI-generated via **gpt-image-1.5**. There are no stock photo or template-only tiers; the pipeline uses a single AI image source for all content types. The image generation prompt is tailored per pin template to produce the appropriate visual style (food photography for recipe pins, lifestyle scenes for tip pins, etc.).
 
 ---
 
@@ -648,7 +641,6 @@ For each blog post (new and existing URLs), define the pins it generates:
 | `primary_keyword` | The keyword phrase to lead the pin title with (may differ from blog post keyword for recipe pulls) |
 | `secondary_keywords` | 2-3 additional keywords for pin description |
 | `target_board` | Which Pinterest board to save to first |
-| `image_source_tier` | Tier 1 (stock), Tier 2 (AI), or Tier 3 (template-only) |
 | `treatment_number` | 1 for new pins, 2-5 for fresh treatments of existing URLs |
 | `funnel_layer` | Discovery, Consideration, or Conversion |
 | `scheduled_date` | Which day of the week to post |

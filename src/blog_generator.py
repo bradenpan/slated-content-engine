@@ -134,6 +134,34 @@ class BlogGenerator:
         mdx_content = generator_fn(post_spec)
         frontmatter = self._extract_frontmatter(mdx_content)
 
+        # Strip duplicate H1 if it matches the frontmatter title
+        title = frontmatter.get("title", "")
+        body = self._extract_body(mdx_content)
+        body_lines = body.split("\n")
+        stripped_h1 = False
+        for i, line in enumerate(body_lines):
+            stripped = line.strip()
+            if not stripped:
+                continue
+            if stripped.startswith("# "):
+                h1_text = stripped[2:].strip()
+                if h1_text.lower() == title.lower() or title.lower() in h1_text.lower():
+                    body_lines[i] = ""
+                    stripped_h1 = True
+                    logger.info("Stripped duplicate H1 from blog body: %s", h1_text)
+            break
+
+        if stripped_h1:
+            body = "\n".join(body_lines)
+
+            # Reconstruct mdx_content with cleaned body
+            if mdx_content.startswith("---"):
+                try:
+                    end_idx = mdx_content.index("---", 3)
+                    mdx_content = mdx_content[: end_idx + 3] + "\n\n" + body.strip() + "\n"
+                except ValueError:
+                    logger.warning("Could not find frontmatter closing delimiter during H1 reconstruction")
+
         return mdx_content, frontmatter
 
     def generate_blog_post(self, post_spec: dict) -> str:

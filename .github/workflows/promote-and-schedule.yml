@@ -28,8 +28,6 @@ env:
   SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
   GOSLATED_REPO: ${{ secrets.GOSLATED_REPO }}
   GOSLATED_GITHUB_TOKEN: ${{ secrets.GOSLATED_GITHUB_TOKEN }}
-  UNSPLASH_ACCESS_KEY: ${{ secrets.UNSPLASH_ACCESS_KEY }}
-  PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
   GCS_BUCKET_NAME: ${{ secrets.GCS_BUCKET_NAME }}
 
@@ -52,15 +50,6 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r requirements.txt
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: Install Puppeteer
-        # NEEDED -- _process_ai_image_swaps() calls PinAssembler (Puppeteer) to re-render pins
-        run: npm install puppeteer
 
       - name: Refresh Pinterest token
         run: python -m src.token_manager

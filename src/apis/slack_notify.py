@@ -385,6 +385,63 @@ class SlackNotify:
             color=color,
         )
 
+    def notify_plan_regen_complete(
+        self,
+        replaced_posts: list[dict],
+        total_pins_affected: int,
+    ) -> None:
+        """
+        Send notification after plan-level regeneration completes.
+
+        Args:
+            replaced_posts: List of dicts with keys: post_id, old_topic, new_topic.
+            total_pins_affected: Total number of derived pins that were replaced.
+        """
+        sheet_link = (
+            f"<{self.sheet_url}|Open Google Sheet>"
+            if self.sheet_url
+            else "(Sheet URL not configured)"
+        )
+
+        item_lines = []
+        for post in replaced_posts:
+            post_id = post.get("post_id", "?")
+            old_topic = post.get("old_topic", "unknown")
+            new_topic = post.get("new_topic", "unknown")
+            item_lines.append(f"\u2022 {post_id}: _{old_topic}_ \u2192 *{new_topic}*")
+
+        items_text = "\n".join(item_lines) if item_lines else "No posts replaced."
+
+        summary = (
+            f"*{len(replaced_posts)}* blog post(s) replaced, "
+            f"*{total_pins_affected}* derived pin(s) updated"
+        )
+
+        blocks = [
+            {
+                "type": "header",
+                "text": {"type": "plain_text", "text": "Plan Regen Complete"},
+            },
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": (
+                        f"{summary}:\n\n"
+                        f"{items_text}\n\n"
+                        f"Review the updated plan and set B3 to 'approved' when ready.\n\n"
+                        f":point_right: {sheet_link}"
+                    ),
+                },
+            },
+        ]
+
+        self._send_message(
+            text=f"Plan regen complete: {len(replaced_posts)} posts replaced, {total_pins_affected} pins updated.",
+            blocks=blocks,
+            color=COLOR_NEUTRAL,
+        )
+
     def notify(self, message: str, level: str = "info") -> None:
         """
         Send a generic notification message.

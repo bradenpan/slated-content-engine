@@ -1,5 +1,38 @@
 # Implementation Plan: Pipeline Simplification & Model Changes
 
+## Table of Contents
+
+### Changes
+
+| # | Change | Phase | Section |
+|---|--------|-------|---------|
+| 1+2 | Simplify image generation & regen | Phase A | [Change 1+2](#change-12-simplify-image-generation--regen-remove-stock-ranking-validation-comparison-tiers) |
+| 3 | Fix blog post double title | Phase B | [Change 3](#change-3-fix-blog-post-double-title) |
+| 4 | Add plan-level feedback & regen | Phase C | [Change 4](#change-4-add-plan-level-feedback--regeneration) |
+| 5 | Switch image prompt & pin copy to GPT-5 Mini | Phase A | [Change 5](#change-5-switch-image-prompt--pin-copy-generation-to-gpt-5-mini) |
+
+### Phases
+
+Phases A, B, and C are **fully independent** — run concurrently with 3 agent teams on separate branches, then merge.
+
+| Phase | Changes | Why grouped | Notes |
+|-------|---------|-------------|-------|
+| **A** | Changes 1+2 + 5 | All modify `claude_api.py` and the image flow. Do Change 5 first (isolated), then 1+2 (largest). | HIGH risk — most files, cross-file coordination required |
+| **B** | Change 3 | Fully isolated — only touches blog prompts, examples, and `blog_generator.py`. Zero file overlap with A or C. | LOW risk |
+| **C** | Change 4 | New functionality — mostly new files. Shares `sheets_api.py`, `claude_api.py`, `trigger.gs` with Phase A but touches **different sections** (all additive). | LOW risk |
+| **Merge** | — | After all 3 phases complete. Resolve conflicts in shared files, run full verification. | |
+
+Shared files between Phase A and C (low conflict — different functions/blocks):
+`sheets_api.py`, `claude_api.py`, `trigger.gs`, `slack_notify.py`
+
+### Reference
+
+- [Data Flow Reference](#data-flow-reference-cross-cutting-concerns)
+- [Verification](#verification)
+- [Files Summary](#files-summary)
+
+---
+
 ## Context
 
 The Pinterest pipeline is over-engineered in its image sourcing — it searches stock APIs, ranks candidates with Claude Haiku vision, retries with broader queries, falls back to AI generation, validates AI with Claude Sonnet vision, then generates a SECOND AI comparison image alongside the stock winner. The user wants to simplify to: generate a prompt → generate an AI image → present it for human review. No stock APIs, no ranking, no AI validation, no comparison images.
@@ -112,7 +145,7 @@ else:
 ```
 This replaces `image_source_tier` routing entirely. The infographic-pin template is the only one with zero image references in its HTML. All others (recipe-pin, tip-pin, listicle-pin, problem-solution-pin) use `background_image_url` or `hero_image_url`.
 
-**Rewrite `_source_ai_image()`** — strip out validation. New flow:
+**Rewrite `_source_ai_image()`** — strip out validation. New signature: `_source_ai_image(pin_spec, claude, image_gen_api, output_dir)`. Remove `filename_prefix` parameter (was used for AI comparison images). New flow:
 1. `claude.generate_image_prompt(pin_spec)` (no `image_source` param — only AI exists)
 2. Parse JSON response for `image_prompt` field
 3. Append `_regen_feedback` if present
@@ -150,8 +183,8 @@ This replaces `image_source_tier` routing entirely. The infographic-pin template
 - Keep: system message for AI image prompt generation (loads `image_prompt.md`)
 - This will be further modified in Change 5 (GPT-5 Mini switch)
 - **Coordinate signature change across all callers** — grep for `generate_image_prompt(` and update:
-  - `generate_pin_content.py` line ~969 (primary generation)
-  - `regen_content.py` (regen image path — wherever it calls for image regen)
+  - `generate_pin_content.py` line ~969 (call inside `_source_ai_image()`)
+  - Note: `regen_content.py` does NOT call `generate_image_prompt()` directly — it calls `_source_ai_image()` which calls it internally. No regen changes needed for this coordination point.
 
 **Delete `generate_image_search_query()`** (line ~436-448) — convenience wrapper that called `generate_image_prompt(image_source="stock")`. Dead code after removing stock search.
 
@@ -175,9 +208,9 @@ This replaces `image_source_tier` routing entirely. The infographic-pin template
 
 **Remove `use_ai_image` from terminal statuses** in `read_content_approvals()` (line ~443).
 
-**Simplify `_build_quality_note()`** — replace complex scoring format (`"AI | Score: 7.5 | Retries: 1 | LOW CONFIDENCE"`) with simple `"AI generated"`. If `image_retries > 0`, append `" (retry {n})"` for visibility.
-
 #### `src/publish_content_queue.py`
+
+**Simplify `_build_quality_note()`** (lives in THIS file, not sheets_api.py) — replace complex scoring format (`"AI | Score: 7.5 | Retries: 1 | LOW CONFIDENCE"`) with simple `"AI generated"`. If `image_retries > 0`, append `" (retry {n})"` for visibility.
 **Remove AI hero image upload logic** (lines ~78-86) — delete `gcs.upload_ai_hero_images()` call and surrounding try/except.
 
 **Remove `ai_image_urls` / `blog_ai_image_urls` dict building** (lines ~114-153) — delete the mapping logic that stores `_ai_image_url` into pin data and builds blog-to-AI-image mapping.
@@ -254,6 +287,8 @@ source_image,
 - Remove: `image_quality_score`, `image_low_confidence`, `image_quality_issues` population from `new_pin_data`
 - Keep: `image_retries` population
 
+**Simplify `_build_regen_quality_note()`** (lines 905-920) — same treatment as `_build_quality_note()` in `publish_content_queue.py`. Remove references to `image_low_confidence`, `image_quality_issues`, and scoring. Replace with simple `"AI generated"` format.
+
 **`ImageStockAPI` import (line 31) and instantiation (line 66):**
 - Line 31: Delete `from src.apis.image_stock import ImageStockAPI`
 - Line 66: Delete `stock_api = ImageStockAPI()`
@@ -265,7 +300,7 @@ source_image,
 - `deploy_to_preview()` — Lines 262 (blogs) + 267 (pins)
 - `promote_to_production()` — Lines 378 (blogs) + 383 (pins)
 
-Change all from `status in ("approved", "use_ai_image")` to just `status == "approved"`. (Or keep `"use_ai_image"` as a backwards-compat alias — see migration note below.)
+**Decision: keep `"use_ai_image"` as a backwards-compat alias** in the approval filters: `status in ("approved", "use_ai_image")`. This ensures any in-flight Content Queue rows with that status still get deployed rather than being silently skipped. Zero cost, can be cleaned up in a future pass once no queues could possibly contain the status.
 
 **Delete `_process_ai_image_swaps()`** method (lines 774-851) AND its call block (lines 428-453 in `promote_to_production()`). The call block includes:
 - Building `use_ai_pins` list
@@ -274,7 +309,7 @@ Change all from `status in ("approved", "use_ai_image")` to just `status == "app
 - Saving modified pin data back to disk
 All of this is unnecessary when all images are AI-generated from the start.
 
-**Migration note for `use_ai_image` status:** If a Content Queue from a previous week has rows with `use_ai_image` status, removing it from the terminal set would cause `allContentReviewed()` to block deployment. **Decision: keep `"use_ai_image"` as a terminal status alias** in `trigger.gs` for backwards compatibility, but remove it from blog_deployer approval filters (treat as equivalent to "approved" — which it always was). This avoids needing a manual cleanup step.
+**Migration note for `use_ai_image` status:** Keep `"use_ai_image"` as a terminal status alias in BOTH `trigger.gs` (deploy gate) AND `blog_deployer.py` (approval filters). This avoids a gap where items pass the gate but don't deploy. New weeks will never set this status; the alias is purely for backwards compatibility.
 
 #### `src/apps-script/trigger.gs`
 **Keep `"use_ai_image"` in `terminal` array** in `allContentReviewed()` (line ~84) for backwards compatibility with any in-flight Content Queues. It does no harm — new weeks will never set this status, but old weeks won't block deployment.
@@ -301,7 +336,7 @@ All of this is unnecessary when all images are AI-generated from the start.
 **`prompts/weekly_plan_replace.md`** — Remove `image_source_tier` from replacement schema and constraints.
 **`strategy/current-strategy.md`** — Rewrite (not just delete) tier documentation. Two sections need updating:
 - Section 5.3 "Image Source Assignment" (lines ~382-391): Replace the tier table with a statement that all images are AI-generated via `gpt-image-1.5`. Keep the section so Claude has context for plan generation.
-- Section 12.1 "Planning Fields" (line ~651): Remove the `image_source_tier` row from the field reference table.
+- Section 12.1 "Weekly Plan Output Format — Blog-First Workflow" (line ~651): Remove the `image_source_tier` row from the field reference table.
 
 #### `src/generate_weekly_plan.py`
 No changes needed — `image_source_tier` is not validated or referenced in plan validation.
@@ -325,7 +360,7 @@ All 4 blog prompt templates instruct Claude to include `# {Title}` in the body. 
 **Prompt templates — remove H1 from Body Structure section:**
 - `prompts/blog_post_recipe.md` line 76: remove `# {Recipe Title}`
 - `prompts/blog_post_guide.md` line 56: remove `# {Guide Title}`
-- `prompts/blog_post_listicle.md` line 73: remove `# {Number} {Topic} {Benefit/Hook}`
+- `prompts/blog_post_listicle.md` line 73 AND line 122: remove `# {Number} {Topic} {Benefit/Hook}` (TWO body structure sections — recipe listicle and non-recipe listicle)
 - `prompts/blog_post_weekly_plan.md` line 86: remove `# {Plan Title}`
 
 **Example templates — remove the duplicate H1:**
@@ -466,15 +501,6 @@ def _call_openai_gpt5_mini(self, prompt: str, system: str, max_tokens: int = 500
 
 ---
 
-## Implementation Order
-
-1. **Change 3 (Blog double title)** — isolated prompt changes. Zero risk to image flow.
-2. **Change 5 (GPT-5 Mini for image prompt + pin copy)** — isolated to `claude_api.py`. Easy to test/revert.
-3. **Changes 1+2 (Image simplification)** — largest change, most files. Atomic.
-4. **Change 4 (Plan feedback)** — new functionality, no existing flow modification.
-
----
-
 ## Verification
 
 ### Change 3
@@ -495,7 +521,7 @@ def _call_openai_gpt5_mini(self, prompt: str, system: str, max_tokens: int = 500
 - Verify Content Queue has 12 columns (A-L), no Column M "AI Image"
 - Verify regen trigger at M1:N1 (not N1:O1)
 - Verify `allContentReviewed()` in Apps Script keeps `use_ai_image` in terminal set (backwards compat)
-- Verify `blog_deployer.py` filters only on `"approved"` across all 6 locations (3 methods × 2 filters each)
+- Verify `blog_deployer.py` filters on `("approved", "use_ai_image")` across all 6 locations (3 methods × 2 filters each) — `use_ai_image` kept as backwards-compat alias
 - Verify `_process_ai_image_swaps()` AND its call block (lines 428-453) are both removed
 - Verify `post_pins.py` reads pin-schedule.json correctly (image_url still populated)
 - Verify `weekly_plan.md` prompt no longer references `image_source_tier`
@@ -528,17 +554,17 @@ def _call_openai_gpt5_mini(self, prompt: str, system: str, max_tokens: int = 500
 |------|---------|------|
 | `src/generate_pin_content.py` | Delete `_source_stock_image()`, `source_image()`, `_source_pin_image()`; simplify `_source_ai_image()`; remove tier routing; remove quality metadata | HIGH |
 | `src/apis/claude_api.py` | Delete `rank_stock_candidates()`, `validate_ai_image()`, `generate_image_search_query()`; simplify `generate_image_prompt()` signature; add GPT-5 Mini helper + fallback for image prompt + pin copy | HIGH |
-| `src/regen_content.py` | **Fix import breakage** (deleted `source_image`); remove AI comparison generation; remove tier routing; remove ai_image column updates; update `generate_image_prompt()` call sites | HIGH |
+| `src/regen_content.py` | **Fix import breakage** (deleted `source_image`); remove AI comparison generation; remove tier routing; remove ai_image column updates; simplify `_build_regen_quality_note()` | HIGH |
 | `src/apis/sheets_api.py` | Remove AI Image col + constant; shift regen cols; update read ranges `A:M`→`A:L`; update `reset_regen_trigger()` `O1`→`N1`; remove `ai_image` params; simplify quality notes; add plan feedback cols | MEDIUM |
-| `src/publish_content_queue.py` | Remove AI comparison uploads; remove `ai_image_urls` params; shift regen trigger `N1:O1`→`M1:N1` | MEDIUM |
-| `src/blog_deployer.py` | Remove `use_ai_image` from 6 filter locations (3 methods × 2); delete `_process_ai_image_swaps()` AND call block (lines 428-453) | MEDIUM |
+| `src/publish_content_queue.py` | Remove AI comparison uploads; remove `ai_image_urls` params; shift regen trigger `N1:O1`→`M1:N1`; simplify `_build_quality_note()` | MEDIUM |
+| `src/blog_deployer.py` | Keep `use_ai_image` as backwards-compat alias in 6 filter locations (3 methods × 2); delete `_process_ai_image_swaps()` AND call block (lines 428-453) | MEDIUM |
 | `src/apps-script/trigger.gs` | Keep `use_ai_image` in terminal (backwards compat); shift regen col 15→14; update `runRegen()` `O1`→`N1`; add B5 watcher | LOW |
 | `src/apis/gcs_api.py` | Delete `upload_ai_hero_images()` | LOW |
 | `prompts/blog_post_*.md` (4) | Remove H1 from body structure | LOW |
 | `templates/blog/*-example.md` (4) | Remove duplicate H1 | LOW |
 | `src/blog_generator.py` | Add H1 stripping safety net in body extraction | LOW |
 | `prompts/weekly_plan.md` | Remove `image_source_tier` from schema, examples, field descriptions, IMAGE SOURCE ASSIGNMENT section | LOW |
-| `prompts/weekly_plan_replace.md` | Remove `image_source_tier` from schema, examples, constraints (lines 15, 39, 79, 93) | LOW |
+| `prompts/weekly_plan_replace.md` | Remove `image_source_tier` from schema, examples, constraints (lines 15, 79, 93) | LOW |
 | `strategy/current-strategy.md` | Rewrite Section 5.3 (AI-only images) + remove tier from Section 12.1 | LOW |
 | `prompts/image_rank.md` | **DELETE** | LOW |
 | `prompts/image_search.md` | **DELETE** | LOW |
@@ -556,7 +582,7 @@ These changes span multiple files and must be done atomically:
 
 | Coordination Point | Files Affected |
 |---|---|
-| `generate_image_prompt()` signature (remove `image_source` param) | `claude_api.py`, `generate_pin_content.py`, `regen_content.py` |
+| `generate_image_prompt()` signature (remove `image_source` param) | `claude_api.py` (definition), `generate_pin_content.py` (call inside `_source_ai_image()`). Note: `regen_content.py` does NOT call this directly — it calls `_source_ai_image()`. |
 | `source_image()` deletion | `generate_pin_content.py` (definition), `regen_content.py` (import) |
 | Column M removal → regen trigger shift | `sheets_api.py`, `publish_content_queue.py`, `trigger.gs` |
 | `write_content_queue()` signature (remove AI image params) | `sheets_api.py` (definition), `publish_content_queue.py` (call site), `regen_content.py` (call site) |

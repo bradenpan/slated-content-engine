@@ -41,8 +41,6 @@ recipeInstructions:
   - "Serve over rice or noodles. Garnish with sesame seeds and green onions."
 ---
 
-# 25-Minute Chicken Stir Fry
-
 This is one of those dinners that shows up on our table at least twice a month. Fast, flexible, and everyone actually eats it -- including the kid who "doesn't like vegetables" (the sauce helps).
 
 ## Why This Recipe Works

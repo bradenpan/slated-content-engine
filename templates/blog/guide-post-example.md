@@ -20,8 +20,6 @@ keywords: ["family friendly meals", "meals for picky families", "family dinner i
 ctaPillarVariant: 2
 ---
 
-# How to Get Your Family to Agree on Dinner Before You Start Cooking
-
 You planned it. You shopped for it. You cooked it. And then someone says,
 "I don't want that." Sound familiar?
 

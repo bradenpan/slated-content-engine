@@ -18,8 +18,9 @@
  *
  * Trigger map:
  * - Weekly Review tab, cell B3 = "approved"  → generate-content
+ * - Weekly Review tab, cell B5 = "regen"     → regen-plan
  * - Content Queue tab, all column J reviewed → deploy-to-preview
- * - Content Queue tab, cell N1 = "run"       → regen-content
+ * - Content Queue tab, cell N1 = "run"       → regen-content (col 14)
  * - Weekly Review tab, cell B4 = "approved"  → promote-and-schedule
  */
 
@@ -35,6 +36,13 @@ function onSheetEdit(e) {
     }
   }
 
+  // Weekly Review tab, cell B5: plan regen trigger → triggers plan regeneration
+  if (sheet.getName() === "Weekly Review" && range.getRow() === 5 && range.getColumn() === 2) {
+    if (newValue === "regen") {
+      triggerGitHubWorkflow("regen-plan");
+    }
+  }
+
   // Content Queue tab, column J (col 10): content approval → triggers preview deploy
   // Only fires when ALL data rows are "approved" or "rejected" (no pending_review, no regen*)
   if (sheet.getName() === "Content Queue" && range.getColumn() === 10) {
@@ -43,9 +51,8 @@ function onSheetEdit(e) {
     }
   }
 
-  // Content Queue tab, cell O1 (row 1, col 15): regen trigger
-  // (Column M is AI Image, so regen trigger shifted from N to O)
-  if (sheet.getName() === "Content Queue" && range.getRow() === 1 && range.getColumn() === 15) {
+  // Content Queue tab, cell N1 (row 1, col 14): regen trigger
+  if (sheet.getName() === "Content Queue" && range.getRow() === 1 && range.getColumn() === 14) {
     if (newValue === "run") {
       triggerGitHubWorkflow("regen-content");
     }
@@ -99,7 +106,16 @@ function allContentReviewed(sheet) {
 function runRegen() {
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Content Queue");
   if (sheet) {
-    sheet.getRange("O1").setValue("run");
+    sheet.getRange("N1").setValue("run");
   }
   triggerGitHubWorkflow("regen-content");
+}
+
+/** Convenience function for the "Run Plan Regen" button drawing. */
+function runPlanRegen() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Weekly Review");
+  if (sheet) {
+    sheet.getRange("B5").setValue("regen");
+  }
+  triggerGitHubWorkflow("regen-plan");
 }

@@ -83,8 +83,6 @@ recipes:
 ### Body Structure
 
 ```
-# {Plan Title}
-
 {2-3 sentence intro. Frame the plan: what this week covers, why these
 recipes work together, the theme/angle. Get to the plan fast.}
 
@@ -271,8 +269,6 @@ recipes:
       - "Drain excess fat. Add taco seasoning and water per packet directions. Simmer 3 minutes."
       - "Build bowls: rice base, seasoned beef, black beans, then toppings."
 ---
-
-# This Week's Family Dinner Plan -- 5 Easy Meals Under 30 Minutes
 
 Your whole week of dinners, planned. Five meals, none over 30 minutes, one grocery trip. Here is what is on the menu.
 
