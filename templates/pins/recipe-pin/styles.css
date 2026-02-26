@@ -124,3 +124,36 @@
     flex-direction: column;
     align-items: center;
 }
+
+/* === Time Badge === */
+.recipe-time-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 20px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.18);
+    margin-bottom: 16px;
+}
+
+.recipe-time-badge-text {
+    font-family: var(--font-primary);
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--brand-text-light);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+/* Dark variant for light backgrounds (Variant B cream panel) */
+.recipe-time-badge-dark {
+    background: rgba(28, 25, 23, 0.08);
+}
+
+.recipe-time-badge-dark .recipe-time-badge-text {
+    color: var(--brand-primary);
+}
+
+.recipe-time-badge.hidden {
+    display: none;
+}

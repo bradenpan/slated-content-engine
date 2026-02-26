@@ -139,7 +139,7 @@
 
 .variant-b .info-grid-text {
     font-family: var(--font-primary);
-    font-size: 24px;
+    font-size: 26px;
     font-weight: 400;
     line-height: 1.35;
     color: var(--brand-text-light);
@@ -243,7 +243,7 @@
 
 .variant-c .info-timeline-text {
     font-family: var(--font-primary);
-    font-size: 26px;
+    font-size: 28px;
     font-weight: 400;
     line-height: 1.4;
     color: var(--brand-text-light);

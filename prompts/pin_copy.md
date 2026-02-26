@@ -73,13 +73,48 @@ Slated's Pinterest voice is the voice of a friend who has already figured out th
 - Format: "[Visual description of image]. [Primary keyword context]."
 - Example: "Overhead view of a sheet pan with golden chicken thighs and roasted broccoli. Easy 30-minute weeknight dinner recipe for families."
 
-### Text Overlay (6-8 words for pin image)
-- This is the headline text that appears ON the pin image.
+### Text Overlay (structured JSON per template type)
+- This is the headline text that appears ON the pin image, plus template-specific structured fields.
 - Must be readable at ~300px thumbnail width (mobile feed).
 - Reinforces the pin's topic for human attention AND Pinterest's computer vision.
-- Keep it punchy and benefit-oriented.
-- Can include a sub-text line of 3-5 additional words (e.g., "Ready in 25 Minutes" or "One Pan. Done.").
+- Keep the headline punchy and benefit-oriented (6-8 words).
+- Can include a sub-text line of 3-5 additional words (e.g., "Ready in 25 Minutes" or "One Pan / 25 Min"). For recipe pins, sub_text MUST be 3-5 words max -- no full sentences.
 - Do NOT duplicate the pin title exactly. Complement it.
+- See the OUTPUT FORMAT section below for the full template-specific field requirements.
+
+---
+## TEMPLATE-SPECIFIC COPY INSTRUCTIONS
+
+The `pin_template` field in the pin specification tells you which visual template this pin will use. You MUST generate the template-specific `text_overlay` fields listed above. The visual template relies on these structured fields to render correctly.
+
+### recipe-pin
+- The headline IS the recipe name. Keep it specific: "Sheet Pan Honey Garlic Salmon" not "Easy Dinner".
+- The sub_text MUST be 3-5 words max. Short, punchy qualifiers only. Examples: "One Pan / 25 Min", "Ready in 25 Minutes", "Weeknight Winner". Do NOT write full sentences for sub_text on recipe pins.
+- Always include a time_badge with the prep/cook time if available.
+
+### tip-pin
+- You MUST generate bullet_1 and bullet_2 as distinct, standalone tips. These are not fragments of a paragraph -- they are separate pieces of advice that each make sense on their own.
+- Each bullet should be 6-10 words. Be actionable: start with a verb or benefit.
+- GOOD bullets: "Plan your entire week in 2 minutes" / "One grocery trip covers every meal"
+- BAD bullets: "This is a great way to" / "Another benefit of meal planning is that"
+
+### listicle-pin
+- The number in the headline MUST match the number field: "7 Easy Weeknight Dinners" -> number: "7".
+- list_items are short recipe names or concise phrases, 4-8 words each. NOT full sentences.
+- Include only 3-5 items in list_items even if the full list is longer.
+- GOOD items: "One-Pan Lemon Herb Chicken" / "15-Minute Beef & Broccoli"
+- BAD items: "One-pan lemon herb chicken is a great weeknight option for busy families"
+
+### problem-solution-pin
+- The problem_text and solution_text form a rhetorical pair. The problem is the relatable pain; the solution is the confident answer.
+- Write them as if they are two halves of a conversation. The problem sounds like a frustrated parent; the solution sounds like a wise friend.
+- Keep both under 15 words.
+
+### infographic-pin
+- Steps must be sequential and logically ordered. Each step builds on the previous.
+- Step text should be concise (6-12 words). No "First, you should..." phrasing -- just the action.
+- GOOD step: "Set your family's dietary preferences"
+- BAD step: "The first thing you want to do is set up your dietary preferences in the app settings"
 
 ---
 ## PINTEREST SEO RULES
@@ -95,22 +130,115 @@ Slated's Pinterest voice is the voice of a friend who has already figured out th
 
 Return valid JSON. No markdown code fences. One object per pin in the batch.
 
+The `text_overlay` object MUST contain template-specific fields based on the `pin_template` in the pin specification. The template type determines what additional fields are required.
+
+### Base format (all templates):
 ```json
 {
   "pins": [
     {
       "pin_id": "W12-01",
       "title": "Pin title, max 100 characters, primary keyword leads",
-      "description": "250-500 character description with keywords woven naturally. First sentence leads with primary keyword. Middle sentences add useful context with secondary keywords. Final sentence delivers the promise of what the reader gets.",
-      "alt_text": "Visual description of what is in the image plus primary keyword context. Max 500 characters.",
+      "description": "250-500 character description...",
+      "alt_text": "Visual description...",
       "text_overlay": {
         "headline": "6-8 Word Headline",
-        "sub_text": "Optional 3-5 word sub-line"
+        "sub_text": "Optional 3-5 word sub-line",
+        "cta_text": "Get the Recipe"
       }
     }
   ]
 }
 ```
+
+### Template-specific `text_overlay` fields:
+
+**recipe-pin:**
+```json
+{
+  "headline": "Sheet Pan Honey Garlic Salmon",
+  "sub_text": "One Pan / 25 Min",
+  "time_badge": "25 min",
+  "cta_text": "Get the Recipe"
+}
+```
+- `sub_text`: MUST be 3-5 words max for recipe pins. Short, punchy qualifiers only (e.g. "One Pan / 25 Min", "Ready in 25 Minutes", "Weeknight Winner"). Do NOT write full sentences. Research shows recipe pin subtitles perform best when ultra-concise.
+- `time_badge`: Short timing or effort label (e.g. "25 min", "One Pan", "5 Ingredients"). 2-3 words max.
+- `cta_text`: Default to "Get the Recipe". Can also be "Try This Tonight" or "Save for Dinner".
+
+**tip-pin:**
+```json
+{
+  "headline": "5 Dinners. 1 List. Zero Thinking.",
+  "sub_text": null,
+  "bullet_1": "Plan your whole week in 2 minutes",
+  "bullet_2": "One grocery trip covers every meal",
+  "bullet_3": "Your family votes before you cook",
+  "category_label": "Meal Planning Tips",
+  "cta_text": "Save These Tips"
+}
+```
+- `bullet_1`, `bullet_2`: REQUIRED. Each bullet is a distinct, actionable tip. 6-10 words. Do NOT just split a sentence -- write 2-3 genuinely different points.
+- `bullet_3`: Optional third bullet. Leave as empty string "" if only 2 bullets are needed.
+- `category_label`: 2-3 word category that matches the pin's topic. Use the primary keyword if it fits.
+- `cta_text`: Default to "Save These Tips".
+
+**listicle-pin:**
+```json
+{
+  "headline": "Easy Weeknight Dinners the Family Will Love",
+  "sub_text": null,
+  "number": "7",
+  "list_items": [
+    "One-Pan Lemon Herb Chicken",
+    "Creamy Tuscan Sausage Pasta",
+    "Slow Cooker Pulled Pork Tacos",
+    "Sheet Pan Honey Garlic Salmon",
+    "15-Minute Beef & Broccoli"
+  ],
+  "cta_text": "See All 7 Recipes"
+}
+```
+- `number`: The list count as a string (e.g. "7", "5", "10"). Must match the headline number.
+- `list_items`: Array of 3-5 short items (4-8 words each). These appear on the pin image. If the full list is longer than 5, include only the best 5 -- the pin will show "...and more". Do NOT include more than 5 items.
+- `cta_text`: Default to "See All [N] Recipes" or "Get the Full List".
+
+**problem-solution-pin:**
+```json
+{
+  "headline": "Everyone has an opinion about dinner.",
+  "sub_text": "What if they gave it before you cooked?",
+  "problem_text": "Everyone has an opinion about dinner.",
+  "solution_text": "What if they gave it before you cooked?",
+  "cta_text": "Here's How"
+}
+```
+- `problem_text`: A relatable pain point. Short, emotional, 8-12 words. Often a statement the target reader has thought themselves.
+- `solution_text`: A confident, specific answer. 8-15 words. Should feel like relief.
+- The headline and sub_text can be the same as problem_text and solution_text, or complementary wording.
+- `cta_text`: Default to "Here's How".
+
+**infographic-pin:**
+```json
+{
+  "headline": "How to Meal Plan in 5 Easy Steps",
+  "sub_text": null,
+  "category_label": "Meal Prep Guide",
+  "steps": [
+    {"number": "1", "text": "Set your family's dietary preferences"},
+    {"number": "2", "text": "Choose how many nights to plan"},
+    {"number": "3", "text": "Get personalized recipe suggestions"},
+    {"number": "4", "text": "Let your family vote on the plan"},
+    {"number": "5", "text": "Order groceries with one tap"}
+  ],
+  "footer_text": "Your whole week, handled.",
+  "cta_text": "Save This Guide"
+}
+```
+- `category_label`: 2-3 word category label using the pin's primary keyword (e.g. "Meal Prep Guide", "Weekly Planning", "Dinner System"). Use the primary keyword if it fits naturally.
+- `steps`: Array of 3-5 step objects. Each has a `number` (string) and `text` (6-12 words per step). Steps must be distinct and sequential -- not just rephrased versions of each other.
+- `footer_text`: Optional sign-off line (3-6 words). Can be a benefit statement or teaser.
+- `cta_text`: Default to "Save This Guide".
 
 ---
 ## FEW-SHOT EXAMPLES
@@ -127,7 +255,9 @@ Return valid JSON. No markdown code fences. One object per pin in the batch.
   "alt_text": "Overhead view of a sheet pan with golden-brown roasted chicken thighs surrounded by colorful roasted vegetables including broccoli, sweet potatoes, and bell peppers. Easy 30-minute weeknight dinner recipe.",
   "text_overlay": {
     "headline": "Sheet Pan Chicken Thighs & Veggies",
-    "sub_text": "One pan. 30 minutes. Tuesday handled."
+    "sub_text": "One Pan / 30 Min",
+    "time_badge": "30 min",
+    "cta_text": "Get the Recipe"
   }
 }
 ```
@@ -167,7 +297,85 @@ Return valid JSON. No markdown code fences. One object per pin in the batch.
   "alt_text": "Family sitting at a dinner table together with plates of food, discussing the meal. Guide to getting family agreement on weekly dinner plans and ending mealtime complaints.",
   "text_overlay": {
     "headline": "Everyone has an opinion about dinner.",
-    "sub_text": "What if they gave it before you cooked?"
+    "sub_text": "What if they gave it before you cooked?",
+    "problem_text": "Everyone has an opinion about dinner.",
+    "solution_text": "What if they gave it before you cooked?",
+    "cta_text": "Here's How"
+  }
+}
+```
+
+### GOOD Example 4: Tip Pin (Pillar 1, Discovery)
+
+**Context:** Pin for a blog post about streamlining weekly meal planning.
+
+```json
+{
+  "pin_id": "W14-03",
+  "title": "How to Plan a Week of Family Dinners in Under 10 Minutes",
+  "description": "Weekly meal planning for families does not have to take hours. A simple 3-step approach turns the most stressful part of cooking into the easiest. Set your family's preferences, pick a few flexible recipes, and generate one grocery list that covers every dinner from Monday to Friday. This is the system that replaces the nightly 'what should we eat?' scramble with something that actually works.",
+  "alt_text": "Overhead view of a meal planner notebook open on a kitchen counter with colorful ingredients arranged around it. Weekly family meal planning guide with easy tips.",
+  "text_overlay": {
+    "headline": "Plan a Week of Dinners in 10 Minutes",
+    "sub_text": null,
+    "bullet_1": "Set your family's preferences once",
+    "bullet_2": "Pick 5 flexible weeknight recipes",
+    "bullet_3": "One grocery list covers everything",
+    "category_label": "Meal Planning",
+    "cta_text": "Save These Tips"
+  }
+}
+```
+
+### GOOD Example 5: Listicle Pin (Pillar 3, Discovery)
+
+**Context:** Pin for a roundup blog post of quick dinner recipes.
+
+```json
+{
+  "pin_id": "W14-07",
+  "title": "5 High-Protein Dinners Even Picky Kids Will Eat",
+  "description": "High-protein weeknight dinners the whole family can agree on. These five recipes balance nutrition with kid-approved flavors -- no hiding vegetables required. From turkey taco lettuce wraps to a lentil bolognese that tastes like the real thing, each recipe is under 35 minutes and uses straightforward pantry ingredients. Real dinners for real families with real dietary goals.",
+  "alt_text": "Colorful spread of five different dinner plates on a wooden table, showing turkey tacos, salmon, pasta, fried rice, and Greek chicken. High-protein family dinner ideas.",
+  "text_overlay": {
+    "headline": "High-Protein Dinners Kids Will Eat",
+    "sub_text": null,
+    "number": "5",
+    "list_items": [
+      "Turkey Taco Lettuce Wraps",
+      "Salmon & Sweet Potato Sheet Pan",
+      "Lentil Bolognese",
+      "Egg Fried Rice with Veggies",
+      "Greek Chicken Sheet Pan"
+    ],
+    "cta_text": "See All 5 Recipes"
+  }
+}
+```
+
+### GOOD Example 6: Infographic Pin (Pillar 2, Consideration)
+
+**Context:** Pin for a step-by-step guide blog post about starting meal planning.
+
+```json
+{
+  "pin_id": "W14-11",
+  "title": "How to Start Meal Planning This Week — A 5-Step Beginner System",
+  "description": "Starting a weekly meal plan from scratch feels overwhelming until you break it into five manageable steps. This beginner-friendly system walks through setting family preferences, choosing recipes, building a grocery list, getting family buy-in, and batch-prepping on Sunday. Each step takes less than 10 minutes. By the end you have a full week of dinners and one organized grocery run.",
+  "alt_text": "Infographic showing five numbered steps for starting a weekly meal plan, with icons for each step on a warm amber background. Beginner meal planning guide.",
+  "text_overlay": {
+    "headline": "How to Meal Plan in 5 Easy Steps",
+    "sub_text": null,
+    "category_label": "Meal Planning Guide",
+    "steps": [
+      {"number": "1", "text": "Set your family's dietary preferences"},
+      {"number": "2", "text": "Choose 5 flexible weeknight recipes"},
+      {"number": "3", "text": "Generate one combined grocery list"},
+      {"number": "4", "text": "Get your family to vote on the plan"},
+      {"number": "5", "text": "Batch-prep ingredients on Sunday"}
+    ],
+    "footer_text": "Your whole week, handled.",
+    "cta_text": "Save This Guide"
   }
 }
 ```
@@ -223,5 +431,5 @@ For each pin in the batch:
 3. Write the title with the primary keyword leading.
 4. Write the description at 250-500 characters with keywords woven naturally.
 5. Write the alt text describing the expected image.
-6. Write the text overlay headline and optional sub-text.
+6. Write the text overlay as a structured JSON object with template-specific fields (bullets, list items, steps, problem/solution text, time badge, CTA text as applicable).
 7. Verify: no hashtags, no CTAs, no brand mentions, no negative keywords, title under 100 chars, description 250-500 chars.

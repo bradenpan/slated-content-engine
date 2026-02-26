@@ -17,6 +17,7 @@
       {{hero_image_url}}  - Food photo (stock or AI), injected as background-image
       {{headline}}         - Recipe name, 6-8 words max
       {{subtitle}}         - Brief descriptor: "Ready in 25 Minutes" / "One Pan. Done."
+      {{time_badge}}       - Optional time badge: "25 Min" (hidden if empty)
       {{logo_url}}         - Brand logo (placeholder text until real logo exists)
       {{variant}}          - A, B, or C (layout variant)
 
@@ -31,12 +32,14 @@
         <div class="recipe-a-hero bg-image-cover" style="background-image: url('{{hero_image_url}}');"></div>
         <div class="recipe-a-overlay">
             <div class="recipe-a-content safe-zone">
+                <div class="recipe-time-badge"><span class="recipe-time-badge-text">{{time_badge}}</span></div>
                 <div class="accent-bar" style="margin-bottom: 24px;"></div>
                 <h1 class="text-headline color-light text-center">{{headline}}</h1>
                 <p class="text-subheadline color-secondary text-center" style="margin-top: 16px; opacity: 0.9;">{{subtitle}}</p>
+                <div class="pin-cta"><span class="pin-cta-text">{{cta_text}}</span></div>
                 <div class="brand-logo" style="margin-top: 28px;">
                     <span class="brand-logo-icon" style="width: 22px; height: 22px;"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 16c0-5 4-9 10-9s10 4 10 9v2H2v-2z" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 7c1-1.5 3-1.5 4 0" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round"/><path d="M12 3v2" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/><path d="M15 3.5v1" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/><path d="M9 3.5v1" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/></svg></span>
-                    <span class="brand-logo-text logo-light" style="font-size: 26px; opacity: 0.7;">Slated.</span>
+                    <span class="brand-logo-text logo-light" style="font-size: 26px; opacity: 0.6;">Slated.</span>
                 </div>
             </div>
         </div>
@@ -47,9 +50,11 @@
         <div class="recipe-b-layout">
             <div class="recipe-b-panel">
                 <div class="recipe-b-panel-inner">
+                    <div class="recipe-time-badge recipe-time-badge-dark"><span class="recipe-time-badge-text">{{time_badge}}</span></div>
                     <div class="accent-bar" style="margin-bottom: 32px;"></div>
                     <h1 class="text-headline color-dark">{{headline}}</h1>
                     <p class="text-subheadline color-primary" style="margin-top: 20px;">{{subtitle}}</p>
+                    <div class="pin-cta pin-cta-light"><span class="pin-cta-text">{{cta_text}}</span></div>
                     <div class="brand-logo" style="margin-top: auto; padding-top: 40px;">
                         <span class="brand-logo-icon" style="width: 20px; height: 20px;"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 16c0-5 4-9 10-9s10 4 10 9v2H2v-2z" fill="none" stroke="#D97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 7c1-1.5 3-1.5 4 0" stroke="#D97706" stroke-width="2.5" stroke-linecap="round"/><path d="M12 3v2" stroke="#D97706" stroke-width="2" stroke-linecap="round"/><path d="M15 3.5v1" stroke="#D97706" stroke-width="2" stroke-linecap="round"/><path d="M9 3.5v1" stroke="#D97706" stroke-width="2" stroke-linecap="round"/></svg></span>
                         <span class="brand-logo-text logo-primary" style="font-size: 24px; opacity: 0.6;">Slated.</span>
@@ -65,8 +70,10 @@
         <div class="recipe-c-hero bg-image-cover" style="background-image: url('{{hero_image_url}}');"></div>
         <div class="recipe-c-gradient"></div>
         <div class="recipe-c-content safe-zone">
+            <div class="recipe-time-badge"><span class="recipe-time-badge-text">{{time_badge}}</span></div>
             <h1 class="text-headline color-light shadow-text">{{headline}}</h1>
             <p class="text-subheadline color-light shadow-text-subtle" style="margin-top: 14px; opacity: 0.92;">{{subtitle}}</p>
+            <div class="pin-cta"><span class="pin-cta-text">{{cta_text}}</span></div>
             <div class="brand-logo" style="margin-top: 24px;">
                 <span class="brand-logo-icon" style="width: 20px; height: 20px;"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 16c0-5 4-9 10-9s10 4 10 9v2H2v-2z" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 7c1-1.5 3-1.5 4 0" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round"/><path d="M12 3v2" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/><path d="M15 3.5v1" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/><path d="M9 3.5v1" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/></svg></span>
                 <span class="brand-logo-text logo-light" style="font-size: 24px; opacity: 0.6;">Slated.</span>
