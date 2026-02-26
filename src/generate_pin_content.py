@@ -521,7 +521,7 @@ def build_template_context(
     pin_topic = pin_spec.get("pin_topic", "")
 
     if template_type == "recipe-pin":
-        # Time badge (new field)
+        # Time badge — Prepared for Phase 3 — not yet injected into HTML templates
         if isinstance(text_overlay, dict) and text_overlay.get("time_badge"):
             context["time_badge"] = text_overlay["time_badge"]
         # CTA text
@@ -538,7 +538,7 @@ def build_template_context(
             bullets = _extract_bullets(description, overlay_sub_text, pin_topic)
             for i, bullet in enumerate(bullets[:3], 1):
                 context[f"bullet_{i}"] = bullet
-        # Category label (new field)
+        # Category label — Prepared for Phase 3 — not yet injected into HTML templates
         if isinstance(text_overlay, dict) and text_overlay.get("category_label"):
             context["category_label"] = text_overlay["category_label"]
         else:
@@ -556,11 +556,9 @@ def build_template_context(
                 items = items[:5]
                 # Truncation is handled by assembler: appends "...and more" row
             context["list_items"] = items
-            context["has_more_items"] = isinstance(text_overlay.get("list_items"), list) and len(text_overlay["list_items"]) > 5
         else:
             # Fallback: extract from description
             context["list_items"] = _extract_list_items(description, pin_topic)
-            context["has_more_items"] = False
 
         # Number: prefer explicit field, fall back to extraction from headline
         if isinstance(text_overlay, dict) and text_overlay.get("number"):
@@ -581,7 +579,8 @@ def build_template_context(
             # Fallback: headline = problem, sub_text = solution
             context["problem_text"] = overlay_headline
             context["solution_text"] = overlay_sub_text or pin_copy.get("title", "")
-        # Section labels (defaults ensure {{problem_label}} / {{solution_label}} never render empty)
+        # Section labels — Prepared for Phase 3 — not yet injected into HTML templates
+        # (defaults ensure {{problem_label}} / {{solution_label}} never render empty)
         context["problem_label"] = text_overlay.get("problem_label", "The Problem") if isinstance(text_overlay, dict) else "The Problem"
         context["solution_label"] = text_overlay.get("solution_label", "The Answer") if isinstance(text_overlay, dict) else "The Answer"
         # CTA text
@@ -605,7 +604,7 @@ def build_template_context(
             context["footer_text"] = text_overlay["footer_text"]
         else:
             context["footer_text"] = overlay_sub_text or ""
-        # Category label (dynamic, keyword-targeted)
+        # Category label — Prepared for Phase 3 — not yet injected into HTML templates
         if isinstance(text_overlay, dict) and text_overlay.get("category_label"):
             context["category_label"] = text_overlay["category_label"]
         else:
@@ -653,9 +652,9 @@ def _extract_list_items(description: str, pin_topic: str) -> list[str]:
     Splits on sentence boundaries to produce a list of short items.
     """
     sentences = [s.strip() for s in re.split(r'[.!?]+', description) if s.strip()]
-    # Filter to reasonable-length items and cap at 7
+    # Filter to reasonable-length items and cap at 5
     items = [s for s in sentences if 8 < len(s) < 100]
-    return items[:7]
+    return items[:5]
 
 
 def _extract_steps(description: str) -> list[dict]:

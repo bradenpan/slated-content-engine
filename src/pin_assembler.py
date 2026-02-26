@@ -54,6 +54,8 @@ MAX_PNG_SIZE = 500 * 1024  # 500 KB
 _VARIANT_MAP = {1: "A", 2: "B", 3: "C", "1": "A", "2": "B", "3": "C"}
 
 # Valid template names and their variant labels
+# Note: Some variables (category_label, problem_label, solution_label, time_badge)
+# are prepared for Phase 3 — context is built but not yet consumed by HTML templates.
 TEMPLATE_CONFIGS = {
     "recipe-pin": {
         "variants": ["A", "B", "C"],

@@ -368,10 +368,10 @@ html, body {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 12px 28px;
+    padding: 12px 32px;
     border-radius: 24px;
     background-color: var(--brand-accent);
-    margin-top: 16px;
+    margin-bottom: 16px;
 }
 
 .pin-cta-light {
@@ -379,8 +379,8 @@ html, body {
 }
 
 .pin-cta-text {
-    font-family: 'Inter', sans-serif;
-    font-size: 22px;
+    font-family: var(--font-primary);
+    font-size: 24px;
     font-weight: 600;
     color: #FFFFFF;
     letter-spacing: 0.5px;

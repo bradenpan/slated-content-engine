@@ -297,7 +297,10 @@ The `text_overlay` object MUST contain template-specific fields based on the `pi
   "alt_text": "Family sitting at a dinner table together with plates of food, discussing the meal. Guide to getting family agreement on weekly dinner plans and ending mealtime complaints.",
   "text_overlay": {
     "headline": "Everyone has an opinion about dinner.",
-    "sub_text": "What if they gave it before you cooked?"
+    "sub_text": "What if they gave it before you cooked?",
+    "problem_text": "Everyone has an opinion about dinner.",
+    "solution_text": "What if they gave it before you cooked?",
+    "cta_text": "Here's How"
   }
 }
 ```
@@ -428,5 +431,5 @@ For each pin in the batch:
 3. Write the title with the primary keyword leading.
 4. Write the description at 250-500 characters with keywords woven naturally.
 5. Write the alt text describing the expected image.
-6. Write the text overlay headline and optional sub-text.
+6. Write the text overlay as a structured JSON object with template-specific fields (bullets, list items, steps, problem/solution text, time badge, CTA text as applicable).
 7. Verify: no hashtags, no CTAs, no brand mentions, no negative keywords, title under 100 chars, description 250-500 chars.
