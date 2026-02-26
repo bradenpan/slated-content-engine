@@ -238,7 +238,10 @@ class ClaudeAPI:
                 "You are a Pinterest SEO copywriter for Slated, a family meal planning app. "
                 "Generate pin copy for each pin specification. Return valid JSON: an array "
                 "of objects with keys: pin_id, title (max 100 chars), description (250-500 chars), "
-                "alt_text (max 500 chars), text_overlay (6-8 words). "
+                "alt_text (max 500 chars), text_overlay (JSON object with template-specific fields: "
+                "headline, sub_text, plus fields like bullet_1/2/3 for tip-pin, list_items/number "
+                "for listicle-pin, steps/footer_text for infographic-pin, problem_text/solution_text "
+                "for problem-solution-pin, time_badge for recipe-pin, and cta_text for all types). "
                 "Follow Pinterest SEO best practices: keywords early, natural language, no hashtags."
             )
 

@@ -58,27 +58,27 @@ TEMPLATE_CONFIGS = {
     "recipe-pin": {
         "variants": ["A", "B", "C"],
         "description": "Food photo with text overlay — recipe name + descriptor",
-        "variables": ["hero_image_url", "headline", "subtitle"],
+        "variables": ["hero_image_url", "headline", "subtitle", "time_badge", "cta_text"],
     },
     "tip-pin": {
         "variants": ["A", "B", "C"],
         "description": "Lifestyle background with tip headline + bullet points",
-        "variables": ["background_image_url", "headline", "bullet_1", "bullet_2", "bullet_3"],
+        "variables": ["background_image_url", "headline", "bullet_1", "bullet_2", "bullet_3", "category_label", "cta_text"],
     },
     "listicle-pin": {
         "variants": ["A", "B", "C"],
         "description": "Number-prominent list with optional background image",
-        "variables": ["number", "headline", "list_items", "background_image_url"],
+        "variables": ["number", "headline", "list_items", "background_image_url", "cta_text"],
     },
     "problem-solution-pin": {
         "variants": ["A", "B", "C"],
         "description": "Split design — problem statement top, solution bottom",
-        "variables": ["problem_text", "solution_text", "background_image_url"],
+        "variables": ["problem_text", "solution_text", "background_image_url", "problem_label", "solution_label", "cta_text"],
     },
     "infographic-pin": {
         "variants": ["A", "B", "C"],
         "description": "Structured steps/info on branded background — minimal photography",
-        "variables": ["title", "steps", "footer_text"],
+        "variables": ["title", "steps", "footer_text", "category_label", "cta_text"],
     },
 }
 

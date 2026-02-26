@@ -520,31 +520,99 @@ def build_template_context(
     description = pin_copy.get("description", "")
     pin_topic = pin_spec.get("pin_topic", "")
 
-    if template_type == "tip-pin":
-        # Tip pins need bullet_1, bullet_2, bullet_3.
-        # The pin copy prompt doesn't produce bullets directly, so we
-        # derive them from description sentences or sub_text.
-        bullets = _extract_bullets(description, overlay_sub_text, pin_topic)
-        for i, bullet in enumerate(bullets[:3], 1):
-            context[f"bullet_{i}"] = bullet
+    if template_type == "recipe-pin":
+        # Time badge (new field)
+        if isinstance(text_overlay, dict) and text_overlay.get("time_badge"):
+            context["time_badge"] = text_overlay["time_badge"]
+        # CTA text
+        if isinstance(text_overlay, dict) and text_overlay.get("cta_text"):
+            context["cta_text"] = text_overlay["cta_text"]
+
+    elif template_type == "tip-pin":
+        # Prefer structured bullets from text_overlay
+        if isinstance(text_overlay, dict) and text_overlay.get("bullet_1"):
+            for i in range(1, 4):
+                context[f"bullet_{i}"] = text_overlay.get(f"bullet_{i}", "")
+        else:
+            # Fallback: extract from description
+            bullets = _extract_bullets(description, overlay_sub_text, pin_topic)
+            for i, bullet in enumerate(bullets[:3], 1):
+                context[f"bullet_{i}"] = bullet
+        # Category label (new field)
+        if isinstance(text_overlay, dict) and text_overlay.get("category_label"):
+            context["category_label"] = text_overlay["category_label"]
+        else:
+            context["category_label"] = "Tips & Advice"
+        # CTA text (new field)
+        if isinstance(text_overlay, dict) and text_overlay.get("cta_text"):
+            context["cta_text"] = text_overlay["cta_text"]
 
     elif template_type == "listicle-pin":
-        # Listicle pins need number, list_items, headline.
-        # Extract a number from the headline if present (e.g. "7 Easy Dinners").
-        context["number"] = _extract_leading_number(overlay_headline)
-        context["list_items"] = _extract_list_items(description, pin_topic)
+        # Prefer structured list_items from text_overlay
+        if isinstance(text_overlay, dict) and text_overlay.get("list_items"):
+            items = text_overlay["list_items"]
+            # Enforce max 5 items on pin (with "...and more" for longer lists)
+            if len(items) > 5:
+                items = items[:5]
+                # Truncation is handled by assembler: appends "...and more" row
+            context["list_items"] = items
+            context["has_more_items"] = isinstance(text_overlay.get("list_items"), list) and len(text_overlay["list_items"]) > 5
+        else:
+            # Fallback: extract from description
+            context["list_items"] = _extract_list_items(description, pin_topic)
+            context["has_more_items"] = False
+
+        # Number: prefer explicit field, fall back to extraction from headline
+        if isinstance(text_overlay, dict) and text_overlay.get("number"):
+            context["number"] = str(text_overlay["number"])
+        else:
+            context["number"] = _extract_leading_number(overlay_headline)
+
+        # CTA text
+        if isinstance(text_overlay, dict) and text_overlay.get("cta_text"):
+            context["cta_text"] = text_overlay["cta_text"]
 
     elif template_type == "problem-solution-pin":
-        # Problem-solution pins need problem_text and solution_text.
-        # Derive from headline + sub_text (the natural pairing).
-        context["problem_text"] = overlay_headline
-        context["solution_text"] = overlay_sub_text or pin_copy.get("title", "")
+        # Prefer explicit problem_text/solution_text from text_overlay
+        if isinstance(text_overlay, dict) and text_overlay.get("problem_text"):
+            context["problem_text"] = text_overlay["problem_text"]
+            context["solution_text"] = text_overlay.get("solution_text", overlay_sub_text or "")
+        else:
+            # Fallback: headline = problem, sub_text = solution
+            context["problem_text"] = overlay_headline
+            context["solution_text"] = overlay_sub_text or pin_copy.get("title", "")
+        # Section labels (defaults ensure {{problem_label}} / {{solution_label}} never render empty)
+        context["problem_label"] = text_overlay.get("problem_label", "The Problem") if isinstance(text_overlay, dict) else "The Problem"
+        context["solution_label"] = text_overlay.get("solution_label", "The Answer") if isinstance(text_overlay, dict) else "The Answer"
+        # CTA text
+        if isinstance(text_overlay, dict) and text_overlay.get("cta_text"):
+            context["cta_text"] = text_overlay["cta_text"]
 
     elif template_type == "infographic-pin":
-        # Infographic pins need title, steps, footer_text.
         context["title"] = overlay_headline or pin_copy.get("title", "")
-        context["steps"] = _extract_steps(description)
-        context["footer_text"] = overlay_sub_text or ""
+        # Prefer structured steps from text_overlay
+        if isinstance(text_overlay, dict) and text_overlay.get("steps"):
+            steps = text_overlay["steps"]
+            # Ensure each step is a dict with number and text
+            if isinstance(steps, list) and all(isinstance(s, dict) for s in steps):
+                context["steps"] = steps[:6]  # Max 6 steps
+            else:
+                context["steps"] = _extract_steps(description)
+        else:
+            context["steps"] = _extract_steps(description)
+        # Footer text: prefer explicit field
+        if isinstance(text_overlay, dict) and text_overlay.get("footer_text"):
+            context["footer_text"] = text_overlay["footer_text"]
+        else:
+            context["footer_text"] = overlay_sub_text or ""
+        # Category label (dynamic, keyword-targeted)
+        if isinstance(text_overlay, dict) and text_overlay.get("category_label"):
+            context["category_label"] = text_overlay["category_label"]
+        else:
+            context["category_label"] = "Step by Step"
+        # CTA text
+        if isinstance(text_overlay, dict) and text_overlay.get("cta_text"):
+            context["cta_text"] = text_overlay["cta_text"]
 
     return context
 
