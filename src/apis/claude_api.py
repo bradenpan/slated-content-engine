@@ -254,12 +254,12 @@ class ClaudeAPI:
 
             logger.info("Generating pin copy batch %d-%d of %d...", i + 1, i + len(batch), len(pin_specs))
             try:
-                response_text = self._call_openai_gpt5_mini(prompt=prompt, system=system, max_tokens=4096, temperature=0.7, timeout=60)
+                response_text = self._call_openai_gpt5_mini(prompt=prompt, system=system, max_tokens=4096, temperature=0.7, timeout=90)
+                batch_results = self._parse_json_response(response_text, "pin copy batch")
             except Exception as e:
                 logger.warning("GPT-5 Mini failed for pin copy, falling back to Claude: %s", str(e))
                 response_text = self._call_api(prompt=prompt, system=system, model=MODEL_ROUTINE, max_tokens=4096, temperature=0.7)
-
-            batch_results = self._parse_json_response(response_text, "pin copy batch")
+                batch_results = self._parse_json_response(response_text, "pin copy batch")
             if isinstance(batch_results, list):
                 all_results.extend(batch_results)
             elif isinstance(batch_results, dict) and "pins" in batch_results:
@@ -670,23 +670,44 @@ class ClaudeAPI:
 
     def _call_openai_gpt5_mini(self, prompt: str, system: str, max_tokens: int = 500, temperature: float = 0.8, timeout: int = 30) -> str:
         """Call GPT-5 Mini via OpenAI API. Returns response text or raises on failure."""
+        import time as _time
+
         openai_key = os.environ.get("OPENAI_API_KEY", "")
         if not openai_key:
             raise ValueError("OPENAI_API_KEY not set")
-        response = requests.post(
-            "https://api.openai.com/v1/chat/completions",
-            headers={"Authorization": f"Bearer {openai_key}", "Content-Type": "application/json"},
-            json={
-                "model": "gpt-5-mini",
-                "messages": [
-                    {"role": "system", "content": system},
-                    {"role": "user", "content": prompt},
-                ],
-                "max_tokens": max_tokens,
-                "temperature": temperature,
-            },
-            timeout=timeout,
-        )
+
+        model = os.environ.get("OPENAI_CHAT_MODEL", "gpt-5-mini")
+
+        def _do_request() -> requests.Response:
+            return requests.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers={"Authorization": f"Bearer {openai_key}", "Content-Type": "application/json"},
+                json={
+                    "model": model,
+                    "messages": [
+                        {"role": "system", "content": system},
+                        {"role": "user", "content": prompt},
+                    ],
+                    "max_tokens": max_tokens,
+                    "temperature": temperature,
+                },
+                timeout=timeout,
+            )
+
+        response = _do_request()
+
+        # Single retry with backoff on 429 rate limit
+        if response.status_code == 429:
+            retry_after = response.headers.get("Retry-After")
+            try:
+                wait = int(retry_after) if retry_after else 5
+            except (ValueError, TypeError):
+                wait = 5
+            wait = min(wait, 30)  # cap at 30s to avoid excessive waits
+            logger.warning("OpenAI 429 rate limit. Retrying after %ds...", wait)
+            _time.sleep(wait)
+            response = _do_request()
+
         response.raise_for_status()
         return response.json()["choices"][0]["message"]["content"]
 

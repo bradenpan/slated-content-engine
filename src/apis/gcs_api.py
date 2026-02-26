@@ -350,19 +350,4 @@ class GcsAPI:
             return gcs_url[len(prefix):]
         return ""
 
-    def upload_single_image(self, local_path: Path, remote_name: str) -> Optional[str]:
-        """
-        Upload a single image to GCS with a specific remote name.
-
-        Convenience wrapper around upload_image for cases where the
-        remote object name must be explicitly set.
-
-        Args:
-            local_path: Local path to the image file.
-            remote_name: Full object name in the bucket (e.g., "pins/W12-01.png").
-
-        Returns:
-            Public URL string, or None if upload fails.
-        """
-        return self.upload_image(local_path, remote_name=remote_name)
 
