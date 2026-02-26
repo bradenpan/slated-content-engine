@@ -151,10 +151,14 @@ class SheetsAPI:
         logger.info("Writing weekly review to Google Sheet...")
 
         # Build the review data rows
+        # Fixed rows: 1=Title, 2=blank, 3=STATUS, 4=PRODUCTION (written separately),
+        #             5=PLAN REGEN trigger
         rows = [
             ["Pinterest Weekly Review", "", "", datetime.utcnow().strftime("%Y-%m-%d")],
             [""],
             ["STATUS", "pending_review"],
+            [""],  # Row 4: placeholder — PRODUCTION/deploy status written by write_deploy_status()
+            ["PLAN REGEN", "idle"],  # Row 5: B5 is the plan regen trigger cell
             [""],
             ["=== PERFORMANCE SUMMARY ==="],
         ]
@@ -176,7 +180,7 @@ class SheetsAPI:
         blog_posts = content_plan.get("blog_posts", [])
         if blog_posts:
             rows.append(["Blog Posts Planned:", str(len(blog_posts))])
-            rows.append(["ID", "Type", "Topic", "Pillar", "Keywords"])
+            rows.append(["ID", "Type", "Topic", "Pillar", "Keywords", "Status", "Feedback"])
             for post in blog_posts:
                 rows.append([
                     str(post.get("post_id", "")),
@@ -184,6 +188,8 @@ class SheetsAPI:
                     str(post.get("topic", "")),
                     str(post.get("pillar", "")),
                     ", ".join([post.get("primary_keyword", "")] + post.get("secondary_keywords", [])),
+                    "",  # Status — blank = approved by default; user sets "regen" to request replacement
+                    "",  # Feedback — free text for reviewer notes on what to change
                 ])
 
         # Pins section
@@ -583,6 +589,90 @@ class SheetsAPI:
             logger.info("Reset regen trigger to 'idle'.")
         except Exception as e:
             raise SheetsAPIError(f"Failed to reset regen trigger: {e}") from e
+
+    def read_plan_regen_requests(self) -> list[dict]:
+        """
+        Read blog post rows from the Weekly Review tab where Status="regen".
+
+        The Weekly Review tab layout (after write_weekly_review) has blog post
+        rows with columns: A=ID, B=Type, C=Topic, D=Pillar, E=Keywords,
+        F=Status, G=Feedback. Blog rows start after the "Blog Posts Planned:"
+        label row and its header row.
+
+        Returns:
+            list[dict]: Blog posts flagged for regen, each with keys:
+                        post_id, content_type, topic, pillar, keywords,
+                        status, feedback, row_index (1-based sheet row).
+        """
+        try:
+            result = self.sheets.values().get(
+                spreadsheetId=self.sheet_id,
+                range=f"'{TAB_WEEKLY_REVIEW}'!A:G",
+            ).execute()
+
+            values = result.get("values", [])
+            if not values:
+                return []
+
+            items = []
+            in_blog_section = False
+            for i, row in enumerate(values, start=1):
+                if not row:
+                    continue
+
+                # Detect the blog header row to know we're in the blog section
+                cell_a = str(row[0]).strip() if row else ""
+                if cell_a == "ID" and len(row) >= 6 and str(row[5]).strip() == "Status":
+                    in_blog_section = True
+                    continue
+
+                # End of blog section: blank row, pins section header, or section marker
+                if in_blog_section and (
+                    not cell_a
+                    or cell_a.startswith("Pins Planned:")
+                    or cell_a.startswith("===")
+                ):
+                    in_blog_section = False
+                    continue
+
+                if not in_blog_section:
+                    continue
+
+                # Read the status column (F = index 5)
+                status = str(row[5]).strip().lower() if len(row) > 5 else ""
+                if status != "regen":
+                    continue
+
+                items.append({
+                    "row_index": i,
+                    "post_id": cell_a,
+                    "content_type": str(row[1]).strip() if len(row) > 1 else "",
+                    "topic": str(row[2]).strip() if len(row) > 2 else "",
+                    "pillar": str(row[3]).strip() if len(row) > 3 else "",
+                    "keywords": str(row[4]).strip() if len(row) > 4 else "",
+                    "status": status,
+                    "feedback": str(row[6]).strip() if len(row) > 6 else "",
+                })
+
+            logger.info("Found %d plan regen requests in Weekly Review.", len(items))
+            return items
+
+        except Exception as e:
+            logger.error("Failed to read plan regen requests: %s", e)
+            raise SheetsAPIError(f"Failed to read plan regen requests: {e}") from e
+
+    def reset_plan_regen_trigger(self) -> None:
+        """Write 'idle' to cell B5 of Weekly Review to reset the plan regen trigger."""
+        try:
+            self.sheets.values().update(
+                spreadsheetId=self.sheet_id,
+                range=f"'{TAB_WEEKLY_REVIEW}'!B5",
+                valueInputOption="RAW",
+                body={"values": [["idle"]]},
+            ).execute()
+            logger.info("Reset plan regen trigger to 'idle'.")
+        except Exception as e:
+            raise SheetsAPIError(f"Failed to reset plan regen trigger: {e}") from e
 
     def update_content_status(self, row_index: int, status: str) -> None:
         """

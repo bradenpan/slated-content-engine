@@ -18,6 +18,7 @@
  *
  * Trigger map:
  * - Weekly Review tab, cell B3 = "approved"  → generate-content
+ * - Weekly Review tab, cell B5 = "regen"     → regen-plan
  * - Content Queue tab, all column J reviewed → deploy-to-preview
  * - Content Queue tab, cell N1 = "run"       → regen-content
  * - Weekly Review tab, cell B4 = "approved"  → promote-and-schedule
@@ -32,6 +33,13 @@ function onSheetEdit(e) {
   if (sheet.getName() === "Weekly Review" && range.getRow() === 3 && range.getColumn() === 2) {
     if (newValue === "approved") {
       triggerGitHubWorkflow("generate-content");
+    }
+  }
+
+  // Weekly Review tab, cell B5: plan regen trigger → triggers plan regeneration
+  if (sheet.getName() === "Weekly Review" && range.getRow() === 5 && range.getColumn() === 2) {
+    if (newValue === "regen") {
+      triggerGitHubWorkflow("regen-plan");
     }
   }
 
@@ -102,4 +110,13 @@ function runRegen() {
     sheet.getRange("O1").setValue("run");
   }
   triggerGitHubWorkflow("regen-content");
+}
+
+/** Convenience function for the "Run Plan Regen" button drawing. */
+function runPlanRegen() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Weekly Review");
+  if (sheet) {
+    sheet.getRange("B5").setValue("regen");
+  }
+  triggerGitHubWorkflow("regen-plan");
 }

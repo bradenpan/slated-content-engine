@@ -1,0 +1,59 @@
+name: Regenerate Weekly Plan
+
+# Triggered by plan regen button in Google Sheet (via Apps Script -> repository_dispatch)
+on:
+  repository_dispatch:
+    types: [regen-plan]
+  workflow_dispatch:  # Manual fallback trigger
+
+concurrency:
+  group: pinterest-pipeline
+  cancel-in-progress: false
+
+env:
+  ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+  GOOGLE_SHEETS_CREDENTIALS_JSON: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS_JSON }}
+  GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+  GOOGLE_SHEET_URL: ${{ secrets.GOOGLE_SHEET_URL }}
+  SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+jobs:
+  regen-plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Regenerate flagged plan posts
+        run: python -m src.regen_weekly_plan
+
+      - name: Commit updated plan
+        run: |
+          git config user.name "pinterest-pipeline-bot"
+          git config user.email "bot@pinterest-pipeline.local"
+          git add data/
+          git diff --staged --quiet || git commit -m "chore: regenerated weekly plan posts [skip ci]"
+          git pull --rebase
+          git push
+
+      - name: Notify failure
+        if: failure()
+        run: |
+          python -c "
+          from src.apis.slack_notify import SlackNotify
+          notifier = SlackNotify()
+          notifier.notify_failure('${{ github.workflow }}', 'Workflow failed. Check: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}')
+          "
