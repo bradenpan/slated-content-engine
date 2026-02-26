@@ -28,13 +28,11 @@ from src.apis.claude_api import ClaudeAPI
 from src.apis.drive_api import DriveAPI
 from src.apis.gcs_api import GcsAPI
 from src.apis.image_gen import ImageGenAPI
-from src.apis.image_stock import ImageStockAPI
 from src.apis.sheets_api import SheetsAPI
 from src.apis.slack_notify import SlackNotify
 from src.generate_pin_content import (
     generate_copy_batch,
     load_used_image_ids,
-    source_image,
     _source_ai_image,
     _load_brand_voice,
     _load_keyword_targets,
@@ -63,7 +61,6 @@ def regen() -> None:
     # Initialize API clients
     sheets = SheetsAPI()
     claude = ClaudeAPI()
-    stock_api = ImageStockAPI()
     image_gen_api = ImageGenAPI()
     assembler = PinAssembler()
     gcs = GcsAPI()
@@ -175,7 +172,6 @@ def regen() -> None:
                     post_id=item_id,
                     feedback=feedback,
                     claude=claude,
-                    stock_api=stock_api,
                     image_gen_api=image_gen_api,
                     gcs=gcs,
                     used_image_ids=used_image_ids,
@@ -231,14 +227,6 @@ def regen() -> None:
             if new_image_url:
                 update_kwargs["thumbnail"] = f'=IMAGE("{new_image_url}")'
 
-            # Write AI comparison image to column M
-            ai_image_url = blog_result.get("ai_image_url")
-            if ai_image_url:
-                update_kwargs["ai_image"] = f'=IMAGE("{ai_image_url}")'
-            elif new_image_url and blog_result.get("image_source") == "ai_generated":
-                # Winner IS AI — show it in the AI column too
-                update_kwargs["ai_image"] = f'=IMAGE("{new_image_url}")'
-
             try:
                 sheets.update_content_row(**update_kwargs)
             except Exception as e:
@@ -279,7 +267,7 @@ def regen() -> None:
             })
             continue
 
-        old_score = pin_data.get("image_quality_score")
+        old_score = None
 
         try:
             result = _regen_item(
@@ -287,7 +275,6 @@ def regen() -> None:
                 regen_type=regen_type,
                 feedback=feedback,
                 claude=claude,
-                stock_api=stock_api,
                 image_gen_api=image_gen_api,
                 assembler=assembler,
                 gcs=gcs,
@@ -319,7 +306,7 @@ def regen() -> None:
 
         new_pin_data = result["pin_data"]
         new_image_url = result.get("image_url")
-        new_score = new_pin_data.get("image_quality_score")
+        new_score = None
 
         # Step 4: Update pin-generation-results.json in-place
         _update_pin_results(pin_data, new_pin_data, regen_type, feedback)
@@ -350,19 +337,6 @@ def regen() -> None:
             if alt_text:
                 desc = f"{desc}\n\nAlt: {alt_text}"
             update_kwargs["description"] = desc
-
-        # Upload AI comparison image to GCS and write to column M
-        ai_hero_path_str = new_pin_data.get("_ai_hero_image_path")
-        if ai_hero_path_str:
-            ai_hero_path = Path(ai_hero_path_str)
-            if ai_hero_path.exists() and gcs.client:
-                try:
-                    ai_url = gcs.upload_image(ai_hero_path, remote_name=f"ai-heroes/{item_id}-ai-hero.png")
-                    if ai_url:
-                        update_kwargs["ai_image"] = f'=IMAGE("{ai_url}")'
-                        new_pin_data["_ai_image_url"] = ai_url
-                except Exception as e:
-                    logger.warning("AI hero upload failed for %s (non-fatal): %s", item_id, e)
 
         try:
             sheets.update_content_row(**update_kwargs)
@@ -465,7 +439,6 @@ def _regen_item(
     regen_type: str,
     feedback: str,
     claude: ClaudeAPI,
-    stock_api: ImageStockAPI,
     image_gen_api: ImageGenAPI,
     assembler: PinAssembler,
     gcs: GcsAPI,
@@ -497,7 +470,6 @@ def _regen_item(
         "template_variant": pin_data.get("template_variant", 1),
         "content_type": pin_data.get("content_type"),
         "funnel_layer": pin_data.get("funnel_layer", "discovery"),
-        "image_source_tier": pin_data.get("image_source", "stock"),
     }
 
     if feedback:
@@ -539,56 +511,24 @@ def _regen_item(
     if do_image:
         logger.info("Regenerating image for %s", pin_id)
 
-        # Normalize image_source_tier for source_image()
-        original_source = pin_data.get("image_source", "stock")
-        if original_source in ("unsplash", "pexels", "stock"):
-            image_tier = "stock"
-        elif original_source == "ai_generated":
-            image_tier = "ai"
-        else:
-            image_tier = "stock"
-
         PIN_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-        image_path, image_source, image_id, quality_meta = source_image(
-            pin_spec=pin_spec,
-            image_tier=image_tier,
-            claude=claude,
-            stock_api=stock_api,
-            image_gen_api=image_gen_api,
-            used_image_ids=used_image_ids,
-            output_dir=PIN_OUTPUT_DIR,
-        )
+        pin_template = pin_spec.get("pin_template", "")
+        if pin_template == "infographic-pin":
+            image_path, image_source, image_id, quality_meta = None, "template", "", {}
+        else:
+            image_path, image_source, image_id, quality_meta = _source_ai_image(
+                pin_spec, claude, image_gen_api, PIN_OUTPUT_DIR
+            )
 
         if image_path:
             new_pin_data["hero_image_path"] = str(image_path)
             new_pin_data["image_source"] = image_source
             new_pin_data["image_id"] = image_id
-            new_pin_data["image_quality_score"] = quality_meta.get("image_quality_score")
             new_pin_data["image_retries"] = quality_meta.get("image_retries", 0)
-            new_pin_data["image_low_confidence"] = quality_meta.get("image_low_confidence", False)
-            new_pin_data["image_quality_issues"] = quality_meta.get("image_quality_issues", [])
 
             if image_id:
                 used_image_ids.append(f"{image_source}:{image_id}")
-
-            # Generate AI comparison image for Tier 1/2 (if winner wasn't already AI)
-            if image_source != "ai_generated" and image_tier == "stock":
-                try:
-                    ai_path, _, ai_id, ai_meta = _source_ai_image(
-                        pin_spec, claude, image_gen_api, PIN_OUTPUT_DIR,
-                        filename_prefix=f"{pin_id}-ai-hero",
-                    )
-                    new_pin_data["_ai_hero_image_path"] = str(ai_path) if ai_path else None
-                    new_pin_data["_ai_image_id"] = ai_id
-                    new_pin_data["_ai_image_score"] = ai_meta.get("image_quality_score")
-                except Exception as e:
-                    logger.warning("AI comparison image failed for %s (non-fatal): %s", pin_id, e)
-            elif image_source == "ai_generated":
-                # Winner IS AI — store same image as comparison
-                new_pin_data["_ai_hero_image_path"] = new_pin_data.get("hero_image_path")
-                new_pin_data["_ai_image_id"] = image_id
-                new_pin_data["_ai_image_score"] = quality_meta.get("image_quality_score")
 
     # --- Resolve hero image (download from GCS/Drive if not on disk) ---
     hero_path_str = new_pin_data.get("hero_image_path")
@@ -741,7 +681,6 @@ def _regen_blog_image(
     post_id: str,
     feedback: str,
     claude: ClaudeAPI,
-    stock_api: ImageStockAPI,
     image_gen_api: ImageGenAPI,
     gcs: GcsAPI,
     used_image_ids: list[str],
@@ -749,7 +688,7 @@ def _regen_blog_image(
     """
     Regenerate the hero image for a blog post.
 
-    Blog images are raw stock/AI photos (not rendered through pin templates).
+    Blog images are raw AI photos (not rendered through pin templates).
     The hero is saved with a slug-based filename so blog_deployer.py can
     find it at deploy time.
 
@@ -765,44 +704,28 @@ def _regen_blog_image(
 
     logger.info("Regenerating blog hero image for %s (slug=%s)", post_id, slug)
 
-    # Build a pin_spec-like dict for source_image()
+    # Build a pin_spec-like dict for _source_ai_image()
     pin_spec = {
         "pin_id": post_id,
         "pin_topic": title,
         "content_type": blog_data.get("content_type", ""),
         "pillar": blog_data.get("pillar"),
         "primary_keyword": title,  # Use title as primary keyword for blog heroes
-        "pin_template": "recipe-pin",  # Default template context for image search
+        "pin_template": "recipe-pin",  # Default template context for image generation
     }
 
     if feedback:
         pin_spec["_regen_feedback"] = feedback
 
-    # Determine image tier from previous source, defaulting to stock
-    prev_source = blog_data.get("_hero_image_source", "stock")
-    if prev_source in ("unsplash", "pexels", "stock"):
-        image_tier = "stock"
-    elif prev_source == "ai_generated":
-        image_tier = "ai"
-    else:
-        image_tier = "stock"
-
     PIN_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    image_path, image_source, image_id, quality_meta = source_image(
-        pin_spec=pin_spec,
-        image_tier=image_tier,
-        claude=claude,
-        stock_api=stock_api,
-        image_gen_api=image_gen_api,
-        used_image_ids=used_image_ids,
-        output_dir=PIN_OUTPUT_DIR,
+    image_path, image_source, image_id, quality_meta = _source_ai_image(
+        pin_spec, claude, image_gen_api, PIN_OUTPUT_DIR
     )
 
     result: dict = {
         "image_url": None,
-        "ai_image_url": None,
-        "quality_score": quality_meta.get("image_quality_score"),
+        "quality_score": None,
         "image_source": image_source,
         "image_id": image_id,
     }
@@ -826,24 +749,6 @@ def _regen_blog_image(
 
     if image_id:
         used_image_ids.append(f"{image_source}:{image_id}")
-
-    # Generate AI comparison image (for side-by-side review in Content Queue)
-    if image_path and image_source != "ai_generated":
-        try:
-            ai_path, _, ai_id, ai_meta = _source_ai_image(
-                pin_spec, claude, image_gen_api, PIN_OUTPUT_DIR,
-                filename_prefix=f"{post_id}-ai-hero",
-            )
-            if ai_path and gcs.client:
-                ai_remote = f"ai-heroes/{post_id}-ai-hero.png"
-                ai_url = gcs.upload_image(ai_path, remote_name=ai_remote)
-                if ai_url:
-                    result["ai_image_url"] = ai_url
-        except Exception as e:
-            logger.warning("AI comparison image failed for blog %s (non-fatal): %s", post_id, e)
-    elif image_path and image_source == "ai_generated":
-        # Winner IS AI — it will become the comparison image after GCS upload below
-        pass
 
     # Upload the raw hero image to GCS (not a rendered pin)
     # Use a timestamped name to bust Google Sheets =IMAGE() cache
@@ -891,9 +796,7 @@ def _update_pin_results(
     keys_to_update = [
         "title", "description", "alt_text", "text_overlay",
         "image_path", "hero_image_path", "image_source", "image_id",
-        "image_quality_score", "image_retries", "image_low_confidence",
-        "image_quality_issues", "_drive_image_url", "_drive_download_url",
-        "_ai_hero_image_path", "_ai_image_id", "_ai_image_score", "_ai_image_url",
+        "image_retries", "_drive_image_url", "_drive_download_url",
     ]
     for key in keys_to_update:
         if key in new_pin_data:
@@ -904,20 +807,11 @@ def _update_pin_results(
 
 def _build_regen_quality_note(pin_data: dict) -> str:
     """Build a quality note for a regenerated pin's Notes column."""
-    score = pin_data.get("image_quality_score")
-    if score is None:
-        return "Regen"
-
-    parts = [f"Regen {score:.1f}"]
-
-    if pin_data.get("image_low_confidence"):
-        parts.append("LOW CONFIDENCE")
-
-    issues = pin_data.get("image_quality_issues", [])
-    if issues:
-        parts.append(", ".join(str(i) for i in issues[:3]))
-
-    return " | ".join(parts)
+    note = "Regen | AI generated"
+    retries = pin_data.get("image_retries", 0)
+    if retries > 0:
+        note += f" (retry {retries})"
+    return note
 
 
 if __name__ == "__main__":

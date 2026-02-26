@@ -75,15 +75,6 @@ def publish() -> None:
             logger.error("GCS upload failed: %s (%s)", e, type(e).__name__)
             pin_image_urls = {}
 
-    # Upload AI hero images for column M (GCS only)
-    ai_image_urls: dict[str, str] = {}
-    if gcs.client and generated_pins:
-        try:
-            ai_image_urls = gcs.upload_ai_hero_images(generated_pins, PIN_OUTPUT_DIR)
-            logger.info("Uploaded %d AI hero images to GCS", len(ai_image_urls))
-        except Exception as e:
-            logger.warning("AI hero image upload failed (non-critical): %s", e)
-
     # Fall back to Drive if GCS didn't produce results
     drive: DriveAPI | None = None
     if not pin_image_urls:
@@ -111,7 +102,7 @@ def publish() -> None:
 
     # Save image URLs back to pin-generation-results.json so the regen
     # workflow can download hero images on a fresh runner
-    if pin_image_urls or ai_image_urls:
+    if pin_image_urls:
         for pin in generated_pins:
             pid = pin.get("pin_id", "")
             if pid in pin_image_urls:
@@ -128,8 +119,6 @@ def publish() -> None:
                         pin["_drive_download_url"] = (
                             f"https://drive.google.com/uc?id={_fid}&export=download"
                         )
-            if pid in ai_image_urls:
-                pin["_ai_image_url"] = ai_image_urls[pid]
         try:
             pin_results_path.write_text(
                 json.dumps(pin_data, indent=2, ensure_ascii=False),
@@ -138,19 +127,6 @@ def publish() -> None:
             logger.info("Saved %s URLs back to pin-generation-results.json", upload_backend)
         except OSError as e:
             logger.error("Failed to save image URLs to pin results: %s", e)
-
-    # Build blog -> AI image mapping from pin data
-    # Each blog's hero image comes from its first associated pin, so reuse
-    # that pin's AI comparison image for the blog row in column M.
-    blog_ai_image_urls: dict[str, str] = {}
-    if ai_image_urls:
-        for pin in generated_pins:
-            source_post_id = pin.get("source_post_id", "")
-            pid = pin.get("pin_id", "")
-            if source_post_id and source_post_id not in blog_ai_image_urls and pid in ai_image_urls:
-                blog_ai_image_urls[source_post_id] = ai_image_urls[pid]
-        if blog_ai_image_urls:
-            logger.info("Mapped %d blog AI comparison images from associated pins", len(blog_ai_image_urls))
 
     # Upload blog hero images for Sheet preview
     if upload_backend == "gcs" and gcs.client and blog_results:
@@ -219,8 +195,6 @@ def publish() -> None:
             blog_image_urls=blog_image_urls,
             blog_previews=blog_previews,
             quality_gate_stats=quality_gate_stats,
-            ai_image_urls=ai_image_urls,
-            blog_ai_image_urls=blog_ai_image_urls,
         )
 
         # Set row heights for rows with images so previews are visible
@@ -244,12 +218,11 @@ def publish() -> None:
                 height_px=200,
             )
 
-        # Write regen trigger cells: N1 = label, O1 = trigger value
-        # (Column M is now AI Image)
+        # Write regen trigger cells: M1 = label, N1 = trigger value
         try:
             sheets.sheets.values().update(
                 spreadsheetId=sheets.sheet_id,
-                range=f"'{TAB_CONTENT_QUEUE}'!N1:O1",
+                range=f"'{TAB_CONTENT_QUEUE}'!M1:N1",
                 valueInputOption="RAW",
                 body={"values": [["Regen \u2192", "idle"]]},
             ).execute()
@@ -423,80 +396,41 @@ def _build_quality_note(pin: dict) -> str:
     Build a human-readable quality note for a pin's Notes column.
 
     Examples:
-        "7.5"                                          — passed first try
-        "6.8 | Retry: initial candidates scored < 6.5" — retried
-        "5.2 | LOW CONFIDENCE | hands visible"         — below threshold after retry
+        "AI generated"             — generated first try
+        "AI generated (retry 1)"   — retried once
     """
-    score = pin.get("image_quality_score")
     retries = pin.get("image_retries", 0)
-    low_confidence = pin.get("image_low_confidence", False)
-    issues = pin.get("image_quality_issues", [])
+    source = pin.get("image_source", "")
 
-    if score is None:
+    if source == "template":
         return ""
 
-    parts = [f"{score:.1f}"]
-
+    note = "AI generated"
     if retries > 0:
-        original_source = pin.get("image_source_original", "")
-        if original_source == "stock" and pin.get("image_source") == "ai_generated":
-            parts.append("Fallback: stock -> AI")
-        elif retries == 1:
-            parts.append("Retry: initial candidates scored < 6.5")
-        else:
-            parts.append(f"Retries: {retries}")
-
-    if low_confidence:
-        parts.append("LOW CONFIDENCE")
-
-    if issues:
-        parts.append(", ".join(str(i) for i in issues[:3]))
-
-    return " | ".join(parts)
+        note += f" (retry {retries})"
+    return note
 
 
 def _compute_quality_stats(pins: list[dict]) -> dict:
     """
-    Compute aggregate quality gate statistics across all pins.
+    Compute aggregate quality statistics across all pins.
 
     Returns:
-        dict with stock_summary and ai_summary strings for the summary row.
+        dict with ai_summary string for the summary row.
     """
-    stock_ranked = 0
-    stock_retried = 0
-    stock_fell_back = 0
-    ai_validated = 0
-    ai_regenerated = 0
-    ai_low_conf = 0
+    ai_generated = 0
+    template_only = 0
 
     for pin in pins:
-        original = pin.get("image_source_original", pin.get("image_source", ""))
         source = pin.get("image_source", "")
-        has_score = pin.get("image_quality_score") is not None
-
-        if original == "stock":
-            if has_score:
-                stock_ranked += 1
-            if pin.get("image_retries", 0) > 0 and source != "ai_generated":
-                stock_retried += 1
-            if source == "ai_generated":
-                stock_fell_back += 1
-        elif original == "ai" or source == "ai_generated":
-            if has_score and original != "stock":
-                ai_validated += 1
-            if pin.get("image_retries", 0) > 0 and original != "stock":
-                ai_regenerated += 1
-            if pin.get("image_low_confidence") and original != "stock":
-                ai_low_conf += 1
+        if source == "ai_generated":
+            ai_generated += 1
+        elif source == "template":
+            template_only += 1
 
     return {
-        "stock_summary": (
-            f"Stock: {stock_ranked} ranked, {stock_retried} retried, "
-            f"{stock_fell_back} fell back to AI"
-        ),
         "ai_summary": (
-            f"AI: {ai_validated} validated, {ai_regenerated} regenerated, "
-            f"{ai_low_conf} low_confidence"
+            f"AI generated: {ai_generated}, template-only: {template_only}"
         ),
     }
 

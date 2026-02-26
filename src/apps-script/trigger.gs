@@ -19,7 +19,7 @@
  * Trigger map:
  * - Weekly Review tab, cell B3 = "approved"  → generate-content
  * - Content Queue tab, all column J reviewed → deploy-to-preview
- * - Content Queue tab, cell N1 = "run"       → regen-content
+ * - Content Queue tab, cell N1 = "run"       → regen-content (col 14)
  * - Weekly Review tab, cell B4 = "approved"  → promote-and-schedule
  */
 
@@ -43,9 +43,8 @@ function onSheetEdit(e) {
     }
   }
 
-  // Content Queue tab, cell O1 (row 1, col 15): regen trigger
-  // (Column M is AI Image, so regen trigger shifted from N to O)
-  if (sheet.getName() === "Content Queue" && range.getRow() === 1 && range.getColumn() === 15) {
+  // Content Queue tab, cell N1 (row 1, col 14): regen trigger
+  if (sheet.getName() === "Content Queue" && range.getRow() === 1 && range.getColumn() === 14) {
     if (newValue === "run") {
       triggerGitHubWorkflow("regen-content");
     }
@@ -99,7 +98,7 @@ function allContentReviewed(sheet) {
 function runRegen() {
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Content Queue");
   if (sheet) {
-    sheet.getRange("O1").setValue("run");
+    sheet.getRange("N1").setValue("run");
   }
   triggerGitHubWorkflow("regen-content");
 }
