@@ -374,18 +374,18 @@ class PinAssembler:
         # Hide time badge if no time_badge provided
         if template_name == "recipe-pin" and not context.get("time_badge"):
             result = result.replace(
-                'class="recipe-time-badge"',
-                'class="recipe-time-badge hidden"'
-            )
-            result = result.replace(
                 'class="recipe-time-badge recipe-time-badge-dark"',
                 'class="recipe-time-badge recipe-time-badge-dark hidden"'
+            )
+            result = result.replace(
+                'class="recipe-time-badge"',
+                'class="recipe-time-badge hidden"'
             )
 
         # Hide CTA if no cta_text provided
         if not context.get("cta_text"):
-            result = result.replace('class="pin-cta"', 'class="pin-cta hidden"')
             result = result.replace('class="pin-cta pin-cta-light"', 'class="pin-cta pin-cta-light hidden"')
+            result = result.replace('class="pin-cta"', 'class="pin-cta hidden"')
 
         return result
 
