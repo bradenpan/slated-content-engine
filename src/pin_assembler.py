@@ -134,7 +134,7 @@ def _build_list_items_html(items: list[str], variant: str, has_more: bool = Fals
         return ""
 
     html_parts = []
-    for i, item in enumerate(items, 1):
+    for i, item in enumerate(items[:5], 1):
         escaped = _escape_html(item)
         html_parts.append(
             f'<div class="list-item-row">'
@@ -147,7 +147,7 @@ def _build_list_items_html(items: list[str], variant: str, has_more: bool = Fals
         html_parts.append(
             f'<div class="list-item-row list-item-more">'
             f'  <span class="list-item-number"></span>'
-            f'  <span class="list-item-text" style="font-style: italic; opacity: 0.7;">...and more</span>'
+            f'  <span class="list-item-text list-item-more-text">...and more</span>'
             f'</div>'
         )
 

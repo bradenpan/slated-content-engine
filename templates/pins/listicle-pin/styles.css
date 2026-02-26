@@ -206,3 +206,8 @@
     color: var(--brand-accent);
     font-size: 30px;
 }
+
+.list-item-more-text {
+    font-style: italic;
+    opacity: 0.7;
+}
