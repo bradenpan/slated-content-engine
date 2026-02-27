@@ -66,7 +66,7 @@ jobs:
 
       - name: Pull 30-day analytics
         if: steps.guard.outputs.skip != 'true'
-        run: python -c "from src.pull_analytics import pull_analytics; pull_analytics(days_back=30)"
+        run: python -m src.pull_analytics 30
 
       - name: Run monthly strategy review (Claude Opus)
         if: steps.guard.outputs.skip != 'true'

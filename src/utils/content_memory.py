@@ -408,3 +408,11 @@ def _write_summary(summary: str, output_path: Path = None) -> None:
         logger.info("Wrote content memory summary to %s (%d chars)", memory_path, len(summary))
     except OSError as e:
         logger.warning("Failed to save content memory summary: %s", e)
+
+
+if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+    )
+    generate_content_memory_summary()

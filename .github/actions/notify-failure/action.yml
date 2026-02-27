@@ -14,10 +14,15 @@ runs:
         WORKFLOW_NAME: ${{ inputs.workflow_name }}
         RUN_URL: ${{ inputs.run_url }}
       run: |
+        if [ -z "${SLACK_WEBHOOK_URL:-}" ]; then
+          echo "::warning::SLACK_WEBHOOK_URL not set. Skipping Slack failure notification."
+          echo "FAILED: $WORKFLOW_NAME — $RUN_URL"
+          exit 0
+        fi
         python -c "
         import os
         from src.apis.slack_notify import SlackNotify
         notifier = SlackNotify()
         notifier.notify_failure(os.environ['WORKFLOW_NAME'], 'Workflow failed. Check: ' + os.environ['RUN_URL'])
-        "
+        " || echo "::warning::Slack notification failed (non-fatal). See run: $RUN_URL"
       shell: bash

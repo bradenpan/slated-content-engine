@@ -8,10 +8,31 @@ runs:
   using: composite
   steps:
     - run: |
+        set -e
         git config user.name "pinterest-pipeline-bot"
         git config user.email "bot@pinterest-pipeline.local"
         git add data/ analysis/
-        git diff --staged --quiet || git commit -m "${{ inputs.message }}"
-        git pull --rebase
-        git push
+        if git diff --staged --quiet; then
+          echo "No data changes to commit."
+          exit 0
+        fi
+        git commit -m "${{ inputs.message }}"
+
+        # Push with retry — if a concurrent workflow pushed first,
+        # rebase our commit on top and retry.
+        MAX_ATTEMPTS=3
+        for attempt in $(seq 1 $MAX_ATTEMPTS); do
+          if ! git pull --rebase; then
+            echo "::error::Rebase conflict on attempt $attempt. Aborting rebase."
+            git rebase --abort
+            exit 1
+          fi
+          if git push; then
+            echo "Push succeeded (attempt $attempt)."
+            exit 0
+          fi
+          echo "::warning::Push failed on attempt $attempt/$MAX_ATTEMPTS. Retrying..."
+        done
+        echo "::error::Push failed after $MAX_ATTEMPTS attempts."
+        exit 1
       shell: bash
