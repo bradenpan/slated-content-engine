@@ -20,10 +20,6 @@ from src.apis.pinterest_api import PinterestAPI, PinterestAPIError
 from src.token_manager import TokenManager
 from src.paths import STRATEGY_DIR
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
-)
 logger = logging.getLogger(__name__)
 
 BOARD_STRUCTURE_PATH = STRATEGY_DIR / "board-structure.json"
@@ -99,4 +95,8 @@ def setup_boards() -> None:
 
 
 if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+    )
     setup_boards()

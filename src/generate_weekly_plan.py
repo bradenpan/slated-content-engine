@@ -54,7 +54,12 @@ from src.utils.plan_utils import (
 logger = logging.getLogger(__name__)
 
 
-def generate_plan(week_start_date: Optional[str] = None) -> dict:
+def generate_plan(
+    week_start_date: Optional[str] = None,
+    claude: Optional[ClaudeAPI] = None,
+    sheets: Optional[SheetsAPI] = None,
+    slack: Optional[SlackNotify] = None,
+) -> dict:
     """
     Generate the weekly content plan.
 
@@ -114,7 +119,7 @@ def generate_plan(week_start_date: Optional[str] = None) -> dict:
     ]
 
     # Step 7: Call Claude to generate the plan
-    claude = ClaudeAPI()
+    claude = claude or ClaudeAPI()
     plan = claude.generate_weekly_plan(
         strategy_doc=strategy_context.get("strategy_doc", ""),
         weekly_analysis=latest_analysis,
@@ -288,7 +293,7 @@ def generate_plan(week_start_date: Optional[str] = None) -> dict:
 
     # Step 10: Write the approved plan to Google Sheets
     try:
-        sheets = SheetsAPI()
+        sheets = sheets or SheetsAPI()
         sheets.write_weekly_review(
             analysis_summary=latest_analysis[:500] if latest_analysis else "First week - no prior analysis",
             content_plan=plan,
@@ -309,7 +314,7 @@ def generate_plan(week_start_date: Optional[str] = None) -> dict:
 
     # Step 12: Send Slack notification
     try:
-        slack = SlackNotify()
+        slack = slack or SlackNotify()
         num_posts = len(plan.get("blog_posts", []))
         num_pins = len(plan.get("pins", []))
         slack.notify_review_ready(
@@ -343,14 +348,18 @@ def _build_reprompt_context(violations: list[dict]) -> str:
     )
 
 
-def generate_weekly_plan() -> dict:
+def generate_weekly_plan(
+    claude: Optional[ClaudeAPI] = None,
+    sheets: Optional[SheetsAPI] = None,
+    slack: Optional[SlackNotify] = None,
+) -> dict:
     """
     Convenience alias for generate_plan() with default date.
 
     Returns:
         dict: The generated weekly plan.
     """
-    return generate_plan()
+    return generate_plan(claude=claude, sheets=sheets, slack=slack)
 
 
 def load_strategy_context() -> dict:

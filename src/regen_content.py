@@ -46,7 +46,15 @@ from src.utils.image_utils import extract_drive_file_id
 logger = logging.getLogger(__name__)
 
 
-def regen() -> None:
+def regen(
+    sheets: SheetsAPI | None = None,
+    claude: ClaudeAPI | None = None,
+    image_gen_api: ImageGenAPI | None = None,
+    assembler: PinAssembler | None = None,
+    gcs: GcsAPI | None = None,
+    drive: DriveAPI | None = None,
+    slack: SlackNotify | None = None,
+) -> None:
     """
     Main entry point for the regeneration workflow.
 
@@ -58,13 +66,13 @@ def regen() -> None:
     6. Reset the regen trigger and send Slack notification.
     """
     # Initialize API clients
-    sheets = SheetsAPI()
-    claude = ClaudeAPI()
-    image_gen_api = ImageGenAPI()
-    assembler = PinAssembler()
-    gcs = GcsAPI()
-    drive = DriveAPI()
-    slack = SlackNotify()
+    sheets = sheets or SheetsAPI()
+    claude = claude or ClaudeAPI()
+    image_gen_api = image_gen_api or ImageGenAPI()
+    assembler = assembler or PinAssembler()
+    gcs = gcs or GcsAPI()
+    drive = drive or DriveAPI()
+    slack = slack or SlackNotify()
 
     used_image_ids = load_used_image_ids()
     brand_voice = load_brand_voice()

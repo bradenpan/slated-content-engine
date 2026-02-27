@@ -39,6 +39,9 @@ logger = logging.getLogger(__name__)
 def generate_pin_content(
     plan_path: Optional[str] = None,
     blog_posts: Optional[dict] = None,
+    claude: Optional[ClaudeAPI] = None,
+    image_gen_api: Optional[ImageGenAPI] = None,
+    assembler: Optional[PinAssembler] = None,
 ) -> list[dict]:
     """
     Generate pin content (copy + images) for all pins in the plan.
@@ -86,9 +89,9 @@ def generate_pin_content(
     board_id_map = _load_board_id_map()
 
     # Initialize API clients
-    claude = ClaudeAPI()
-    image_gen_api = ImageGenAPI()
-    assembler = PinAssembler()
+    claude = claude or ClaudeAPI()
+    image_gen_api = image_gen_api or ImageGenAPI()
+    assembler = assembler or PinAssembler()
 
     # Ensure output directory exists
     PIN_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)

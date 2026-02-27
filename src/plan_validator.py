@@ -52,6 +52,7 @@ def validate_plan(
     content_memory: str,
     content_log: Optional[list[dict]] = None,
     board_structure: Optional[dict] = None,
+    negative_keywords: Optional[list[str]] = None,
 ) -> list[dict]:
     """
     Validate a generated plan against all constraints.
@@ -67,6 +68,7 @@ def validate_plan(
         content_memory: Content memory summary markdown.
         content_log: Parsed content log entries. Loaded if None.
         board_structure: Board structure from strategy. Loaded if None.
+        negative_keywords: List of negative keyword strings. Loaded from disk if None.
 
     Returns:
         list[dict]: Structured violation objects (empty if all pass).
@@ -87,16 +89,17 @@ def validate_plan(
             board_structure = {}
 
     # Load negative keywords
-    try:
-        neg_kw_data = json.loads(
-            (STRATEGY_DIR / "negative-keywords.json").read_text(encoding="utf-8")
-        )
-        negative_keywords = [
-            item["term"] if isinstance(item, dict) else item
-            for item in neg_kw_data.get("negative_keywords", [])
-        ]
-    except (FileNotFoundError, json.JSONDecodeError):
-        negative_keywords = []
+    if negative_keywords is None:
+        try:
+            neg_kw_data = json.loads(
+                (STRATEGY_DIR / "negative-keywords.json").read_text(encoding="utf-8")
+            )
+            negative_keywords = [
+                item["term"] if isinstance(item, dict) else item
+                for item in neg_kw_data.get("negative_keywords", [])
+            ]
+        except (FileNotFoundError, json.JSONDecodeError):
+            negative_keywords = []
 
     # --- Check 1: Total pins = 28 ---
     if len(pins) != TOTAL_WEEKLY_PINS:

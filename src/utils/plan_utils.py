@@ -171,7 +171,10 @@ def splice_replacements(
     return new_plan
 
 
-def build_keyword_performance_data(keyword_lists: dict) -> dict:
+def build_keyword_performance_data(
+    keyword_lists: dict,
+    content_log: list[dict] | None = None,
+) -> dict:
     """
     Build keyword data with performance metrics from the content log.
 
@@ -180,11 +183,13 @@ def build_keyword_performance_data(keyword_lists: dict) -> dict:
 
     Args:
         keyword_lists: Keyword lists from strategy/keyword-lists.json.
+        content_log: Parsed content log entries. Loaded from disk if None.
 
     Returns:
         dict: Keyword data enriched with performance metrics.
     """
-    content_log = _load_content_log()
+    if content_log is None:
+        content_log = _load_content_log()
 
     # Aggregate performance by keyword
     keyword_perf: dict[str, dict] = defaultdict(

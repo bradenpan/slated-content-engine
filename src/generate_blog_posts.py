@@ -34,7 +34,10 @@ logger = logging.getLogger(__name__)
 OUTPUT_DIR = BLOG_OUTPUT_DIR
 
 
-def generate_blog_posts(plan_path: Optional[str] = None) -> dict:
+def generate_blog_posts(
+    plan_path: Optional[str] = None,
+    generator: Optional[BlogGenerator] = None,
+) -> dict:
     """
     Generate all blog posts from the approved weekly plan.
 
@@ -86,7 +89,7 @@ def generate_blog_posts(plan_path: Optional[str] = None) -> dict:
     )
 
     # Initialize generator
-    generator = BlogGenerator()
+    generator = generator or BlogGenerator()
 
     # Ensure output directory exists
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)

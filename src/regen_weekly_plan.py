@@ -82,7 +82,11 @@ def build_regen_violations(
     return violations
 
 
-def regen_plan() -> None:
+def regen_plan(
+    claude: ClaudeAPI | None = None,
+    sheets: SheetsAPI | None = None,
+    slack: SlackNotify | None = None,
+) -> None:
     """
     Main orchestration function for plan-level regeneration.
 
@@ -92,7 +96,7 @@ def regen_plan() -> None:
     logger.info("Starting plan-level regeneration...")
 
     # Step 1: Read regen requests from Sheet
-    sheets = SheetsAPI()
+    sheets = sheets or SheetsAPI()
     regen_requests = sheets.read_plan_regen_requests()
 
     if not regen_requests:
@@ -178,7 +182,7 @@ def regen_plan() -> None:
     content_memory = load_content_memory()
 
     # Step 5: Call Claude to generate replacements with reviewer feedback
-    claude = ClaudeAPI()
+    claude = claude or ClaudeAPI()
     try:
         replacements = claude.generate_replacement_posts(
             posts_to_replace=posts_to_replace,
@@ -257,7 +261,7 @@ def regen_plan() -> None:
     total_pins_affected = len(all_offending_pin_ids)
 
     try:
-        slack = SlackNotify()
+        slack = slack or SlackNotify()
         slack.notify_plan_regen_complete(replaced_posts_summary, total_pins_affected)
     except Exception as e:
         logger.error("Failed to send Slack notification: %s", e)

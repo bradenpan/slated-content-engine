@@ -68,7 +68,13 @@ SLOT_PIN_COUNTS = {
 }
 
 
-def post_pins(time_slot: str) -> dict:
+def post_pins(
+    time_slot: str,
+    pinterest: Optional[PinterestAPI] = None,
+    sheets: Optional[SheetsAPI] = None,
+    token_manager: Optional[TokenManager] = None,
+    slack: Optional[SlackNotify] = None,
+) -> dict:
     """
     Post approved pins for the current time slot.
 
@@ -99,10 +105,11 @@ def post_pins(time_slot: str) -> dict:
 
     # Initialize services
     try:
-        token_manager = TokenManager()
-        access_token = token_manager.get_valid_token()
-        pinterest = PinterestAPI(access_token=access_token)
-        slack = SlackNotify()
+        token_manager = token_manager or TokenManager()
+        if pinterest is None:
+            access_token = token_manager.get_valid_token()
+            pinterest = PinterestAPI(access_token=access_token)
+        slack = slack or SlackNotify()
     except Exception as e:
         logger.error("Failed to initialize services: %s", e)
         try:
@@ -125,11 +132,12 @@ def post_pins(time_slot: str) -> dict:
     board_map = build_board_map(pinterest)
 
     # Initialize sheets for post log updates
-    try:
-        sheets = SheetsAPI()
-    except Exception as e:
-        logger.warning("Could not initialize SheetsAPI, post log updates will be skipped: %s", e)
-        sheets = None
+    if sheets is None:
+        try:
+            sheets = SheetsAPI()
+        except Exception as e:
+            logger.warning("Could not initialize SheetsAPI, post log updates will be skipped: %s", e)
+            sheets = None
 
     total_pins = len(pins_to_post)
 
