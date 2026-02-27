@@ -29,11 +29,11 @@ from pathlib import Path
 from typing import Optional
 
 from src.apis.claude_api import ClaudeAPI
+from src.paths import STRATEGY_DIR, TEMPLATES_DIR as _BASE_TEMPLATES_DIR
 
 logger = logging.getLogger(__name__)
 
-STRATEGY_DIR = Path(__file__).parent.parent / "strategy"
-TEMPLATES_DIR = Path(__file__).parent.parent / "templates" / "blog"
+TEMPLATES_DIR = _BASE_TEMPLATES_DIR / "blog"
 
 # Word count targets by post type
 WORD_COUNT_TARGETS = {

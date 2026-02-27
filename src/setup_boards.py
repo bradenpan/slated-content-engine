@@ -13,12 +13,12 @@ Or via GitHub Actions: workflow_dispatch on setup-boards.yml.
 
 import json
 import logging
-import os
 import sys
 import time
 
 from src.apis.pinterest_api import PinterestAPI, PinterestAPIError
 from src.token_manager import TokenManager
+from src.paths import STRATEGY_DIR
 
 logging.basicConfig(
     level=logging.INFO,
@@ -26,14 +26,11 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-BOARD_STRUCTURE_PATH = os.path.join(
-    os.path.dirname(__file__), "..", "strategy", "board-structure.json"
-)
+BOARD_STRUCTURE_PATH = STRATEGY_DIR / "board-structure.json"
 
 
 def load_board_structure() -> list[dict]:
-    path = os.path.abspath(BOARD_STRUCTURE_PATH)
-    with open(path) as f:
+    with open(BOARD_STRUCTURE_PATH) as f:
         data = json.load(f)
     return data["boards"]
 

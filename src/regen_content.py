@@ -39,12 +39,9 @@ from src.generate_pin_content import (
     build_template_context,
 )
 from src.pin_assembler import PinAssembler
+from src.paths import DATA_DIR, PIN_OUTPUT_DIR
 
 logger = logging.getLogger(__name__)
-
-PROJECT_ROOT = Path(__file__).parent.parent
-DATA_DIR = PROJECT_ROOT / "data"
-PIN_OUTPUT_DIR = DATA_DIR / "generated" / "pins"
 
 
 def regen() -> None:

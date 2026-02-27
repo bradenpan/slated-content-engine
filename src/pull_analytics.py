@@ -30,16 +30,12 @@ from typing import Optional
 
 from src.apis.pinterest_api import PinterestAPI, PinterestAPIError
 from src.token_manager import TokenManager
+from src.paths import DATA_DIR, CONTENT_LOG_PATH
+from src.config import MAX_LOOKBACK_DAYS
 
 logger = logging.getLogger(__name__)
 
-PROJECT_ROOT = Path(__file__).parent.parent
-DATA_DIR = PROJECT_ROOT / "data"
-CONTENT_LOG_PATH = DATA_DIR / "content-log.jsonl"
 ANALYTICS_DIR = DATA_DIR / "analytics"
-
-# Pinterest API max lookback
-MAX_LOOKBACK_DAYS = 90
 
 # Metrics to pull from Pinterest
 METRICS = ["IMPRESSION", "SAVE", "PIN_CLICK", "OUTBOUND_CLICK"]

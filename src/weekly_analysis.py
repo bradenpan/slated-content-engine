@@ -44,15 +44,12 @@ from src.pull_analytics import (
     compute_derived_metrics,
     aggregate_by_dimension,
 )
+from src.paths import ANALYSIS_DIR as _ANALYSIS_BASE, DATA_DIR, CONTENT_LOG_PATH, STRATEGY_DIR
 
 logger = logging.getLogger(__name__)
 
-PROJECT_ROOT = Path(__file__).parent.parent
-ANALYSIS_DIR = PROJECT_ROOT / "analysis" / "weekly"
-DATA_DIR = PROJECT_ROOT / "data"
-CONTENT_LOG_PATH = DATA_DIR / "content-log.jsonl"
+ANALYSIS_DIR = _ANALYSIS_BASE / "weekly"
 PIN_SCHEDULE_PATH = DATA_DIR / "pin-schedule.json"
-STRATEGY_DIR = PROJECT_ROOT / "strategy"
 ANALYTICS_DIR = DATA_DIR / "analytics"
 
 

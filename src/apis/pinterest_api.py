@@ -34,10 +34,12 @@ from typing import Optional
 
 import requests
 
-logger = logging.getLogger(__name__)
+from src.config import (
+    PINTEREST_BASE_URL_PRODUCTION as BASE_URL_PRODUCTION,
+    PINTEREST_BASE_URL_SANDBOX as BASE_URL_SANDBOX,
+)
 
-BASE_URL_PRODUCTION = "https://api.pinterest.com/v5"
-BASE_URL_SANDBOX = "https://api-sandbox.pinterest.com/v5"
+logger = logging.getLogger(__name__)
 
 # Default metric types for analytics
 DEFAULT_METRIC_TYPES = ["IMPRESSION", "SAVE", "PIN_CLICK", "OUTBOUND_CLICK"]

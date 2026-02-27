@@ -28,19 +28,13 @@ from typing import Optional
 from src.apis.github_api import GitHubAPI
 from src.apis.sheets_api import SheetsAPI
 from src.apis.slack_notify import SlackNotify
+from src.paths import DATA_DIR, BLOG_OUTPUT_DIR, PIN_OUTPUT_DIR
+from src.config import BLOG_BASE_URL, DEPLOY_VERIFY_TIMEOUT
 
 logger = logging.getLogger(__name__)
 
-PROJECT_ROOT = Path(__file__).parent.parent
-DATA_DIR = PROJECT_ROOT / "data"
-GENERATED_BLOG_DIR = DATA_DIR / "generated" / "blog"
-GENERATED_PINS_DIR = DATA_DIR / "generated" / "pins"
-
-# Base URL for verifying deployments
-BLOG_BASE_URL = "https://goslated.com/blog"
-
-# Deployment verification timeout
-DEPLOY_VERIFY_TIMEOUT = 180  # seconds
+GENERATED_BLOG_DIR = BLOG_OUTPUT_DIR
+GENERATED_PINS_DIR = PIN_OUTPUT_DIR
 
 
 class BlogDeployerError(Exception):

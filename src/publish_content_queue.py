@@ -19,13 +19,11 @@ from src.apis.gcs_api import GcsAPI
 from src.apis.drive_api import DriveAPI, DriveAPIError
 from src.apis.sheets_api import SheetsAPI, TAB_CONTENT_QUEUE
 from src.apis.slack_notify import SlackNotify
+from src.paths import DATA_DIR, BLOG_OUTPUT_DIR, PIN_OUTPUT_DIR
 
 logger = logging.getLogger(__name__)
 
-PROJECT_ROOT = Path(__file__).parent.parent
-DATA_DIR = PROJECT_ROOT / "data"
-GENERATED_BLOG_DIR = DATA_DIR / "generated" / "blog"
-PIN_OUTPUT_DIR = DATA_DIR / "generated" / "pins"
+GENERATED_BLOG_DIR = BLOG_OUTPUT_DIR
 
 
 def publish() -> None:

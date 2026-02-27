@@ -46,12 +46,16 @@ from typing import Optional
 
 import requests
 
+from src.paths import DATA_DIR
+from src.config import (
+    PINTEREST_OAUTH_URL,
+    PINTEREST_REDIRECT_URI as REDIRECT_URI,
+    PINTEREST_REFRESH_THRESHOLD_DAYS as REFRESH_THRESHOLD_DAYS,
+)
+
 logger = logging.getLogger(__name__)
 
-TOKEN_STORE_PATH = Path(__file__).parent.parent / "data" / "token-store.json"
-PINTEREST_OAUTH_URL = "https://api.pinterest.com/v5/oauth/token"
-REDIRECT_URI = "http://localhost:8085/"
-REFRESH_THRESHOLD_DAYS = 5
+TOKEN_STORE_PATH = DATA_DIR / "token-store.json"
 REFRESH_THRESHOLD_SECONDS = REFRESH_THRESHOLD_DAYS * 24 * 60 * 60
 
 

@@ -52,14 +52,12 @@ from src.pull_analytics import (
     compute_derived_metrics,
     aggregate_by_dimension,
 )
+from src.paths import ANALYSIS_DIR as _ANALYSIS_BASE, STRATEGY_DIR, DATA_DIR
 
 logger = logging.getLogger(__name__)
 
-PROJECT_ROOT = Path(__file__).parent.parent
-ANALYSIS_DIR = PROJECT_ROOT / "analysis" / "monthly"
-WEEKLY_DIR = PROJECT_ROOT / "analysis" / "weekly"
-STRATEGY_DIR = PROJECT_ROOT / "strategy"
-DATA_DIR = PROJECT_ROOT / "data"
+ANALYSIS_DIR = _ANALYSIS_BASE / "monthly"
+WEEKLY_DIR = _ANALYSIS_BASE / "weekly"
 
 
 def run_monthly_review(month: Optional[int] = None, year: Optional[int] = None) -> str:

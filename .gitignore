@@ -32,8 +32,8 @@ Thumbs.db
 desktop.ini
 
 # Generated content (large files, don't commit rendered PNGs)
-data/generated_posts/
-data/generated_pins/
+data/generated/blog/
+data/generated/pins/
 *.png
 !data/generated/pins/*-hero.png
 !data/generated/blog/*.png

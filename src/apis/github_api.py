@@ -38,9 +38,9 @@ from typing import Optional
 
 import requests
 
-logger = logging.getLogger(__name__)
+from src.config import GOSLATED_BASE_URL
 
-GOSLATED_BASE_URL = "https://goslated.com"
+logger = logging.getLogger(__name__)
 
 
 class GitHubAPIError(Exception):

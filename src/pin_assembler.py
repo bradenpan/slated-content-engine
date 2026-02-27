@@ -30,24 +30,18 @@ import tempfile
 from pathlib import Path
 from typing import Any, Optional
 
+from src.paths import PROJECT_ROOT, TEMPLATES_DIR as _BASE_TEMPLATES_DIR
+from src.config import PIN_WIDTH, PIN_HEIGHT, MAX_PNG_SIZE
+
 logger = logging.getLogger(__name__)
 
-# Resolve paths relative to this file's location
-_SRC_DIR = Path(__file__).parent
-_PROJECT_ROOT = _SRC_DIR.parent
-TEMPLATES_DIR = _PROJECT_ROOT / "templates" / "pins"
+# Pin-specific templates subdirectory
+TEMPLATES_DIR = _BASE_TEMPLATES_DIR / "pins"
 SHARED_DIR = TEMPLATES_DIR / "shared"
-DEFAULT_OUTPUT_DIR = _PROJECT_ROOT / "test_output"
+DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "test_output"
 
 # Path to the Node.js render script
-RENDER_SCRIPT = _PROJECT_ROOT / "render_pin.js"
-
-# Pin canvas dimensions
-PIN_WIDTH = 1000
-PIN_HEIGHT = 1500
-
-# Maximum output PNG file size target (bytes)
-MAX_PNG_SIZE = 500 * 1024  # 500 KB
+RENDER_SCRIPT = PROJECT_ROOT / "render_pin.js"
 
 # Variant number-to-letter mapping (callers may pass int or str)
 _VARIANT_MAP = {1: "A", 2: "B", 3: "C", "1": "A", "2": "B", "3": "C"}

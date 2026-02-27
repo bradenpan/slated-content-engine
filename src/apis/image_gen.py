@@ -32,16 +32,13 @@ from typing import Optional
 
 import requests
 
+from src.paths import PIN_OUTPUT_DIR
+from src.config import (
+    IMAGE_COST_PER_IMAGE as COST_PER_IMAGE,
+    MIN_IMAGE_SIZE,
+)
+
 logger = logging.getLogger(__name__)
-
-# Cost per image (approximate, for tracking)
-COST_PER_IMAGE = {
-    "openai": 0.05,    # gpt-image-1.5 at 1024x1536 medium quality
-    "replicate": 0.05,  # Flux Pro approximate
-}
-
-# Minimum acceptable file size in bytes (reject blank/corrupt images)
-MIN_IMAGE_SIZE = 10_000  # 10KB
 
 
 class ImageGenError(Exception):
@@ -118,9 +115,8 @@ class ImageGenAPI:
             ImageGenError: If generation fails after all retries.
         """
         if output_path is None:
-            output_dir = Path(__file__).parent.parent.parent / "data" / "generated_pins"
-            output_dir.mkdir(parents=True, exist_ok=True)
-            output_path = output_dir / f"{uuid.uuid4().hex[:12]}.png"
+            PIN_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+            output_path = PIN_OUTPUT_DIR / f"{uuid.uuid4().hex[:12]}.png"
 
         last_error = None
         current_prompt = prompt

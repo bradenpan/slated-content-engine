@@ -28,19 +28,10 @@ from src.apis.claude_api import ClaudeAPI
 from src.apis.image_gen import ImageGenAPI
 from src.image_cleaner import clean_image
 from src.pin_assembler import PinAssembler
+from src.paths import DATA_DIR, STRATEGY_DIR, PIN_OUTPUT_DIR
+from src.config import BLOG_BASE_URL, COPY_BATCH_SIZE
 
 logger = logging.getLogger(__name__)
-
-PROJECT_ROOT = Path(__file__).parent.parent
-DATA_DIR = PROJECT_ROOT / "data"
-STRATEGY_DIR = PROJECT_ROOT / "strategy"
-PIN_OUTPUT_DIR = DATA_DIR / "generated" / "pins"
-
-# Base URL for blog posts
-BLOG_BASE_URL = "https://goslated.com/blog"
-
-# Batch size for Claude API calls (pin copy generation)
-COPY_BATCH_SIZE = 6
 
 
 def generate_pin_content(

@@ -32,19 +32,14 @@ from typing import Optional
 import anthropic
 import requests
 
+from src.paths import PROMPTS_DIR, STRATEGY_DIR
+from src.config import (
+    CLAUDE_MODEL_ROUTINE as MODEL_ROUTINE,
+    CLAUDE_MODEL_DEEP as MODEL_DEEP,
+    CLAUDE_COST_PER_MTK as COST_PER_MTK,
+)
+
 logger = logging.getLogger(__name__)
-
-PROMPTS_DIR = Path(__file__).parent.parent.parent / "prompts"
-STRATEGY_DIR = Path(__file__).parent.parent.parent / "strategy"
-
-# Model selection -- using the latest model IDs
-MODEL_ROUTINE = "claude-sonnet-4-6"
-MODEL_DEEP = "claude-opus-4-6"
-# Approximate costs per million tokens (for cost tracking)
-COST_PER_MTK = {
-    MODEL_ROUTINE: {"input": 3.0, "output": 15.0},
-    MODEL_DEEP: {"input": 5.0, "output": 25.0},
-}
 
 
 class ClaudeAPIError(Exception):

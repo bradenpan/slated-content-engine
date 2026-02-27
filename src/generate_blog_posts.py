@@ -23,17 +23,14 @@ Production tapers as the library matures (see strategy Section 3).
 
 import json
 import logging
-from pathlib import Path
 from typing import Optional
 
 from src.blog_generator import BlogGenerator
+from src.paths import DATA_DIR, STRATEGY_DIR, BLOG_OUTPUT_DIR
 
 logger = logging.getLogger(__name__)
 
-PROJECT_ROOT = Path(__file__).parent.parent
-OUTPUT_DIR = PROJECT_ROOT / "data" / "generated" / "blog"
-DATA_DIR = PROJECT_ROOT / "data"
-STRATEGY_DIR = PROJECT_ROOT / "strategy"
+OUTPUT_DIR = BLOG_OUTPUT_DIR
 
 
 def generate_blog_posts(plan_path: Optional[str] = None) -> dict:

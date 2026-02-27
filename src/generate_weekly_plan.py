@@ -35,19 +35,14 @@ import json
 import logging
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta, date
-from pathlib import Path
 from typing import Optional
 
 from src.apis.claude_api import ClaudeAPI
 from src.apis.sheets_api import SheetsAPI
 from src.apis.slack_notify import SlackNotify
+from src.paths import STRATEGY_DIR, ANALYSIS_DIR, DATA_DIR
 
 logger = logging.getLogger(__name__)
-
-PROJECT_ROOT = Path(__file__).parent.parent
-STRATEGY_DIR = PROJECT_ROOT / "strategy"
-ANALYSIS_DIR = PROJECT_ROOT / "analysis"
-DATA_DIR = PROJECT_ROOT / "data"
 
 # Pillar mix target ranges (percentage of 28 total pins)
 # Format: pillar -> (min_pins, max_pins)

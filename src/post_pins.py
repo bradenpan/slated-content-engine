@@ -43,14 +43,18 @@ from src.apis.pinterest_api import PinterestAPI, PinterestAPIError
 from src.apis.sheets_api import SheetsAPI
 from src.apis.slack_notify import SlackNotify
 from src.token_manager import TokenManager
+from src.paths import PROJECT_ROOT, DATA_DIR, CONTENT_LOG_PATH, STRATEGY_DIR
+from src.config import (
+    INITIAL_JITTER_MAX,
+    INTER_PIN_JITTER_MIN,
+    INTER_PIN_JITTER_MAX,
+    MAX_PIN_FAILURES,
+)
 
 logger = logging.getLogger(__name__)
 
-PROJECT_ROOT = Path(__file__).parent.parent
-DATA_DIR = PROJECT_ROOT / "data"
-CONTENT_LOG_PATH = DATA_DIR / "content-log.jsonl"
 PIN_SCHEDULE_PATH = DATA_DIR / "pin-schedule.json"
-BOARD_STRUCTURE_PATH = PROJECT_ROOT / "strategy" / "board-structure.json"
+BOARD_STRUCTURE_PATH = STRATEGY_DIR / "board-structure.json"
 
 # Timezone for scheduling logic (all dates are ET)
 ET = ZoneInfo("America/New_York")
@@ -61,14 +65,6 @@ SLOT_PIN_COUNTS = {
     "afternoon": 1,
     "evening": 2,
 }
-
-# Anti-bot jitter constants
-INITIAL_JITTER_MAX = 900        # 0-15 minutes
-INTER_PIN_JITTER_MIN = 300      # 5 minutes
-INTER_PIN_JITTER_MAX = 1200     # 20 minutes
-
-# Retry constants
-MAX_PIN_FAILURES = 3
 
 
 def post_pins(time_slot: str) -> dict:
