@@ -140,19 +140,26 @@ class DriveAPI:
         """
         deleted = 0
         try:
-            results = self.drive.files().list(
-                q=f"'{folder_id}' in parents and trashed=false",
-                fields="files(id, name)",
-                spaces="drive",
-                pageSize=100,
-            ).execute()
+            page_token = None
+            while True:
+                results = self.drive.files().list(
+                    q=f"'{folder_id}' in parents and trashed=false",
+                    fields="files(id, name), nextPageToken",
+                    spaces="drive",
+                    pageSize=100,
+                    pageToken=page_token,
+                ).execute()
 
-            for file in results.get("files", []):
-                try:
-                    self.drive.files().delete(fileId=file["id"]).execute()
-                    deleted += 1
-                except Exception as e:
-                    logger.warning("Failed to delete %s: %s", file["name"], e)
+                for file in results.get("files", []):
+                    try:
+                        self.drive.files().delete(fileId=file["id"]).execute()
+                        deleted += 1
+                    except Exception as e:
+                        logger.warning("Failed to delete %s: %s", file["name"], e)
+
+                page_token = results.get("nextPageToken")
+                if not page_token:
+                    break
 
             if deleted:
                 logger.info("Cleared %d files from Drive folder", deleted)

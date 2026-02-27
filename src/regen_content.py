@@ -71,8 +71,11 @@ def regen(
     image_gen_api = image_gen_api or ImageGenAPI()
     assembler = assembler or PinAssembler()
     gcs = gcs or GcsAPI()
-    drive = drive or DriveAPI()
     slack = slack or SlackNotify()
+    # Lazy-init Drive: only needed when GCS is unavailable and image
+    # re-upload falls back to Drive.  Avoids crashing at startup when
+    # Drive credentials are missing but GCS is the active backend.
+    _drive_initialized = drive is not None
 
     used_image_ids = load_used_image_ids()
     brand_voice = load_brand_voice()
@@ -275,6 +278,15 @@ def regen(
             continue
 
         old_score = None
+
+        # Lazy-init DriveAPI on first actual use
+        if not _drive_initialized:
+            try:
+                drive = DriveAPI()
+            except Exception as e:
+                logger.warning("DriveAPI not available (will skip Drive fallback): %s", e)
+                drive = None
+            _drive_initialized = True
 
         try:
             result = _regen_item(

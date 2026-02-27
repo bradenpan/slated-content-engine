@@ -23,10 +23,11 @@ Production tapers as the library matures (see strategy Section 3).
 
 import json
 import logging
+from pathlib import Path
 from typing import Optional
 
 from src.blog_generator import BlogGenerator
-from src.paths import DATA_DIR, STRATEGY_DIR, BLOG_OUTPUT_DIR
+from src.paths import DATA_DIR, BLOG_OUTPUT_DIR
 from src.utils.plan_utils import find_latest_plan, load_plan
 
 logger = logging.getLogger(__name__)

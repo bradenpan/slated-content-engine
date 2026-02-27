@@ -55,13 +55,14 @@ class GcsAPI:
         )
         self.client = None
         self.bucket = None
+        self._init_error: str | None = None
 
         creds_b64 = os.environ.get("GOOGLE_SHEETS_CREDENTIALS_JSON", "")
 
         if not creds_b64:
+            self._init_error = "Google credentials not provided (GOOGLE_SHEETS_CREDENTIALS_JSON)"
             logger.warning(
-                "Google credentials not provided (GOOGLE_SHEETS_CREDENTIALS_JSON). "
-                "GCS uploads will be skipped."
+                "%s. GCS uploads will be skipped.", self._init_error,
             )
             return
 
@@ -69,7 +70,8 @@ class GcsAPI:
             creds_json = base64.b64decode(creds_b64).decode("utf-8")
             creds_dict = json.loads(creds_json)
         except Exception as e:
-            logger.warning("Failed to decode service account credentials: %s", e)
+            self._init_error = f"Failed to decode service account credentials: {e}"
+            logger.warning("%s", self._init_error)
             return
 
         try:
@@ -104,12 +106,19 @@ class GcsAPI:
             )
 
         except ImportError:
+            self._init_error = "google-cloud-storage not installed"
             logger.warning(
-                "google-cloud-storage not installed. "
-                "Install: pip install google-cloud-storage"
+                "%s. Install: pip install google-cloud-storage",
+                self._init_error,
             )
         except Exception as e:
-            logger.warning("Failed to initialize GCS client: %s", e)
+            self._init_error = f"Failed to initialize GCS client: {e}"
+            logger.warning("%s", self._init_error)
+
+    @property
+    def is_available(self) -> bool:
+        """Check whether the GCS client was initialized successfully."""
+        return self.client is not None
 
     def upload_image(self, local_path: Path, remote_name: Optional[str] = None) -> Optional[str]:
         """

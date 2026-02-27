@@ -26,7 +26,7 @@ BOARD_STRUCTURE_PATH = STRATEGY_DIR / "board-structure.json"
 
 
 def load_board_structure() -> list[dict]:
-    with open(BOARD_STRUCTURE_PATH) as f:
+    with open(BOARD_STRUCTURE_PATH, encoding="utf-8") as f:
         data = json.load(f)
     return data["boards"]
 

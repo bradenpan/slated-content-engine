@@ -94,15 +94,11 @@ def _image_to_data_uri(image_path: str) -> str:
         logger.warning("Image not found at %s, using empty placeholder", image_path)
         return ""
 
-    suffix = path.suffix.lower()
-    mime_map = {
-        ".jpg": "image/jpeg",
-        ".jpeg": "image/jpeg",
-        ".png": "image/png",
-        ".webp": "image/webp",
-        ".gif": "image/gif",
-    }
-    mime = mime_map.get(suffix, "image/jpeg")
+    from src.utils.image_utils import detect_mime_type
+    with open(path, "rb") as img_f:
+        header = img_f.read(12)
+    detected = detect_mime_type(header)
+    mime = detected if detected != "application/octet-stream" else "image/jpeg"
 
     with open(path, "rb") as f:
         encoded = base64.b64encode(f.read()).decode("ascii")

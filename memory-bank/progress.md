@@ -1628,4 +1628,48 @@ All reports in `architecture/reviews/`:
 
 ### Status
 
-Complete. All fixes applied and verified. Ready to commit.
+Complete. All fixes applied and verified.
+
+---
+
+## Phase 14 — Full Codebase Review (Post-Refactor)
+
+After the Phase 13 refactor and its targeted code review, a full codebase review was conducted to catch any issues the refactor may have introduced or any pre-existing problems across the entire codebase.
+
+### Process
+
+Three independent reviewers examined every file in the repository (src/, .github/workflows/, .github/actions/, tests/, configuration). A synthesizer agent cross-referenced all findings, verified each against actual source code, and filtered false positives.
+
+### What Was Found
+
+**10 verified issues** (5 false positives filtered out):
+
+| Issue | Severity | Reviewers | Fix |
+|-------|----------|-----------|-----|
+| Missing `Path` import in `generate_blog_posts.py` — runtime crash | Critical | 2/3 | Added `from pathlib import Path` |
+| `commit-data` action missing 5 metadata JSON files — cross-workflow data loss | Critical | 2/3 | Added all 5 files to git add |
+| `piexif` + `pytest` missing from `requirements.txt` — broken fresh install | Critical | 1/3 | Added to requirements.txt |
+| MIME mismatch in `pin_assembler.py` — JPEG saved as .png | Important | 2/3 | Switched to content-based MIME detection via `detect_mime_type()` |
+| `drive_api._clear_folder` no pagination (max 100 files) | Important | 2/3 | Added pagination loop with nextPageToken |
+| `openai_chat_api` single retry on 429 rate limit | Important | 2/3 | Added 3-attempt retry with exponential backoff |
+| `setup_boards.py` missing `encoding="utf-8"` | Important | 1/3 | Added encoding parameter |
+| GCS silent failure mode — no diagnostics | Important | 2/3 | Added `_init_error` field and `is_available` property |
+| `regen_content.py` unconditional DriveAPI init — crashes without creds | Important | 1/3 | Made DriveAPI initialization lazy |
+| `datetime.utcnow()` deprecated in Python 3.12+ | Important | 1/3 | Replaced with `datetime.now(timezone.utc)` |
+
+### Fix Verification
+
+- **Code review:** 9/10 CORRECT, 1/10 CORRECT WITH NOTES (retry uses linear backoff, adequate given server Retry-After headers)
+- **QA:** 114/114 tests pass, all 10 fixes confirmed in code, no stale references, all YAML valid
+
+### Review Reports
+
+All reports in `architecture/reviews/`:
+- `codebase-review-a.md`, `codebase-review-b.md`, `codebase-review-c.md` — 3 independent full codebase reviews
+- `codebase-synthesis.md` — Synthesized findings with consensus matrix
+- `codebase-fix-review.md` — Fix code review
+- `codebase-qa-report.md` — QA verification report
+
+### Status
+
+Complete. All fixes applied and verified.

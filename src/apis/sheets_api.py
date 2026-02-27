@@ -32,7 +32,7 @@ import json
 import base64
 import logging
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -221,7 +221,7 @@ class SheetsAPI:
         # Fixed rows: 1=Title, 2=blank, 3=STATUS, 4=PRODUCTION (written separately),
         #             5=PLAN REGEN trigger
         rows = [
-            ["Pinterest Weekly Review", "", "", datetime.utcnow().strftime("%Y-%m-%d")],
+            ["Pinterest Weekly Review", "", "", datetime.now(timezone.utc).strftime("%Y-%m-%d")],
             [""],
             ["STATUS", "pending_review"],
             [""],  # Row 4: placeholder — PRODUCTION/deploy status written by write_deploy_status()
@@ -724,7 +724,7 @@ class SheetsAPI:
         """
         row = [
             str(pin_data.get("pin_id", "")),
-            str(pin_data.get("date", datetime.utcnow().strftime("%Y-%m-%d"))),
+            str(pin_data.get("date", datetime.now(timezone.utc).strftime("%Y-%m-%d"))),
             str(pin_data.get("slot", "")),
             str(pin_data.get("board", "")),
             str(pin_data.get("title", "")),
@@ -789,7 +789,7 @@ class SheetsAPI:
         logger.info("Updating dashboard with %d metrics...", len(metrics))
 
         rows = [
-            ["Pinterest Pipeline Dashboard", "", datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")],
+            ["Pinterest Pipeline Dashboard", "", datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")],
             [""],
         ]
 

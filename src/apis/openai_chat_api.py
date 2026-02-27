@@ -83,19 +83,28 @@ def call_gpt5_mini(
             timeout=timeout,
         )
 
-    response = _do_request()
+    max_retries = 3
+    for attempt in range(1, max_retries + 1):
+        response = _do_request()
 
-    # Single retry with backoff on 429 rate limit
-    if response.status_code == 429:
+        if response.status_code != 429:
+            break
+
+        if attempt == max_retries:
+            break  # exhausted retries, fall through to raise_for_status
+
         retry_after = response.headers.get("Retry-After")
         try:
             wait = int(retry_after) if retry_after else 5
         except (ValueError, TypeError):
             wait = 5
-        wait = min(wait, 30)  # cap at 30s to avoid excessive waits
-        logger.warning("OpenAI 429 rate limit. Retrying after %ds...", wait)
+        # Exponential backoff: multiply base wait by attempt number, cap at 60s
+        wait = min(wait * attempt, 60)
+        logger.warning(
+            "OpenAI 429 rate limit (attempt %d/%d). Retrying after %ds...",
+            attempt, max_retries, wait,
+        )
         time.sleep(wait)
-        response = _do_request()
 
     response.raise_for_status()
     return response.json()["choices"][0]["message"]["content"]
