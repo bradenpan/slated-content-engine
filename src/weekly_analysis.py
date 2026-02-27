@@ -33,7 +33,6 @@ Saved to analysis/weekly/YYYY-wNN-review.md
 
 import json
 import logging
-import re
 from collections import defaultdict
 from datetime import datetime, date, timedelta
 from pathlib import Path

@@ -23,13 +23,10 @@ Production tapers as the library matures (see strategy Section 3).
 
 import json
 import logging
-from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
 from src.blog_generator import BlogGenerator
-from src.apis.sheets_api import SheetsAPI
-from src.apis.slack_notify import SlackNotify
 
 logger = logging.getLogger(__name__)
 
@@ -164,83 +161,6 @@ def generate_blog_posts(plan_path: Optional[str] = None) -> dict:
     return results
 
 
-def generate_all_blog_posts(plan: dict) -> dict:
-    """
-    Generate all blog posts from a plan dict (alternative entry point).
-
-    This accepts the plan directly rather than loading it from a file.
-
-    Args:
-        plan: Approved weekly plan with blog_posts array.
-
-    Returns:
-        dict: post_id -> {slug, mdx_content, status, error, hero_image_path}
-    """
-    blog_post_specs = plan.get("blog_posts", [])
-    if not blog_post_specs:
-        logger.warning("No blog posts in the plan")
-        return {}
-
-    new_content_specs = [
-        spec for spec in blog_post_specs
-        if spec.get("is_new_content", True)
-    ]
-
-    generator = BlogGenerator()
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-
-    batch_results = generator.generate_batch(new_content_specs)
-
-    results: dict = {}
-    for result in batch_results:
-        post_id = result["post_id"]
-
-        if result["status"] == "success" and result["mdx_content"]:
-            slug = result["slug"]
-            file_path = generator.save_post(slug, result["mdx_content"], OUTPUT_DIR)
-
-            hero_image = None
-            if result.get("frontmatter"):
-                hero_image = result["frontmatter"].get("heroImage")
-
-            results[post_id] = {
-                "slug": slug,
-                "title": result.get("title", ""),
-                "file_path": str(file_path),
-                "pillar": result.get("pillar"),
-                "content_type": result.get("content_type"),
-                "mdx_content": result["mdx_content"],
-                "hero_image": hero_image,
-                "hero_image_path": None,  # Set later by image sourcing
-                "status": "success",
-                "error": None,
-            }
-        else:
-            results[post_id] = {
-                "slug": None,
-                "title": result.get("title", ""),
-                "file_path": None,
-                "pillar": result.get("pillar"),
-                "content_type": result.get("content_type"),
-                "mdx_content": None,
-                "hero_image": None,
-                "hero_image_path": None,
-                "status": "failed",
-                "error": result.get("error", "Unknown error"),
-            }
-
-    succeeded = sum(1 for r in results.values() if r["status"] == "success")
-    failed = sum(1 for r in results.values() if r["status"] == "failed")
-    logger.info(
-        "Blog post generation complete: %d succeeded, %d failed",
-        succeeded, failed,
-    )
-
-    _save_generation_metadata(results)
-
-    return results
-
-
 def _load_plan(plan_path: Optional[str] = None) -> dict:
     """
     Load the approved weekly plan from a JSON file.
@@ -275,61 +195,6 @@ def _load_plan(plan_path: Optional[str] = None) -> dict:
     latest = plan_files[0]
     logger.info("Loading most recent plan: %s", latest)
     return json.loads(latest.read_text(encoding="utf-8"))
-
-
-def load_approved_plan() -> dict:
-    """
-    Load the approved weekly plan from Google Sheets.
-
-    Falls back to the most recent local plan file if Sheets is unavailable.
-
-    Returns:
-        dict: Approved plan with blog_posts and pins arrays.
-    """
-    try:
-        sheets = SheetsAPI()
-        status = sheets.read_plan_approval_status()
-        if status != "approved":
-            logger.warning("Plan is not approved (status: %s)", status)
-            return {}
-
-        # The plan data is stored in the Weekly Review tab
-        # For now, fall back to local file since the sheets implementation
-        # stores plan data locally after writing to sheets
-        logger.info("Plan is approved in Sheets, loading local plan file")
-        return _load_plan()
-
-    except Exception as e:
-        logger.warning(
-            "Could not read from Google Sheets (%s), falling back to local file",
-            e,
-        )
-        return _load_plan()
-
-
-def save_generated_posts(results: dict, output_dir: Path) -> list[Path]:
-    """
-    Save generated MDX files to the output directory.
-
-    Args:
-        results: Generation results from generate_all_blog_posts.
-        output_dir: Directory to save files.
-
-    Returns:
-        list[Path]: Paths to saved files.
-    """
-    output_dir.mkdir(parents=True, exist_ok=True)
-    saved = []
-
-    for post_id, result in results.items():
-        if result["status"] == "success" and result.get("mdx_content"):
-            slug = result["slug"]
-            file_path = output_dir / f"{slug}.mdx"
-            file_path.write_text(result["mdx_content"], encoding="utf-8")
-            saved.append(file_path)
-            logger.info("Saved %s to %s", post_id, file_path)
-
-    return saved
 
 
 def _save_generation_metadata(results: dict) -> None:

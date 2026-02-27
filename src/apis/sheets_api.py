@@ -57,16 +57,6 @@ CQ_COL_STATUS = 9       # J: content_status
 CQ_COL_NOTES = 10       # K: Reviewer notes
 CQ_COL_FEEDBACK = 11    # L: Reviewer feedback for regen
 
-# Column indices for the Post Log tab
-PL_COL_PIN_ID = 0       # A: Internal pin ID
-PL_COL_DATE = 1         # B: Date posted
-PL_COL_SLOT = 2         # C: Time slot
-PL_COL_BOARD = 3        # D: Board
-PL_COL_TITLE = 4        # E: Pin title
-PL_COL_URL = 5          # F: Blog post URL
-PL_COL_PINTEREST_ID = 6 # G: Pinterest-assigned pin ID
-PL_COL_STATUS = 7       # H: Status (posted / failed / retry)
-PL_COL_ERROR = 8        # I: Error message
 
 
 class SheetsAPIError(Exception):
@@ -232,10 +222,6 @@ class SheetsAPI:
         except Exception as e:
             logger.error("Failed to read plan approval status: %s", e)
             raise SheetsAPIError(f"Failed to read plan status: {e}") from e
-
-    def read_plan_status(self) -> str:
-        """Alias for read_plan_approval_status."""
-        return self.read_plan_approval_status()
 
     def write_deploy_status(self, status: str = "pending_review", preview_url: str = "") -> None:
         """
@@ -446,10 +432,6 @@ class SheetsAPI:
             logger.error("Failed to read content approvals: %s", e)
             raise SheetsAPIError(f"Failed to read content approvals: {e}") from e
 
-    def read_content_statuses(self) -> list[dict]:
-        """Alias for read_content_approvals."""
-        return self.read_content_approvals()
-
     def read_regen_requests(self) -> list[dict]:
         """
         Read Content Queue rows flagged for regeneration.
@@ -658,89 +640,6 @@ class SheetsAPI:
         except Exception as e:
             raise SheetsAPIError(f"Failed to reset plan regen trigger: {e}") from e
 
-    def update_content_status(self, row_index: int, status: str) -> None:
-        """
-        Update the status of a specific content item in the Content Queue.
-
-        Args:
-            row_index: The 1-based row index in the Content Queue tab (row 2 = first data row).
-            status: New status value.
-        """
-        cell = f"'{TAB_CONTENT_QUEUE}'!{chr(65 + CQ_COL_STATUS)}{row_index}"
-        try:
-            self.sheets.values().update(
-                spreadsheetId=self.sheet_id,
-                range=cell,
-                valueInputOption="RAW",
-                body={"values": [[status]]},
-            ).execute()
-            logger.info("Updated content status at row %d to '%s'.", row_index, status)
-        except Exception as e:
-            raise SheetsAPIError(f"Failed to update content status: {e}") from e
-
-    def get_approved_pins_for_slot(
-        self,
-        date: str,
-        time_slot: str,
-    ) -> list[dict]:
-        """
-        Get pins approved and scheduled for a specific posting slot.
-
-        Reads the Content Queue tab and filters by status=approved,
-        type=pin, and matching schedule date/slot.
-
-        Args:
-            date: Date in YYYY-MM-DD format.
-            time_slot: "morning", "afternoon", or "evening".
-
-        Returns:
-            list[dict]: Approved pin data ready for posting.
-        """
-        try:
-            result = self.sheets.values().get(
-                spreadsheetId=self.sheet_id,
-                range=f"'{TAB_CONTENT_QUEUE}'!A:K",
-            ).execute()
-
-            values = result.get("values", [])
-            if len(values) < 2:
-                return []
-
-            matching_pins = []
-            for row in values[1:]:
-                if len(row) <= CQ_COL_STATUS:
-                    continue
-
-                row_type = row[CQ_COL_TYPE] if len(row) > CQ_COL_TYPE else ""
-                row_status = row[CQ_COL_STATUS] if len(row) > CQ_COL_STATUS else ""
-                row_schedule = row[CQ_COL_SCHEDULE] if len(row) > CQ_COL_SCHEDULE else ""
-
-                if row_type != "pin" or row_status != "approved":
-                    continue
-
-                # Schedule format expected: "YYYY-MM-DD/slot" (e.g., "2026-02-24/morning")
-                expected_schedule = f"{date}/{time_slot}"
-                if row_schedule == expected_schedule:
-                    matching_pins.append({
-                        "pin_id": row[CQ_COL_ID] if len(row) > CQ_COL_ID else "",
-                        "title": row[CQ_COL_TITLE] if len(row) > CQ_COL_TITLE else "",
-                        "description": row[CQ_COL_DESCRIPTION] if len(row) > CQ_COL_DESCRIPTION else "",
-                        "board": row[CQ_COL_BOARD] if len(row) > CQ_COL_BOARD else "",
-                        "blog_url": row[CQ_COL_BLOG_URL] if len(row) > CQ_COL_BLOG_URL else "",
-                        "pillar": row[CQ_COL_PILLAR] if len(row) > CQ_COL_PILLAR else "",
-                        "thumbnail_url": row[CQ_COL_THUMBNAIL] if len(row) > CQ_COL_THUMBNAIL else "",
-                    })
-
-            logger.info(
-                "Found %d approved pins for %s/%s.",
-                len(matching_pins), date, time_slot,
-            )
-            return matching_pins
-
-        except Exception as e:
-            logger.error("Failed to get approved pins: %s", e)
-            raise SheetsAPIError(f"Failed to get approved pins: {e}") from e
-
     def append_post_log(self, pin_data: dict) -> None:
         """
         Append a posted pin record to the "Post Log" tab.
@@ -801,57 +700,6 @@ class SheetsAPI:
             "error": error_message or "",
         })
 
-    def read_post_log(self, date_range: Optional[tuple[str, str]] = None) -> list[dict]:
-        """
-        Read the post log, optionally filtered by date range.
-
-        Args:
-            date_range: Optional tuple of (start_date, end_date) in YYYY-MM-DD format.
-
-        Returns:
-            list[dict]: Post log entries.
-        """
-        try:
-            result = self.sheets.values().get(
-                spreadsheetId=self.sheet_id,
-                range=f"'{TAB_POST_LOG}'!A:I",
-            ).execute()
-
-            values = result.get("values", [])
-            entries = []
-
-            for row in values:
-                if not row or len(row) < 2:
-                    continue
-
-                entry = {
-                    "pin_id": row[PL_COL_PIN_ID] if len(row) > PL_COL_PIN_ID else "",
-                    "date": row[PL_COL_DATE] if len(row) > PL_COL_DATE else "",
-                    "slot": row[PL_COL_SLOT] if len(row) > PL_COL_SLOT else "",
-                    "board": row[PL_COL_BOARD] if len(row) > PL_COL_BOARD else "",
-                    "title": row[PL_COL_TITLE] if len(row) > PL_COL_TITLE else "",
-                    "url": row[PL_COL_URL] if len(row) > PL_COL_URL else "",
-                    "pinterest_pin_id": row[PL_COL_PINTEREST_ID] if len(row) > PL_COL_PINTEREST_ID else "",
-                    "status": row[PL_COL_STATUS] if len(row) > PL_COL_STATUS else "",
-                    "error": row[PL_COL_ERROR] if len(row) > PL_COL_ERROR else "",
-                }
-
-                # Filter by date range if provided
-                if date_range:
-                    start, end = date_range
-                    entry_date = entry["date"]
-                    if entry_date and (entry_date < start or entry_date > end):
-                        continue
-
-                entries.append(entry)
-
-            logger.info("Read %d post log entries.", len(entries))
-            return entries
-
-        except Exception as e:
-            logger.error("Failed to read post log: %s", e)
-            raise SheetsAPIError(f"Failed to read post log: {e}") from e
-
     def update_dashboard(self, metrics: dict) -> None:
         """
         Update the "Dashboard" tab with latest metrics.
@@ -874,10 +722,6 @@ class SheetsAPI:
 
         self._clear_and_write(TAB_DASHBOARD, rows)
         logger.info("Dashboard updated.")
-
-    def update_dashboard_metrics(self, metrics: dict) -> None:
-        """Alias for update_dashboard to match requirement naming."""
-        self.update_dashboard(metrics)
 
     def _clear_and_write(
         self,

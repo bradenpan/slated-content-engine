@@ -22,7 +22,6 @@ Environment variables required:
 """
 
 import os
-import json
 import logging
 from typing import Optional
 
@@ -96,13 +95,6 @@ class SlackNotify:
             text="Weekly review ready -- open the Google Sheet to review and approve.",
             blocks=blocks,
             color=COLOR_NEUTRAL,
-        )
-
-    def notify_content_generation_started(self) -> None:
-        """Send "Content generation started" notification."""
-        self._send_message(
-            text="Content generation started. Generating pins and blog posts... This takes ~10-15 minutes.",
-            color=COLOR_INFO,
         )
 
     def notify_content_ready(
@@ -271,34 +263,6 @@ class SlackNotify:
             color=COLOR_NEUTRAL,
         )
 
-    def notify_approval_reminder(self) -> None:
-        """Send Monday 6pm reminder if content still pending review."""
-        sheet_link = f"<{self.sheet_url}|Open Google Sheet>" if self.sheet_url else "(Sheet URL not configured)"
-
-        blocks = [
-            {
-                "type": "header",
-                "text": {"type": "plain_text", "text": "Reminder: Content Pending Review"},
-            },
-            {
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": (
-                        f"Weekly content is still pending review. "
-                        f"Tuesday's posting slots will be missed if not approved tonight.\n\n"
-                        f":point_right: {sheet_link}"
-                    ),
-                },
-            },
-        ]
-
-        self._send_message(
-            text="Reminder: weekly content still pending review. Tuesday posts will be missed if not approved tonight.",
-            blocks=blocks,
-            color=COLOR_WARNING,
-        )
-
     def notify_regen_complete(self, regen_results: list[dict]) -> None:
         """
         Send notification after content regeneration completes.
@@ -456,20 +420,6 @@ class SlackNotify:
             "error": COLOR_ERROR,
         }
         self._send_message(text=message, color=color_map.get(level, COLOR_INFO))
-
-    def notify_reminder(self, pending_items: str) -> None:
-        """
-        Send a reminder about pending items.
-
-        Args:
-            pending_items: Description of what is still pending.
-        """
-        sheet_link = f"<{self.sheet_url}|Open Google Sheet>" if self.sheet_url else "(Sheet URL not configured)"
-
-        self._send_message(
-            text=f"Reminder: {pending_items}\n{sheet_link}",
-            color=COLOR_WARNING,
-        )
 
     def _send_message(
         self,

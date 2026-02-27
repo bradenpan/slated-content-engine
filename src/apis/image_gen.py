@@ -88,43 +88,6 @@ class ImageGenAPI:
 
         logger.info("Image generation initialized: provider=%s", self.provider)
 
-    def generate_image(
-        self,
-        prompt: str,
-        provider: Optional[str] = None,
-        size: str = "1024x1536",
-    ) -> dict:
-        """
-        Generate an image and return info dict. Matches requirement interface.
-
-        Args:
-            prompt: Image generation prompt.
-            provider: Override the default provider for this call.
-            size: Image size as "WxH" string.
-
-        Returns:
-            dict: {"path": Path, "provider": str, "cost": float}
-        """
-        parts = size.split("x")
-        width = int(parts[0])
-        height = int(parts[1])
-
-        use_provider = provider or self.provider
-        old_provider = self.provider
-        if use_provider != self.provider:
-            # Temporarily switch provider
-            self.provider = use_provider
-
-        try:
-            path = self.generate(prompt=prompt, width=width, height=height)
-            return {
-                "path": path,
-                "provider": use_provider,
-                "cost": COST_PER_IMAGE.get(use_provider, 0.05),
-            }
-        finally:
-            self.provider = old_provider
-
     def generate(
         self,
         prompt: str,
@@ -227,36 +190,6 @@ class ImageGenAPI:
         raise ImageGenError(
             f"Image generation failed after {max_retries + 1} attempts. Last error: {last_error}"
         )
-
-    def get_image_status(self, job_id: str) -> dict:
-        """
-        Check the status of an async image generation job (Replicate).
-
-        Args:
-            job_id: The prediction ID from Replicate.
-
-        Returns:
-            dict: Status info with keys: status ("starting"|"processing"|"succeeded"|"failed"),
-                  output (URL if succeeded), error (if failed).
-        """
-        if self.provider != "replicate":
-            return {"status": "succeeded", "note": "OpenAI generations are synchronous."}
-
-        response = requests.get(
-            f"https://api.replicate.com/v1/predictions/{job_id}",
-            headers={"Authorization": f"Bearer {self.api_key}"},
-            timeout=15,
-        )
-
-        if response.status_code != 200:
-            raise ImageGenError(f"Failed to check job status: HTTP {response.status_code}")
-
-        data = response.json()
-        return {
-            "status": data.get("status", "unknown"),
-            "output": data.get("output"),
-            "error": data.get("error"),
-        }
 
     def _generate_openai(self, prompt: str, width: int, height: int, style: str = "natural") -> bytes:
         """

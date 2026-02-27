@@ -254,42 +254,6 @@ class DriveAPI:
         except Exception as e:
             raise DriveAPIError(f"Failed to download file {file_id}: {e}") from e
 
-    def delete_image_by_name(self, filename: str) -> bool:
-        """
-        Delete an image from the pins folder by filename.
-
-        Args:
-            filename: The file name to search for and delete.
-
-        Returns:
-            bool: True if a file was deleted, False if not found.
-        """
-        folder_id = self._get_or_create_folder()
-        try:
-            results = self.drive.files().list(
-                q=(
-                    f"'{folder_id}' in parents "
-                    f"and name='{filename}' "
-                    f"and trashed=false"
-                ),
-                fields="files(id)",
-                spaces="drive",
-            ).execute()
-
-            files = results.get("files", [])
-            if not files:
-                return False
-
-            for f in files:
-                self.drive.files().delete(fileId=f["id"]).execute()
-
-            logger.debug("Deleted %d file(s) named '%s' from Drive", len(files), filename)
-            return True
-
-        except Exception as e:
-            logger.warning("Failed to delete '%s' from Drive: %s", filename, e)
-            return False
-
     def upload_pin_images(self, generated_pins: list[dict], pins_dir: Path) -> dict[str, str]:
         """
         Upload all pin images to Drive, clearing previous week's images first.

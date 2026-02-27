@@ -40,13 +40,10 @@ STRATEGY_DIR = Path(__file__).parent.parent.parent / "strategy"
 # Model selection -- using the latest model IDs
 MODEL_ROUTINE = "claude-sonnet-4-6"
 MODEL_DEEP = "claude-opus-4-6"
-MODEL_HAIKU = "claude-haiku-4-5-20251001"
-
 # Approximate costs per million tokens (for cost tracking)
 COST_PER_MTK = {
     MODEL_ROUTINE: {"input": 3.0, "output": 15.0},
     MODEL_DEEP: {"input": 5.0, "output": 25.0},
-    MODEL_HAIKU: {"input": 1.0, "output": 5.0},
 }
 
 
@@ -581,15 +578,6 @@ class ClaudeAPI:
             temperature=0.5,
         )
 
-    def generate_weekly_analysis(
-        self,
-        performance_data: dict,
-        previous_analysis: str,
-        content_plan: dict,
-    ) -> str:
-        """Alias for analyze_weekly_performance to match requirement naming."""
-        return self.analyze_weekly_performance(performance_data, previous_analysis, content_plan)
-
     def run_monthly_review(
         self,
         monthly_data: dict,
@@ -660,16 +648,6 @@ class ClaudeAPI:
             max_tokens=8192,
             temperature=0.5,
         )
-
-    def generate_monthly_review(
-        self,
-        monthly_data: dict,
-        weekly_analyses: list[str],
-        current_strategy: str,
-        seasonal_context: str = "",
-    ) -> str:
-        """Alias for run_monthly_review to match requirement naming."""
-        return self.run_monthly_review(monthly_data, weekly_analyses, current_strategy, seasonal_context)
 
     def _call_openai_gpt5_mini(self, prompt: str, system: str, max_tokens: int = 500, temperature: float = 0.8, timeout: int = 30) -> str:
         """Call GPT-5 Mini via OpenAI API. Returns response text or raises on failure."""

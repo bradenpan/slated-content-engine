@@ -21,7 +21,7 @@ Content generation runs Monday; daily posting starts Tuesday.
 import json
 import logging
 import re
-from datetime import date, datetime
+from datetime import date
 from pathlib import Path
 from typing import Optional
 
@@ -41,7 +41,6 @@ BLOG_BASE_URL = "https://goslated.com/blog"
 
 # Deployment verification timeout
 DEPLOY_VERIFY_TIMEOUT = 180  # seconds
-DEPLOY_VERIFY_RETRY_DELAY = 15  # seconds between retries
 
 
 class BlogDeployerError(Exception):
@@ -69,156 +68,6 @@ class BlogDeployer:
         self.github = github or GitHubAPI()
         self.sheets = sheets or SheetsAPI()
         self.slack = slack or SlackNotify()
-
-    def deploy_approved_content(self, plan_path: Optional[str] = None) -> dict:
-        """
-        Deploy all approved content. Main entry point.
-
-        Steps:
-        1. Read content statuses from Google Sheets Content Queue
-        2. Filter to approved blog posts and pins
-        3. Commit blog posts to goslated.com via GitHub
-        4. Wait for Vercel deployment and verify URLs
-        5. Update Google Sheet with live URLs
-        6. Load approved pins into posting schedule
-        7. Append entries to content-log.jsonl
-        8. Send Slack notification
-
-        Args:
-            plan_path: Optional path to the plan JSON for loading pin data.
-
-        Returns:
-            dict: Deployment results with blog_deployed, pins_scheduled,
-                  failures, and verification_results.
-        """
-        logger.info("Starting approved content deployment")
-
-        results = {
-            "blog_deployed": [],
-            "blog_failed": [],
-            "pins_scheduled": 0,
-            "verification_results": {},
-            "content_log_entries": 0,
-        }
-
-        # Step 1: Read content approvals from Google Sheets
-        try:
-            approvals = self.sheets.read_content_approvals()
-        except Exception as e:
-            logger.error("Failed to read content approvals: %s", e)
-            try:
-                self.slack.notify_failure(
-                    "deploy_approved_content",
-                    f"Cannot read content approvals from Google Sheets: {e}. "
-                    f"Deployment halted. Please retry when Sheets is accessible.",
-                )
-            except Exception:
-                pass
-            raise
-
-        # Step 2: Filter to approved blog posts
-        approved_blogs = [
-            item for item in approvals
-            if item.get("type") == "blog"
-            and item.get("status") in ("approved", "use_ai_image")
-        ]
-
-        approved_pins = [
-            item for item in approvals
-            if item.get("type") == "pin"
-            and item.get("status") in ("approved", "use_ai_image")
-        ]
-
-        logger.info(
-            "Approved content: %d blog posts, %d pins",
-            len(approved_blogs), len(approved_pins),
-        )
-
-        # Step 3: Deploy blog posts
-        if approved_blogs:
-            deploy_result = self._deploy_blog_posts(approved_blogs)
-            results["blog_deployed"] = deploy_result["deployed"]
-            results["blog_failed"] = deploy_result["failed"]
-        else:
-            logger.info("No approved blog posts to deploy")
-
-        # Step 4: Verify deployment URLs
-        deployed_slugs = [b["slug"] for b in results["blog_deployed"]]
-        if deployed_slugs:
-            results["verification_results"] = self.verify_urls(
-                deployed_slugs, max_wait=DEPLOY_VERIFY_TIMEOUT
-            )
-
-            # Log any verification failures
-            failed_verifications = [
-                slug for slug, ok in results["verification_results"].items()
-                if not ok
-            ]
-            if failed_verifications:
-                logger.warning(
-                    "Some blog post URLs failed verification: %s",
-                    failed_verifications,
-                )
-                # Retry once for failed URLs
-                retry_results = self.verify_urls(failed_verifications, max_wait=60)
-                results["verification_results"].update(retry_results)
-
-                still_failed = [s for s, ok in retry_results.items() if not ok]
-                if still_failed:
-                    logger.error(
-                        "URLs still failing after retry: %s", still_failed
-                    )
-                    try:
-                        self.slack.notify_failure(
-                            "blog_deployment",
-                            f"Blog post URLs failed to resolve after retry: {still_failed}",
-                        )
-                    except Exception:
-                        pass
-
-        # Step 5: Update Google Sheet with live URLs
-        try:
-            for slug in deployed_slugs:
-                if results["verification_results"].get(slug, False):
-                    live_url = f"{BLOG_BASE_URL}/{slug}"
-                    self.sheets.update_pin_status(
-                        pin_id=slug,
-                        status="deployed",
-                        pinterest_pin_id=live_url,
-                    )
-        except Exception as e:
-            logger.error("Failed to update Sheet with live URLs: %s", e)
-
-        # Step 6: Load approved pins into the posting schedule
-        if approved_pins:
-            results["pins_scheduled"] = self._create_pin_schedule(
-                approved_pins, plan_path
-            )
-
-        # Step 7: Append entries to content-log.jsonl
-        results["content_log_entries"] = self._append_to_content_log(
-            blog_results=results["blog_deployed"],
-            pin_data=approved_pins,
-        )
-
-        # Step 8: Send Slack notification
-        try:
-            self.slack.notify_week_live(
-                num_pins_scheduled=results["pins_scheduled"],
-                num_blog_posts_deployed=len(results["blog_deployed"]),
-            )
-        except Exception as e:
-            logger.error("Failed to send Slack notification: %s", e)
-
-        logger.info(
-            "Deployment complete: %d blog posts deployed, %d pins scheduled, "
-            "%d blog failures",
-            len(results["blog_deployed"]),
-            results["pins_scheduled"],
-            len(results["blog_failed"]),
-        )
-
-        return results
 
     def deploy_to_preview(self) -> dict:
         """
@@ -463,82 +312,6 @@ class BlogDeployer:
         )
 
         return results
-
-    def deploy_approved_posts(self, posts_dir: Path) -> dict:
-        """
-        Deploy all approved blog posts from a specific directory.
-
-        Alternative entry point that reads MDX files from a directory
-        rather than relying on Sheets approvals.
-
-        Args:
-            posts_dir: Directory containing generated MDX files and images.
-
-        Returns:
-            dict: Deployment results with counts and any errors.
-        """
-        logger.info("Deploying blog posts from %s", posts_dir)
-
-        if not posts_dir.exists():
-            logger.error("Posts directory does not exist: %s", posts_dir)
-            return {"deployed": [], "failed": []}
-
-        # Find all MDX files
-        mdx_files = list(posts_dir.glob("*.mdx"))
-        if not mdx_files:
-            logger.warning("No MDX files found in %s", posts_dir)
-            return {"deployed": [], "failed": []}
-
-        # Build post data for deployment
-        posts_to_deploy = []
-        for mdx_file in mdx_files:
-            slug = mdx_file.stem
-            mdx_content = mdx_file.read_text(encoding="utf-8")
-
-            # Check for hero image
-            hero_image_path = None
-            for ext in [".jpg", ".jpeg", ".png", ".webp"]:
-                candidate = posts_dir / f"{slug}{ext}"
-                if candidate.exists():
-                    hero_image_path = candidate
-                    break
-
-            if hero_image_path:
-                from src.image_cleaner import clean_image
-                clean_image(hero_image_path)
-
-            # Update heroImage frontmatter to match actual image extension
-            if hero_image_path:
-                actual_ext = Path(hero_image_path).suffix
-                mdx_content = re.sub(
-                    r'(heroImage:\s*"/assets/blog/' + re.escape(slug) + r')\.[a-z]+"',
-                    rf'\1{actual_ext}"',
-                    mdx_content,
-                )
-
-            posts_to_deploy.append({
-                "slug": slug,
-                "mdx_content": mdx_content,
-                "hero_image_path": hero_image_path,
-            })
-
-        # Commit all posts in a single batch commit
-        try:
-            commit_sha = self.github.commit_multiple_posts(
-                posts=posts_to_deploy,
-                commit_message=f"Deploy {len(posts_to_deploy)} blog posts for week of {date.today().isoformat()}",
-            )
-            logger.info("Committed %d blog posts (SHA: %s)", len(posts_to_deploy), commit_sha)
-
-            deployed = [{"slug": p["slug"]} for p in posts_to_deploy]
-            return {"deployed": deployed, "failed": [], "commit_sha": commit_sha}
-
-        except Exception as e:
-            logger.error("Batch commit failed: %s", e)
-            return {
-                "deployed": [],
-                "failed": [{"slug": p["slug"], "error": str(e)} for p in posts_to_deploy],
-            }
 
     def verify_urls(self, slugs: list[str], max_wait: int = 180) -> dict:
         """
@@ -849,22 +622,6 @@ class BlogDeployer:
             logger.info("Skipped %d duplicate entries in content-log.jsonl", skipped_dupes)
         logger.info("Appended %d entries to content-log.jsonl", entries_written)
         return entries_written
-
-
-def deploy_approved_content(plan_path: Optional[str] = None) -> dict:
-    """
-    Module-level convenience function for deploying approved content.
-
-    Creates a BlogDeployer and runs the deployment.
-
-    Args:
-        plan_path: Optional path to the weekly plan JSON.
-
-    Returns:
-        dict: Deployment results.
-    """
-    deployer = BlogDeployer()
-    return deployer.deploy_approved_content(plan_path)
 
 
 def _build_topic_summary(pin_data: dict) -> str:

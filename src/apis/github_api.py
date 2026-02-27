@@ -135,40 +135,6 @@ class GitHubAPI:
 
         return self._commit_files(files, commit_message)
 
-    def commit_blog_posts(
-        self,
-        mdx_files: list[tuple[str, str]],
-        images: Optional[list[tuple[str, bytes]]] = None,
-        branch: str = "develop",
-    ) -> str:
-        """
-        Commit multiple blog posts and images in a single commit.
-
-        Matches the requirement interface: takes (filepath, content) tuples.
-
-        Args:
-            mdx_files: List of (filepath, content) tuples for MDX files.
-                filepath is relative to repo root (e.g., "content/blog/post.mdx").
-            images: Optional list of (filepath, bytes) tuples for images.
-            branch: Target branch name.
-
-        Returns:
-            str: The commit SHA.
-        """
-        files = []
-        for filepath, content in mdx_files:
-            files.append({"path": filepath, "content": content})
-
-        if images:
-            for filepath, img_bytes in images:
-                files.append({"path": filepath, "content": img_bytes, "is_binary": True})
-
-        commit_message = f"Add {len(mdx_files)} blog posts"
-        if images:
-            commit_message += f" + {len(images)} images"
-
-        return self._commit_files(files, commit_message, branch=branch)
-
     def commit_multiple_posts(
         self,
         posts: list[dict],
@@ -324,47 +290,6 @@ class GitHubAPI:
         except Exception as e:
             raise GitHubAPIError(f"Failed to merge develop into main: {e}") from e
 
-    def create_branch(self, name: str, source_branch: str = "main") -> str:
-        """
-        Create a new branch from the specified source branch.
-
-        Args:
-            name: New branch name.
-            source_branch: Branch to create from.
-
-        Returns:
-            str: The new branch ref.
-        """
-        try:
-            source = self.repo.get_branch(source_branch)
-            ref = self.repo.create_git_ref(
-                ref=f"refs/heads/{name}",
-                sha=source.commit.sha,
-            )
-            logger.info("Created branch '%s' from '%s' at %s", name, source_branch, source.commit.sha[:8])
-            return ref.ref
-        except Exception as e:
-            raise GitHubAPIError(f"Failed to create branch '{name}': {e}") from e
-
-    def get_file_contents(self, path: str, branch: str = "main") -> str:
-        """
-        Read a file's contents from the repository.
-
-        Args:
-            path: File path relative to repo root.
-            branch: Branch to read from.
-
-        Returns:
-            str: File contents as a string.
-        """
-        try:
-            content_file = self.repo.get_contents(path, ref=branch)
-            if isinstance(content_file, list):
-                raise GitHubAPIError(f"Path '{path}' is a directory, not a file.")
-            return content_file.decoded_content.decode("utf-8")
-        except Exception as e:
-            raise GitHubAPIError(f"Failed to read file '{path}': {e}") from e
-
     def _commit_files(
         self,
         files: list[dict],
@@ -456,67 +381,6 @@ class GitHubAPI:
                 f"Failed to commit {len(files)} files: {e}"
             ) from e
 
-    def _create_or_update_file(
-        self,
-        file_path: str,
-        content: str | bytes,
-        commit_message: str,
-        is_binary: bool = False,
-        branch: str = "main",
-    ) -> dict:
-        """
-        Create or update a single file in the repository.
-
-        Simpler alternative to tree-based commit for single files.
-
-        Args:
-            file_path: Path within the repo (e.g., "content/blog/post.mdx").
-            content: File content (string for text, bytes for binary).
-            commit_message: Commit message.
-            is_binary: If True, content is binary data.
-            branch: Target branch.
-
-        Returns:
-            dict: Result with commit SHA.
-        """
-        try:
-            # Check if file already exists (to get its SHA for updates)
-            import base64 as b64
-            existing_sha = None
-            try:
-                existing = self.repo.get_contents(file_path, ref=branch)
-                if not isinstance(existing, list):
-                    existing_sha = existing.sha
-            except Exception:
-                pass  # File doesn't exist yet
-
-            if is_binary:
-                encoded = b64.b64encode(content if isinstance(content, bytes) else content.encode()).decode()
-            else:
-                encoded = content if isinstance(content, str) else content.decode("utf-8")
-
-            if existing_sha:
-                result = self.repo.update_file(
-                    path=file_path,
-                    message=commit_message,
-                    content=encoded if is_binary else content,
-                    sha=existing_sha,
-                    branch=branch,
-                )
-            else:
-                result = self.repo.create_file(
-                    path=file_path,
-                    message=commit_message,
-                    content=encoded if is_binary else content,
-                    branch=branch,
-                )
-
-            sha = result["commit"].sha
-            logger.info("File %s committed: %s (SHA: %s)", file_path, commit_message[:50], sha[:8])
-            return {"sha": sha, "path": file_path}
-
-        except Exception as e:
-            raise GitHubAPIError(f"Failed to create/update file '{file_path}': {e}") from e
 
 
 if __name__ == "__main__":
@@ -529,13 +393,6 @@ if __name__ == "__main__":
         gh = GitHubAPI()
         print(f"Connected to repo: {gh.repo_name}")
         print(f"Default branch: {gh.repo.default_branch}")
-
-        # Try to read a file to verify access
-        try:
-            readme = gh.get_file_contents("README.md")
-            print(f"README.md: {len(readme)} chars")
-        except GitHubAPIError:
-            print("README.md not found (that's ok for a new repo).")
 
     except GitHubAPIError as e:
         print(f"GitHub API error: {e}")

@@ -160,30 +160,6 @@ class PinterestAPI:
         logger.info("Pin created successfully: pin_id=%s", result.get("id"))
         return result
 
-    def get_pin(self, pin_id: str) -> dict:
-        """
-        Get details for a specific pin via GET /v5/pins/{pin_id}.
-
-        Args:
-            pin_id: The Pinterest pin ID.
-
-        Returns:
-            dict: Pin details.
-        """
-        logger.debug("Getting pin details: %s", pin_id)
-        return self._make_request("GET", f"/pins/{pin_id}")
-
-    def delete_pin(self, pin_id: str) -> None:
-        """
-        Delete a pin via DELETE /v5/pins/{pin_id}.
-
-        Args:
-            pin_id: The Pinterest pin ID.
-        """
-        logger.info("Deleting pin: %s", pin_id)
-        self._make_request("DELETE", f"/pins/{pin_id}")
-        logger.info("Pin deleted: %s", pin_id)
-
     def list_boards(self, page_size: int = 25) -> list[dict]:
         """
         List all boards for the authenticated user via GET /v5/boards.
@@ -215,10 +191,6 @@ class PinterestAPI:
 
         logger.info("Found %d boards.", len(all_boards))
         return all_boards
-
-    def get_boards(self) -> list[dict]:
-        """Alias for list_boards() to match skeleton interface."""
-        return self.list_boards()
 
     def create_board(
         self,
@@ -558,7 +530,7 @@ if __name__ == "__main__":
 
     try:
         api = PinterestAPI()
-        boards = api.get_boards()
+        boards = api.list_boards()
         print(f"\nFound {len(boards)} boards:")
         for board in boards:
             print(f"  - {board.get('name')} (ID: {board.get('id')})")
