@@ -27,6 +27,7 @@ from typing import Optional
 
 from src.blog_generator import BlogGenerator
 from src.paths import DATA_DIR, STRATEGY_DIR, BLOG_OUTPUT_DIR
+from src.utils.plan_utils import find_latest_plan, load_plan
 
 logger = logging.getLogger(__name__)
 
@@ -174,24 +175,18 @@ def _load_plan(plan_path: Optional[str] = None) -> dict:
         path = Path(plan_path)
         if path.exists():
             logger.info("Loading plan from explicit path: %s", path)
-            return json.loads(path.read_text(encoding="utf-8"))
+            return load_plan(path)
         else:
             logger.error("Plan file not found: %s", path)
             return {}
 
-    # Find the most recent plan file in data/
-    plan_files = sorted(
-        DATA_DIR.glob("weekly-plan-*.json"),
-        reverse=True,
-    )
-
-    if not plan_files:
+    latest = find_latest_plan()
+    if not latest:
         logger.warning("No plan files found in %s", DATA_DIR)
         return {}
 
-    latest = plan_files[0]
     logger.info("Loading most recent plan: %s", latest)
-    return json.loads(latest.read_text(encoding="utf-8"))
+    return load_plan(latest)
 
 
 def _save_generation_metadata(results: dict) -> None:

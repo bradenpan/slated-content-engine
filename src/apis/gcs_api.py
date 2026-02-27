@@ -130,16 +130,11 @@ class GcsAPI:
 
         try:
             # Detect MIME type from magic bytes
+            from src.utils.image_utils import detect_mime_type
             with open(local_path, "rb") as img_f:
                 header = img_f.read(12)
-            if header[:2] == b"\xff\xd8":
-                content_type = "image/jpeg"
-            elif header[:4] == b"\x89PNG":
-                content_type = "image/png"
-            elif header[:4] == b"RIFF" and header[8:12] == b"WEBP":
-                content_type = "image/webp"
-            else:
-                content_type = "image/png"
+            detected = detect_mime_type(header)
+            content_type = detected if detected != "application/octet-stream" else "image/png"
 
             blob = self.bucket.blob(name)
             blob.upload_from_filename(str(local_path), content_type=content_type)

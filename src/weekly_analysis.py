@@ -33,18 +33,18 @@ Saved to analysis/weekly/YYYY-wNN-review.md
 
 import json
 import logging
-from collections import defaultdict
 from datetime import datetime, date, timedelta
 from pathlib import Path
 from typing import Optional
 
 from src.apis.claude_api import ClaudeAPI
 from src.pull_analytics import (
-    load_content_log,
     compute_derived_metrics,
     aggregate_by_dimension,
 )
-from src.paths import ANALYSIS_DIR as _ANALYSIS_BASE, DATA_DIR, CONTENT_LOG_PATH, STRATEGY_DIR
+from src.paths import ANALYSIS_DIR as _ANALYSIS_BASE, DATA_DIR
+from src.utils.content_log import load_content_log
+from src.utils.content_memory import generate_content_memory_summary  # noqa: F401 — re-exported for weekly-review.yml
 
 logger = logging.getLogger(__name__)
 
@@ -289,231 +289,6 @@ def save_analysis(analysis: str, year: Optional[int] = None, week: Optional[int]
         raise
 
     return output_path
-
-
-def generate_content_memory_summary() -> str:
-    """
-    Generate the content memory summary from content-log.jsonl.
-
-    This is a Python computation (no LLM call) that produces a condensed
-    summary of all content created to date, for use in the weekly
-    planning prompt.
-
-    Sections:
-    1. RECENT TOPICS (last 4 weeks)
-    2. ALL BLOG POSTS (grouped by type and pillar)
-    3. PILLAR MIX (last 4 weeks vs. all time)
-    4. KEYWORD FREQUENCY (top 15 + untargeted)
-    5. IMAGES USED RECENTLY (last 90 days)
-    6. FRESH PIN CANDIDATES (4+ weeks since last pin)
-    7. TREATMENT TRACKER (treatments per URL in last 60 days)
-
-    Returns:
-        str: Content memory summary markdown.
-    """
-    entries = load_content_log()
-    if not entries:
-        return "# Content Memory Summary\n\nNo content has been created yet.\n"
-
-    today = date.today()
-    four_weeks_ago = (today - timedelta(days=28)).isoformat()
-    ninety_days_ago = (today - timedelta(days=90)).isoformat()
-    sixty_days_ago = (today - timedelta(days=60)).isoformat()
-
-    lines = ["# Content Memory Summary", f"Generated: {today.isoformat()}", ""]
-
-    # --- Section 1: RECENT TOPICS ---
-    lines.append("## 1. RECENT TOPICS (last 4 weeks)")
-    recent = [e for e in entries if e.get("posted_date", "") >= four_weeks_ago]
-    if recent:
-        seen_slugs = set()
-        for entry in sorted(recent, key=lambda x: x.get("posted_date", ""), reverse=True):
-            slug = entry.get("blog_slug", "")
-            if slug and slug not in seen_slugs:
-                seen_slugs.add(slug)
-                title = entry.get("title", slug)
-                posted = entry.get("posted_date", "?")
-                pillar = entry.get("pillar", "?")
-                lines.append(f"- [{posted}] P{pillar}: {title}")
-    else:
-        lines.append("- No content in the last 4 weeks")
-    lines.append("")
-
-    # --- Section 2: ALL BLOG POSTS ---
-    lines.append("## 2. ALL BLOG POSTS")
-    posts_by_type = defaultdict(list)
-    seen_slugs = set()
-    for entry in entries:
-        slug = entry.get("blog_slug", "")
-        if slug and slug not in seen_slugs:
-            seen_slugs.add(slug)
-            ct = entry.get("content_type", "unknown")
-            posts_by_type[ct].append({
-                "slug": slug,
-                "title": entry.get("title", slug),
-                "pillar": entry.get("pillar", "?"),
-            })
-
-    for ct in sorted(posts_by_type.keys()):
-        lines.append(f"\n### {ct}")
-        for post in posts_by_type[ct]:
-            lines.append(f"- P{post['pillar']}: {post['title']} (`{post['slug']}`)")
-    lines.append("")
-
-    # --- Section 3: PILLAR MIX ---
-    lines.append("## 3. PILLAR MIX")
-    recent_by_pillar = defaultdict(int)
-    alltime_by_pillar = defaultdict(int)
-    by_content_type = defaultdict(int)
-    by_board = defaultdict(int)
-    by_funnel = defaultdict(int)
-
-    for entry in entries:
-        pillar = str(entry.get("pillar", "?"))
-        alltime_by_pillar[pillar] += 1
-        by_content_type[entry.get("content_type", "unknown")] += 1
-        by_board[entry.get("board", "unknown")] += 1
-        by_funnel[entry.get("funnel_layer", "unknown")] += 1
-        if entry.get("posted_date", "") >= four_weeks_ago:
-            recent_by_pillar[pillar] += 1
-
-    lines.append("\n**Last 4 weeks:**")
-    for p in sorted(recent_by_pillar.keys()):
-        lines.append(f"- P{p}: {recent_by_pillar[p]}")
-
-    lines.append("\n**All time:**")
-    for p in sorted(alltime_by_pillar.keys()):
-        lines.append(f"- P{p}: {alltime_by_pillar[p]}")
-
-    lines.append("\n**By content type (all time):**")
-    for ct in sorted(by_content_type.keys()):
-        lines.append(f"- {ct}: {by_content_type[ct]}")
-
-    lines.append("\n**By board (all time):**")
-    for b in sorted(by_board.keys()):
-        lines.append(f"- {b}: {by_board[b]}")
-
-    lines.append("\n**By funnel layer (all time):**")
-    for fl in sorted(by_funnel.keys()):
-        lines.append(f"- {fl}: {by_funnel[fl]}")
-    lines.append("")
-
-    # --- Section 4: KEYWORD FREQUENCY ---
-    lines.append("## 4. KEYWORD FREQUENCY")
-    keyword_counts = defaultdict(lambda: {"count": 0, "last_used": ""})
-    for entry in entries:
-        kw = entry.get("primary_keyword", "")
-        if kw:
-            kc = keyword_counts[kw]
-            kc["count"] += 1
-            posted = entry.get("posted_date", "")
-            if posted > kc["last_used"]:
-                kc["last_used"] = posted
-
-    sorted_keywords = sorted(keyword_counts.items(), key=lambda x: x[1]["count"], reverse=True)
-    lines.append("\n**Top 15 keywords:**")
-    for kw, data in sorted_keywords[:15]:
-        lines.append(f"- `{kw}`: {data['count']}x (last: {data['last_used']})")
-
-    # Load keyword lists to find untargeted keywords
-    try:
-        kw_path = STRATEGY_DIR / "keyword-lists.json"
-        if kw_path.exists():
-            with open(kw_path, "r", encoding="utf-8") as f:
-                keyword_lists = json.load(f)
-            all_target_keywords = set()
-            for pillar_data in keyword_lists.get("pillars", {}).values():
-                all_target_keywords.update(pillar_data.get("primary", []))
-                all_target_keywords.update(pillar_data.get("secondary", []))
-            used_keywords = set(keyword_counts.keys())
-            untargeted = all_target_keywords - used_keywords
-            if untargeted:
-                lines.append("\n**Untargeted keywords (never used):**")
-                for kw in sorted(untargeted):
-                    lines.append(f"- `{kw}`")
-    except Exception as e:
-        logger.warning("Could not load keyword lists for untargeted check: %s", e)
-    lines.append("")
-
-    # --- Section 5: IMAGES USED RECENTLY ---
-    lines.append("## 5. IMAGES USED RECENTLY (last 90 days)")
-    recent_images = []
-    for entry in entries:
-        if entry.get("posted_date", "") >= ninety_days_ago:
-            img_source = entry.get("image_source", "")
-            img_id = entry.get("image_id", "")
-            if img_source and img_id:
-                recent_images.append(f"{img_source}:{img_id}")
-    if recent_images:
-        lines.append(f"IDs: {', '.join(recent_images)}")
-    else:
-        lines.append("No tracked images in the last 90 days.")
-    lines.append("")
-
-    # --- Section 6: FRESH PIN CANDIDATES ---
-    lines.append("## 6. FRESH PIN CANDIDATES (4+ weeks since last pin)")
-    slug_latest = {}
-    slug_performance = defaultdict(lambda: {"impressions": 0, "saves": 0, "outbound_clicks": 0})
-
-    for entry in entries:
-        slug = entry.get("blog_slug", "")
-        if not slug:
-            continue
-        posted = entry.get("posted_date", "")
-        if slug not in slug_latest or posted > slug_latest[slug]:
-            slug_latest[slug] = posted
-
-        perf = slug_performance[slug]
-        perf["impressions"] += entry.get("impressions", 0)
-        perf["saves"] += entry.get("saves", 0)
-        perf["outbound_clicks"] += entry.get("outbound_clicks", 0)
-
-    candidates = [
-        (slug, last_date, slug_performance[slug])
-        for slug, last_date in slug_latest.items()
-        if last_date < four_weeks_ago
-    ]
-    candidates.sort(key=lambda x: x[2]["saves"], reverse=True)
-
-    if candidates:
-        for slug, last_date, perf in candidates[:10]:
-            lines.append(
-                f"- `{slug}` (last pin: {last_date}, "
-                f"total saves: {perf['saves']}, clicks: {perf['outbound_clicks']})"
-            )
-    else:
-        lines.append("No fresh pin candidates yet (all blog posts have recent pins).")
-    lines.append("")
-
-    # --- Section 7: TREATMENT TRACKER ---
-    lines.append("## 7. TREATMENT TRACKER (last 60 days)")
-    url_treatments = defaultdict(int)
-    for entry in entries:
-        if entry.get("posted_date", "") >= sixty_days_ago:
-            slug = entry.get("blog_slug", "")
-            if slug:
-                url_treatments[slug] += 1
-
-    if url_treatments:
-        sorted_treatments = sorted(url_treatments.items(), key=lambda x: x[1], reverse=True)
-        for slug, count in sorted_treatments:
-            status = " (approaching limit)" if count >= 4 else ""
-            lines.append(f"- `{slug}`: {count} treatments{status}")
-    else:
-        lines.append("No treatments tracked in the last 60 days.")
-    lines.append("")
-
-    summary_text = "\n".join(lines)
-
-    # Save to file
-    summary_path = DATA_DIR / "content-memory-summary.md"
-    try:
-        summary_path.write_text(summary_text, encoding="utf-8")
-        logger.info("Content memory summary saved to %s", summary_path)
-    except OSError as e:
-        logger.warning("Failed to save content memory summary: %s", e)
-
-    return summary_text
 
 
 # --- Helper functions ---

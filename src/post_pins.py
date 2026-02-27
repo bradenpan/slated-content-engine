@@ -43,7 +43,8 @@ from src.apis.pinterest_api import PinterestAPI, PinterestAPIError
 from src.apis.sheets_api import SheetsAPI
 from src.apis.slack_notify import SlackNotify
 from src.token_manager import TokenManager
-from src.paths import PROJECT_ROOT, DATA_DIR, CONTENT_LOG_PATH, STRATEGY_DIR
+from src.paths import PROJECT_ROOT, DATA_DIR, STRATEGY_DIR
+from src.utils.content_log import append_content_log_entry, is_pin_posted
 from src.config import (
     INITIAL_JITTER_MAX,
     INTER_PIN_JITTER_MIN,
@@ -137,7 +138,7 @@ def post_pins(time_slot: str) -> dict:
 
         try:
             # Idempotency check
-            if is_already_posted(pin_id):
+            if is_pin_posted(pin_id):
                 logger.info("Pin %s already posted, skipping (idempotent)", pin_id)
                 results["skipped_count"] += 1
                 continue
@@ -235,7 +236,7 @@ def post_pins(time_slot: str) -> dict:
                 "click_through_rate": 0.0,
                 "last_analytics_pull": None,
             }
-            append_to_content_log(log_entry)
+            append_content_log_entry(log_entry)
 
             # Update Google Sheet post log
             if sheets:
@@ -326,60 +327,6 @@ def apply_jitter(time_slot: str, pin_index: int = 0) -> None:
     time.sleep(jitter_seconds)
 
 
-
-
-def is_already_posted(pin_id: str) -> bool:
-    """
-    Check if a pin has already been posted (idempotency check).
-
-    Scans content-log.jsonl for an entry with this pin_id that has
-    a non-null pinterest_pin_id field.
-
-    Args:
-        pin_id: Internal pin ID (e.g., "W12-01").
-
-    Returns:
-        bool: True if pin already has a pinterest_pin_id in the content log.
-    """
-    if not CONTENT_LOG_PATH.exists():
-        return False
-
-    try:
-        with open(CONTENT_LOG_PATH, "r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    entry = json.loads(line)
-                    if entry.get("pin_id") == pin_id and entry.get("pinterest_pin_id"):
-                        return True
-                except json.JSONDecodeError:
-                    continue
-    except OSError as e:
-        logger.warning("Could not read content log for idempotency check: %s", e)
-
-    return False
-
-
-def append_to_content_log(pin_data: dict) -> None:
-    """
-    Append a pin record to content-log.jsonl.
-
-    Creates the file if it doesn't exist. Each line is a complete JSON object.
-
-    Args:
-        pin_data: Pin metadata to log.
-    """
-    CONTENT_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
-
-    try:
-        with open(CONTENT_LOG_PATH, "a", encoding="utf-8") as f:
-            f.write(json.dumps(pin_data, ensure_ascii=False) + "\n")
-        logger.debug("Appended pin %s to content log", pin_data.get("pin_id"))
-    except OSError as e:
-        logger.error("Failed to write to content log: %s", e)
-        raise
 
 
 def load_scheduled_pins(date_str: str, time_slot: str) -> list[dict]:
@@ -720,7 +667,7 @@ if __name__ == "__main__":
         for pin in pins:
             print(f"  - {pin.get('pin_id')}: {pin.get('title', 'N/A')[:50]}")
             print(f"    Board: {pin.get('target_board')}")
-            print(f"    Already posted: {is_already_posted(pin.get('pin_id', ''))}")
+            print(f"    Already posted: {is_pin_posted(pin.get('pin_id', ''))}")
     else:
         print(f"Posting pins for {slot} slot...")
         results = post_pins(slot)

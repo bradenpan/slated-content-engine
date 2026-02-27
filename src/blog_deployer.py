@@ -30,6 +30,7 @@ from src.apis.sheets_api import SheetsAPI
 from src.apis.slack_notify import SlackNotify
 from src.paths import DATA_DIR, BLOG_OUTPUT_DIR, PIN_OUTPUT_DIR
 from src.config import BLOG_BASE_URL, DEPLOY_VERIFY_TIMEOUT
+from src.utils.content_log import load_content_log, append_content_log_entry
 
 logger = logging.getLogger(__name__)
 
@@ -537,27 +538,16 @@ class BlogDeployer:
         Returns:
             int: Number of entries appended.
         """
-        log_path = DATA_DIR / "content-log.jsonl"
         today_str = date.today().isoformat()
 
         # Load existing entry IDs to avoid duplicates on rerun
         # Collect both schedule_id (per-pin, new entries) and source_post_id (old entries)
         existing_ids = set()
-        if log_path.exists():
-            try:
-                for line in log_path.read_text(encoding="utf-8").splitlines():
-                    if not line.strip():
-                        continue
-                    try:
-                        existing_entry = json.loads(line)
-                        for key in ("schedule_id", "source_post_id"):
-                            val = existing_entry.get(key, "")
-                            if val:
-                                existing_ids.add(val)
-                    except json.JSONDecodeError:
-                        continue
-            except OSError:
-                pass
+        for existing_entry in load_content_log():
+            for key in ("schedule_id", "source_post_id"):
+                val = existing_entry.get(key, "")
+                if val:
+                    existing_ids.add(val)
 
         # Load full pin generation results for complete data
         pin_results_path = DATA_DIR / "pin-generation-results.json"
@@ -573,44 +563,43 @@ class BlogDeployer:
         entries_written = 0
         skipped_dupes = 0
 
-        with open(log_path, "a", encoding="utf-8") as f:
-            for pin_item in pin_data:
-                pin_id = pin_item.get("id") or pin_item.get("pin_id", "")
-                full = full_pin_data.get(pin_id, {})
+        for pin_item in pin_data:
+            pin_id = pin_item.get("id") or pin_item.get("pin_id", "")
+            full = full_pin_data.get(pin_id, {})
 
-                # Skip if already logged (dedup for reruns)
-                source_post = full.get("source_post_id", "")
-                if (pin_id and pin_id in existing_ids) or (source_post and source_post in existing_ids):
-                    skipped_dupes += 1
-                    continue
+            # Skip if already logged (dedup for reruns)
+            source_post = full.get("source_post_id", "")
+            if (pin_id and pin_id in existing_ids) or (source_post and source_post in existing_ids):
+                skipped_dupes += 1
+                continue
 
-                entry = {
-                    "date": today_str,
-                    "posted_date": today_str,  # weekly_analysis.py filters on this field
-                    "schedule_id": pin_id,  # Per-pin unique ID (e.g., "W9-01") for dedup
-                    "pin_id": None,  # Set when actually posted to Pinterest
-                    "blog_slug": full.get("blog_slug", ""),
-                    "blog_title": full.get("title", pin_item.get("title", "")),
-                    "topic_summary": _build_topic_summary(full),
-                    "pillar": full.get("pillar", pin_item.get("pillar")),
-                    "content_type": full.get("content_type", ""),
-                    "funnel_layer": full.get("funnel_layer", "discovery"),
-                    "template": full.get("template", ""),
-                    "board": full.get("board_name", ""),
-                    "primary_keyword": full.get("primary_keyword", ""),
-                    "secondary_keywords": full.get("secondary_keywords", []),
-                    "image_source": full.get("image_source", ""),
-                    "image_id": full.get("image_id", ""),
-                    "pin_type": full.get("pin_type", "primary"),
-                    "treatment_number": full.get("treatment_number", 1),
-                    "source_post_id": full.get("source_post_id", ""),
-                    "impressions": 0,
-                    "saves": 0,
-                    "outbound_clicks": 0,
-                }
+            entry = {
+                "date": today_str,
+                "posted_date": today_str,  # weekly_analysis.py filters on this field
+                "schedule_id": pin_id,  # Per-pin unique ID (e.g., "W9-01") for dedup
+                "pin_id": None,  # Set when actually posted to Pinterest
+                "blog_slug": full.get("blog_slug", ""),
+                "blog_title": full.get("title", pin_item.get("title", "")),
+                "topic_summary": _build_topic_summary(full),
+                "pillar": full.get("pillar", pin_item.get("pillar")),
+                "content_type": full.get("content_type", ""),
+                "funnel_layer": full.get("funnel_layer", "discovery"),
+                "template": full.get("template", ""),
+                "board": full.get("board_name", ""),
+                "primary_keyword": full.get("primary_keyword", ""),
+                "secondary_keywords": full.get("secondary_keywords", []),
+                "image_source": full.get("image_source", ""),
+                "image_id": full.get("image_id", ""),
+                "pin_type": full.get("pin_type", "primary"),
+                "treatment_number": full.get("treatment_number", 1),
+                "source_post_id": full.get("source_post_id", ""),
+                "impressions": 0,
+                "saves": 0,
+                "outbound_clicks": 0,
+            }
 
-                f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-                entries_written += 1
+            append_content_log_entry(entry)
+            entries_written += 1
 
         if skipped_dupes:
             logger.info("Skipped %d duplicate entries in content-log.jsonl", skipped_dupes)

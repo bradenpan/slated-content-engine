@@ -30,6 +30,8 @@ from src.image_cleaner import clean_image
 from src.pin_assembler import PinAssembler
 from src.paths import DATA_DIR, STRATEGY_DIR, PIN_OUTPUT_DIR
 from src.config import BLOG_BASE_URL, COPY_BATCH_SIZE
+from src.utils.plan_utils import find_latest_plan, load_plan
+from src.utils.strategy_utils import load_brand_voice
 
 logger = logging.getLogger(__name__)
 
@@ -333,17 +335,16 @@ def _load_plan(plan_path: Optional[str] = None) -> dict:
     if plan_path:
         path = Path(plan_path)
         if path.exists():
-            return json.loads(path.read_text(encoding="utf-8"))
+            return load_plan(path)
         logger.error("Plan file not found: %s", path)
         return {}
 
-    plan_files = sorted(DATA_DIR.glob("weekly-plan-*.json"), reverse=True)
-    if not plan_files:
+    latest = find_latest_plan()
+    if not latest:
         return {}
 
-    latest = plan_files[0]
     logger.info("Loading most recent plan: %s", latest)
-    return json.loads(latest.read_text(encoding="utf-8"))
+    return load_plan(latest)
 
 
 def _load_blog_generation_results() -> dict:
@@ -362,12 +363,7 @@ def _load_blog_generation_results() -> dict:
 
 def _load_brand_voice() -> str:
     """Load brand voice guidelines."""
-    brand_voice_path = STRATEGY_DIR / "brand-voice.md"
-    try:
-        return brand_voice_path.read_text(encoding="utf-8")
-    except FileNotFoundError:
-        logger.warning("brand-voice.md not found")
-        return ""
+    return load_brand_voice()
 
 
 def _load_keyword_targets() -> dict:

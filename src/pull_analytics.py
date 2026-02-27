@@ -30,8 +30,9 @@ from typing import Optional
 
 from src.apis.pinterest_api import PinterestAPI, PinterestAPIError
 from src.token_manager import TokenManager
-from src.paths import DATA_DIR, CONTENT_LOG_PATH
+from src.paths import DATA_DIR
 from src.config import MAX_LOOKBACK_DAYS
+from src.utils.content_log import load_content_log, save_content_log
 
 logger = logging.getLogger(__name__)
 
@@ -232,67 +233,6 @@ def pull_analytics(days_back: int = 7) -> dict:
         "errors": errors,
         "snapshot_path": str(snapshot) if snapshot else None,
     }
-
-
-def load_content_log() -> list[dict]:
-    """
-    Load all entries from content-log.jsonl.
-
-    Each line is a JSON object. Empty lines and malformed lines are skipped
-    with a warning.
-
-    Returns:
-        list[dict]: All content log entries.
-    """
-    if not CONTENT_LOG_PATH.exists():
-        logger.info("Content log file does not exist: %s", CONTENT_LOG_PATH)
-        return []
-
-    entries = []
-    line_number = 0
-
-    try:
-        with open(CONTENT_LOG_PATH, "r", encoding="utf-8") as f:
-            for line in f:
-                line_number += 1
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    entry = json.loads(line)
-                    entries.append(entry)
-                except json.JSONDecodeError as e:
-                    logger.warning(
-                        "Malformed JSON on line %d of content log: %s", line_number, e
-                    )
-    except OSError as e:
-        logger.error("Failed to read content log: %s", e)
-        return []
-
-    logger.info("Loaded %d entries from content log", len(entries))
-    return entries
-
-
-def save_content_log(entries: list[dict]) -> None:
-    """
-    Rewrite the entire content-log.jsonl with updated entries.
-
-    The file is small enough to rewrite entirely (~100KB after a year at
-    200 pins/month). This avoids the complexity of in-place updates in JSONL.
-
-    Args:
-        entries: All content log entries (with updated analytics).
-    """
-    CONTENT_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
-
-    try:
-        with open(CONTENT_LOG_PATH, "w", encoding="utf-8") as f:
-            for entry in entries:
-                f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-        logger.info("Saved %d entries to content log", len(entries))
-    except OSError as e:
-        logger.error("Failed to write content log: %s", e)
-        raise
 
 
 def compute_derived_metrics(entries: list[dict]) -> list[dict]:

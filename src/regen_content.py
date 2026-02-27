@@ -40,6 +40,7 @@ from src.generate_pin_content import (
 )
 from src.pin_assembler import PinAssembler
 from src.paths import DATA_DIR, PIN_OUTPUT_DIR
+from src.utils.image_utils import extract_drive_file_id
 
 logger = logging.getLogger(__name__)
 
@@ -552,7 +553,7 @@ def _regen_item(
 
         # Fall back to Drive download
         if not downloaded and image_url:
-            drive_file_id = _extract_drive_file_id(image_url)
+            drive_file_id = extract_drive_file_id(image_url)
             if drive_file_id:
                 try:
                     hero_path = PIN_OUTPUT_DIR / f"{pin_id}-hero-downloaded.png"
@@ -626,7 +627,7 @@ def _regen_item(
 
             if not new_image_url:
                 # Fall back to Drive upload
-                old_drive_file_id = _extract_drive_file_id(old_image_url)
+                old_drive_file_id = extract_drive_file_id(old_image_url)
                 try:
                     new_image_url = drive.upload_image(rendered_pin_path)
                 except Exception as e:
@@ -639,8 +640,8 @@ def _regen_item(
                     except Exception as e:
                         logger.warning("Failed to delete old Drive image for %s: %s", pin_id, e)
 
-                if new_image_url and "id=" in new_image_url:
-                    _fid = new_image_url.split("id=")[1].split("&")[0]
+                _fid = extract_drive_file_id(new_image_url) if new_image_url else None
+                if _fid:
                     new_pin_data["_drive_image_url"] = (
                         f"https://drive.google.com/thumbnail?id={_fid}&sz=w400"
                     )
@@ -659,18 +660,6 @@ def _regen_item(
             new_pin_data["_copy_regen_no_rerender"] = True
 
     return {"pin_data": new_pin_data, "image_url": new_image_url}
-
-
-def _extract_drive_file_id(drive_url: str) -> str:
-    """Extract the file ID from a Drive thumbnail URL."""
-    # Format: https://drive.google.com/thumbnail?id=FILE_ID&sz=w400
-    if "id=" not in drive_url:
-        return ""
-    try:
-        file_id = drive_url.split("id=")[1].split("&")[0]
-        return file_id
-    except (IndexError, ValueError):
-        return ""
 
 
 def _regen_blog_image(

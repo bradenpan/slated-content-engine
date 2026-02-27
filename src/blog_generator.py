@@ -30,6 +30,7 @@ from typing import Optional
 
 from src.apis.claude_api import ClaudeAPI
 from src.paths import STRATEGY_DIR, TEMPLATES_DIR as _BASE_TEMPLATES_DIR
+from src.utils.strategy_utils import load_brand_voice
 
 logger = logging.getLogger(__name__)
 
@@ -650,12 +651,7 @@ class BlogGenerator:
         if self._brand_voice_cache is not None:
             return self._brand_voice_cache
 
-        brand_voice_path = STRATEGY_DIR / "brand-voice.md"
-        try:
-            self._brand_voice_cache = brand_voice_path.read_text(encoding="utf-8")
-        except FileNotFoundError:
-            logger.warning("brand-voice.md not found, using empty string")
-            self._brand_voice_cache = ""
+        self._brand_voice_cache = load_brand_voice()
 
         return self._brand_voice_cache
 

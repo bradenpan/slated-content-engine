@@ -185,16 +185,11 @@ class DriveAPI:
             }
             # Detect actual image format from magic bytes (file may be JPEG
             # with .png extension after pin_assembler size optimization)
+            from src.utils.image_utils import detect_mime_type
             with open(file_path, "rb") as img_f:
                 header = img_f.read(12)
-            if header[:2] == b"\xff\xd8":
-                mime_type = "image/jpeg"
-            elif header[:4] == b"\x89PNG":
-                mime_type = "image/png"
-            elif header[:4] == b"RIFF" and header[8:12] == b"WEBP":
-                mime_type = "image/webp"
-            else:
-                mime_type = "image/png"  # Default fallback
+            detected = detect_mime_type(header)
+            mime_type = detected if detected != "application/octet-stream" else "image/png"
 
             media = MediaFileUpload(
                 str(file_path),

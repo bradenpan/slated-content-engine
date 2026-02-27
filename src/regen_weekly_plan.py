@@ -37,57 +37,14 @@ from src.generate_weekly_plan import (
     identify_replaceable_posts,
     splice_replacements,
     load_content_memory,
-    DATA_DIR,
 )
+from src.utils.plan_utils import find_latest_plan, load_plan
 
 logger = logging.getLogger(__name__)
 
 
-def find_latest_plan() -> Path:
-    """
-    Find the most recent weekly plan JSON file in the data directory.
-
-    Plan files are named: weekly-plan-YYYY-MM-DD.json
-
-    Returns:
-        Path: Path to the latest plan JSON file.
-
-    Raises:
-        FileNotFoundError: If no plan files exist.
-    """
-    plan_files = sorted(
-        DATA_DIR.glob("weekly-plan-*.json"),
-        reverse=True,
-    )
-
-    if not plan_files:
-        raise FileNotFoundError(
-            f"No weekly plan files found in {DATA_DIR}. "
-            "Run generate_weekly_plan.py first."
-        )
-
-    logger.info("Found latest plan: %s", plan_files[0].name)
-    return plan_files[0]
 
 
-def load_plan(plan_path: Path) -> dict:
-    """
-    Load a weekly plan from a JSON file.
-
-    Args:
-        plan_path: Path to the plan JSON file.
-
-    Returns:
-        dict: The weekly plan with blog_posts and pins arrays.
-    """
-    content = plan_path.read_text(encoding="utf-8")
-    plan = json.loads(content)
-    logger.info(
-        "Loaded plan: %d blog posts, %d pins",
-        len(plan.get("blog_posts", [])),
-        len(plan.get("pins", [])),
-    )
-    return plan
 
 
 def build_regen_violations(
@@ -150,6 +107,10 @@ def regen_plan() -> None:
 
     # Step 2: Load current weekly plan from disk
     plan_path = find_latest_plan()
+    if not plan_path:
+        raise FileNotFoundError(
+            "No weekly plan files found. Run generate_weekly_plan.py first."
+        )
     plan = load_plan(plan_path)
 
     # Step 3: Build violations from regen requests and identify replaceable posts

@@ -20,6 +20,7 @@ from src.apis.drive_api import DriveAPI, DriveAPIError
 from src.apis.sheets_api import SheetsAPI, TAB_CONTENT_QUEUE
 from src.apis.slack_notify import SlackNotify
 from src.paths import DATA_DIR, BLOG_OUTPUT_DIR, PIN_OUTPUT_DIR
+from src.utils.image_utils import extract_drive_file_id
 
 logger = logging.getLogger(__name__)
 
@@ -112,8 +113,8 @@ def publish() -> None:
                 else:
                     # Drive thumbnail URL
                     pin["_drive_image_url"] = url
-                    if "id=" in url:
-                        _fid = url.split("id=")[1].split("&")[0]
+                    _fid = extract_drive_file_id(url)
+                    if _fid:
                         pin["_drive_download_url"] = (
                             f"https://drive.google.com/uc?id={_fid}&export=download"
                         )
