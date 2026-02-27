@@ -23,6 +23,7 @@ Raw weekly snapshots saved to data/analytics/YYYY-wNN-raw.json.
 
 import json
 import logging
+import time
 from collections import defaultdict
 from datetime import datetime, date, timedelta
 from pathlib import Path
@@ -154,10 +155,12 @@ def pull_analytics(days_back: int = 7) -> dict:
 
             # Update the entry's cumulative metrics
             # We use the summed values from the full available range
-            entry["impressions"] = summed.get("IMPRESSION", 0)
-            entry["saves"] = summed.get("SAVE", 0)
-            entry["pin_clicks"] = summed.get("PIN_CLICK", 0)
-            entry["outbound_clicks"] = summed.get("OUTBOUND_CLICK", 0)
+            # Use max() guard — metrics are monotonically increasing.
+            # Prevents data loss if API returns narrower window than expected.
+            entry["impressions"] = max(summed.get("IMPRESSION", 0), entry.get("impressions", 0))
+            entry["saves"] = max(summed.get("SAVE", 0), entry.get("saves", 0))
+            entry["pin_clicks"] = max(summed.get("PIN_CLICK", 0), entry.get("pin_clicks", 0))
+            entry["outbound_clicks"] = max(summed.get("OUTBOUND_CLICK", 0), entry.get("outbound_clicks", 0))
             entry["last_analytics_pull"] = today.isoformat()
 
             logger.debug(
@@ -165,6 +168,9 @@ def pull_analytics(days_back: int = 7) -> dict:
                 pin_id, summed.get("IMPRESSION", 0),
                 summed.get("SAVE", 0), summed.get("OUTBOUND_CLICK", 0),
             )
+
+            # Rate-limit: small delay between API calls to avoid 429
+            time.sleep(0.2)
 
         except PinterestAPIError as e:
             error_msg = f"Failed to pull analytics for pin {pin_id}: {e}"

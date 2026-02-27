@@ -826,16 +826,16 @@ class ClaudeAPI:
                         try:
                             return json.loads(text[i:j + 1])
                         except json.JSONDecodeError:
-                            break
-                break
+                            continue
+                continue
             elif ch == '[':
                 for j in range(len(text) - 1, i, -1):
                     if text[j] == ']':
                         try:
                             return json.loads(text[i:j + 1])
                         except json.JSONDecodeError:
-                            break
-                break
+                            continue
+                continue
 
         logger.error(
             "Failed to parse %s JSON response. First 500 chars: %s",

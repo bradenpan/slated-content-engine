@@ -2,7 +2,7 @@
   "boards": [
     {
       "name": "Weekly Meal Plans & Meal Planning Tips",
-      "pillar": 1,
+      "pillar": [1],
       "description": "Weekly meal plans, meal planning guides, and tips for planning dinner for the whole week. Stop wondering what to cook \u2014 plan your whole week in minutes.",
       "sections": ["Weekly Meal Plans", "Meal Planning for Beginners", "Meal Prep Ideas"],
       "priority": 1
@@ -23,42 +23,42 @@
     },
     {
       "name": "Family Dinner Ideas Even Picky Eaters Love",
-      "pillar": 2,
+      "pillar": [2],
       "description": "Kid-approved dinner recipes and family meal ideas for households with picky eaters. Meals everyone will actually eat \u2014 no more dinnertime battles.",
       "sections": ["Kid-Friendly Dinners", "Hidden Veggie Recipes", "Feeding Picky Families"],
       "priority": 4
     },
     {
       "name": "Family Meal Planning Strategies",
-      "pillar": 2,
+      "pillar": [2],
       "description": "How to get your family on board with dinner. Strategies for meal planning with picky eaters, dietary differences, and busy schedules \u2014 so everyone agrees before you cook.",
       "sections": ["Getting Family Buy-In", "Picky Eater Strategies", "Weeknight Survival"],
       "priority": 5
     },
     {
       "name": "Better Than a Meal Kit",
-      "pillar": 4,
+      "pillar": [4],
       "description": "Meal kit alternatives and home cooking strategies for families tired of subscription boxes. Better food, more flexibility, less cost than Hello Fresh and Blue Apron.",
       "sections": ["Meal Kit Alternatives", "Why We Quit Meal Kits"],
       "priority": 6
     },
     {
       "name": "Healthy Family Dinner Recipes",
-      "pillar": 5,
+      "pillar": [5],
       "description": "Healthy dinner recipes for families \u2014 high protein, anti-inflammatory, and nutritious meals everyone will eat. Healthy doesn't have to mean complicated.",
       "sections": ["High Protein Dinners", "Anti-Inflammatory Recipes", "Healthy Kid-Friendly Meals"],
       "priority": 7
     },
     {
       "name": "Gluten-Free Dinner Ideas",
-      "pillar": 5,
+      "pillar": [5],
       "description": "Gluten-free dinner recipes and weekly meal plan ideas. Easy gluten-free meals for families managing celiac, intolerance, or gluten-free lifestyles.",
       "sections": ["Quick Gluten-Free Meals", "Gluten-Free Meal Plans"],
       "priority": 8
     },
     {
       "name": "Air Fryer & Instant Pot Dinner Recipes",
-      "pillar": 5,
+      "pillar": [5],
       "description": "Air fryer dinner recipes and Instant Pot family meals. Quick, easy appliance-based recipes for weeknight dinners.",
       "sections": ["Air Fryer Dinners", "Instant Pot Meals", "Slow Cooker Family Dinners"],
       "priority": 9

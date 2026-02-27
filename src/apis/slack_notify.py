@@ -426,17 +426,19 @@ class SlackNotify:
         text: str,
         blocks: Optional[list] = None,
         color: str = COLOR_INFO,
+        raise_on_error: bool = False,
     ) -> None:
         """
         Send a message via the Slack webhook.
+
+        Best-effort by default — logs errors instead of raising. Callers
+        that need failure propagation can pass raise_on_error=True.
 
         Args:
             text: Fallback text for notifications and non-block-supporting clients.
             blocks: Optional Slack Block Kit blocks for rich formatting.
             color: Sidebar color for the message attachment.
-
-        Raises:
-            SlackNotifyError: If the webhook call fails.
+            raise_on_error: If True, raise SlackNotifyError on failure.
         """
         if not self.webhook_url:
             logger.info("[Slack (not sent -- no webhook URL)] %s", text)
@@ -468,20 +470,33 @@ class SlackNotify:
                     f"Slack webhook returned HTTP {response.status_code}: {response.text}"
                 )
                 logger.error(error_msg)
-                raise SlackNotifyError(error_msg)
+                if raise_on_error:
+                    raise SlackNotifyError(error_msg)
 
-            logger.debug("Slack notification sent successfully.")
+            else:
+                logger.debug("Slack notification sent successfully.")
 
         except requests.RequestException as e:
             error_msg = f"Failed to send Slack notification: {e}"
             logger.error(error_msg)
-            raise SlackNotifyError(error_msg) from e
+            if raise_on_error:
+                raise SlackNotifyError(error_msg) from e
 
 
 if __name__ == "__main__":
+    import sys
+
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
-    notifier = SlackNotify()
-    print("Sending test notification...")
-    notifier.notify_review_ready("Test notification from pinterest-pipeline smoke test.")
-    print("Done.")
+    if len(sys.argv) >= 3:
+        # CLI invocation: python -m src.apis.slack_notify <workflow_name> <error_msg>
+        workflow_name = sys.argv[1]
+        error_msg = sys.argv[2]
+        notifier = SlackNotify()
+        notifier.notify_failure(workflow_name, error_msg)
+    else:
+        # Smoke test (backward compatible)
+        notifier = SlackNotify()
+        print("Sending test notification...")
+        notifier.notify_review_ready("Test notification from pinterest-pipeline smoke test.")
+        print("Done.")

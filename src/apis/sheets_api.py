@@ -810,6 +810,9 @@ class SheetsAPI:
         """
         Clear a tab and write new data.
 
+        If the write fails after clearing, retries once. If the retry also
+        fails, logs which tab was affected for manual recovery.
+
         Args:
             tab_name: Sheet tab name.
             rows: List of row data (each row is a list of cell values).
@@ -826,17 +829,40 @@ class SheetsAPI:
                 body={},
             ).execute()
 
-            # Write new content
+            # Write new content (with one retry on failure)
             if rows:
-                self.sheets.values().update(
-                    spreadsheetId=self.sheet_id,
-                    range=f"'{tab_name}'!A1",
-                    valueInputOption=value_input_option,
-                    body={"values": rows},
-                ).execute()
+                write_error = None
+                for write_attempt in range(2):
+                    try:
+                        self.sheets.values().update(
+                            spreadsheetId=self.sheet_id,
+                            range=f"'{tab_name}'!A1",
+                            valueInputOption=value_input_option,
+                            body={"values": rows},
+                        ).execute()
+                        write_error = None
+                        break
+                    except Exception as e:
+                        write_error = e
+                        if write_attempt == 0:
+                            logger.warning(
+                                "Write to '%s' failed, retrying: %s", tab_name, e,
+                            )
+
+                if write_error:
+                    logger.error(
+                        "Write to '%s' failed after retry. Tab may be empty — "
+                        "manual recovery needed. Error: %s",
+                        tab_name, write_error,
+                    )
+                    raise SheetsAPIError(
+                        f"Failed to write to '{tab_name}' after retry: {write_error}"
+                    ) from write_error
 
             logger.debug("Wrote %d rows to '%s'.", len(rows), tab_name)
 
+        except SheetsAPIError:
+            raise
         except Exception as e:
             raise SheetsAPIError(f"Failed to write to '{tab_name}': {e}") from e
 

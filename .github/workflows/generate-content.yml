@@ -24,6 +24,7 @@ env:
   GOSLATED_REPO: ${{ secrets.GOSLATED_REPO }}
   GOSLATED_GITHUB_TOKEN: ${{ secrets.GOSLATED_GITHUB_TOKEN }}
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+  GCS_BUCKET_NAME: ${{ secrets.GCS_BUCKET_NAME }}
 
 jobs:
   generate-content:
@@ -62,21 +63,16 @@ jobs:
         # Render final pin PNGs via Puppeteer
         run: python -m src.generate_pin_content
 
-      - name: Commit generated content
-        uses: ./.github/actions/commit-data
-        with:
-          message: "chore: generated content [skip ci]"
-
       - name: Publish Content Queue for review
         # Uploads pin images to GCS (or Drive fallback) for inline Sheet preview
         # Writes Content Queue with IMAGE() formulas and blog summaries
         # Sends Slack notification that content is ready for review
         run: python -m src.publish_content_queue
 
-      - name: Commit image URLs and publish metadata
+      - name: Commit generated content and image URLs
         uses: ./.github/actions/commit-data
         with:
-          message: "chore: update image URLs [skip ci]"
+          message: "chore: generated content + image URLs [skip ci]"
 
       - name: Notify failure
         if: failure()

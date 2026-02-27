@@ -84,8 +84,20 @@ def call_gpt5_mini(
         )
 
     max_retries = 3
+    response = None
     for attempt in range(1, max_retries + 1):
-        response = _do_request()
+        try:
+            response = _do_request()
+        except requests.RequestException as e:
+            logger.warning(
+                "OpenAI request failed (attempt %d/%d): %s", attempt, max_retries, e,
+            )
+            if attempt == max_retries:
+                raise OpenAIChatAPIError(
+                    f"OpenAI API request failed after {max_retries} attempts: {e}"
+                ) from e
+            time.sleep(min(5 * attempt, 60))
+            continue
 
         if response.status_code != 429:
             break
@@ -106,5 +118,25 @@ def call_gpt5_mini(
         )
         time.sleep(wait)
 
+    if response is None:
+        raise OpenAIChatAPIError("OpenAI API request failed: no response received")
+
     response.raise_for_status()
-    return response.json()["choices"][0]["message"]["content"]
+
+    data = response.json()
+    choices = data.get("choices")
+    if not choices or not isinstance(choices, list):
+        raise OpenAIChatAPIError(
+            f"Malformed OpenAI response: missing 'choices'. Response: {str(data)[:500]}"
+        )
+    message = choices[0].get("message")
+    if not message or not isinstance(message, dict):
+        raise OpenAIChatAPIError(
+            f"Malformed OpenAI response: missing 'message'. Response: {str(data)[:500]}"
+        )
+    content = message.get("content")
+    if content is None:
+        raise OpenAIChatAPIError(
+            f"Malformed OpenAI response: missing 'content'. Response: {str(data)[:500]}"
+        )
+    return content

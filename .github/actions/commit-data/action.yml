@@ -12,6 +12,7 @@ runs:
         git config user.name "pinterest-pipeline-bot"
         git config user.email "bot@pinterest-pipeline.local"
         git add data/ analysis/
+        git diff --staged --stat
         if git diff --staged --quiet; then
           echo "No data changes to commit."
           exit 0
@@ -24,7 +25,7 @@ runs:
         for attempt in $(seq 1 $MAX_ATTEMPTS); do
           if ! git pull --rebase; then
             echo "::error::Rebase conflict on attempt $attempt. Aborting rebase."
-            git rebase --abort
+            git rebase --abort 2>/dev/null || true
             exit 1
           fi
           if git push; then
@@ -32,6 +33,7 @@ runs:
             exit 0
           fi
           echo "::warning::Push failed on attempt $attempt/$MAX_ATTEMPTS. Retrying..."
+          sleep $((RANDOM % 5 + 1))
         done
         echo "::error::Push failed after $MAX_ATTEMPTS attempts."
         exit 1

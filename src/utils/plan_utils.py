@@ -34,8 +34,23 @@ def load_plan(path: Path) -> dict:
 
     Returns:
         dict: The weekly plan data.
+
+    Raises:
+        FileNotFoundError: If the plan file does not exist.
+        json.JSONDecodeError: If the file contains invalid JSON.
+        OSError: If the file cannot be read.
     """
-    return json.loads(path.read_text(encoding="utf-8"))
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        logger.error("Plan file not found: %s", path)
+        raise
+    except json.JSONDecodeError as e:
+        logger.error("Invalid JSON in plan file %s: %s", path, e)
+        raise
+    except OSError as e:
+        logger.error("Failed to read plan file %s: %s", path, e)
+        raise
 
 
 def identify_replaceable_posts(

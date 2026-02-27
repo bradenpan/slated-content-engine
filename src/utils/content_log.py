@@ -51,19 +51,29 @@ def load_content_log(path: Path = None) -> list[dict]:
 def save_content_log(entries: list[dict], path: Path = None) -> None:
     """Rewrite the entire content-log.jsonl with updated entries.
 
+    Uses atomic write (temp file + rename) to prevent data loss if the
+    process crashes mid-write.
+
     Args:
         entries: All content log entries (with updated analytics).
     """
     p = path or CONTENT_LOG_PATH
     p.parent.mkdir(parents=True, exist_ok=True)
+    tmp = p.with_suffix(".tmp")
 
     try:
-        with open(p, "w", encoding="utf-8") as f:
+        with open(tmp, "w", encoding="utf-8") as f:
             for entry in entries:
                 f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+        tmp.replace(p)
         logger.info("Saved %d entries to content log", len(entries))
     except OSError as e:
         logger.error("Failed to write content log: %s", e)
+        # Clean up partial temp file
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            pass
         raise
 
 

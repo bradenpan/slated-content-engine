@@ -19,10 +19,6 @@ runs:
           echo "FAILED: $WORKFLOW_NAME — $RUN_URL"
           exit 0
         fi
-        python -c "
-        import os
-        from src.apis.slack_notify import SlackNotify
-        notifier = SlackNotify()
-        notifier.notify_failure(os.environ['WORKFLOW_NAME'], 'Workflow failed. Check: ' + os.environ['RUN_URL'])
-        " || echo "::warning::Slack notification failed (non-fatal). See run: $RUN_URL"
+        python -m src.apis.slack_notify "$WORKFLOW_NAME" "Workflow failed. Check: $RUN_URL" \
+          || echo "::warning::Slack notification failed (non-fatal). See run: $RUN_URL"
       shell: bash

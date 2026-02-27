@@ -561,7 +561,12 @@ def _create_pin_with_retry(
                 image_url=image_url,
                 alt_text=alt_text,
             )
-            return result.get("id", "")
+            pin_id_result = result.get("id", "")
+            if not pin_id_result:
+                raise PinterestAPIError(
+                    0, "Pinterest API returned success but no pin ID in response"
+                )
+            return pin_id_result
 
         except PinterestAPIError as e:
             last_error = e
@@ -631,11 +636,17 @@ def _record_failure(pin_id: str, error_msg: str) -> None:
     pin_failures["last_failure"] = datetime.now().isoformat()
     failures[pin_id] = pin_failures
 
+    tmp = failures_path.with_suffix(".tmp")
     try:
-        with open(failures_path, "w", encoding="utf-8") as f:
+        with open(tmp, "w", encoding="utf-8") as f:
             json.dump(failures, f, indent=2)
+        tmp.replace(failures_path)
     except OSError as e:
         logger.warning("Could not write failures file: %s", e)
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            pass
 
     # If permanently failed, send alert
     if pin_failures["count"] >= MAX_PIN_FAILURES:

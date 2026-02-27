@@ -138,6 +138,12 @@ class GcsAPI:
         name = remote_name or Path(local_path).name
 
         try:
+            # Reject empty files
+            file_size = Path(local_path).stat().st_size
+            if file_size == 0:
+                logger.warning("Skipping upload of empty file: %s", local_path)
+                return None
+
             # Detect MIME type from magic bytes
             from src.utils.image_utils import detect_mime_type
             with open(local_path, "rb") as img_f:

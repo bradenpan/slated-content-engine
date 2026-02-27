@@ -183,6 +183,10 @@ class DriveAPI:
         folder_id = self._get_or_create_folder()
         name = filename or file_path.name
 
+        # Reject empty files
+        if file_path.stat().st_size == 0:
+            raise DriveAPIError(f"Cannot upload empty file: {file_path}")
+
         try:
             from googleapiclient.http import MediaFileUpload
 

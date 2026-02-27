@@ -393,6 +393,12 @@ class PinterestAPI:
                     if attempt < MAX_RETRIES:
                         time.sleep(wait_time)
                         continue
+                    else:
+                        raise PinterestAPIError(
+                            response.status_code,
+                            f"Server error after {MAX_RETRIES} retries",
+                            response.json() if response.text else {},
+                        )
 
                 # Client errors -- do not retry, raise immediately
                 error_body = {}

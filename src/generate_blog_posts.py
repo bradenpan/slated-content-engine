@@ -103,7 +103,10 @@ def generate_blog_posts(
     saved_paths: list[Path] = []
 
     for result in batch_results:
-        post_id = result["post_id"]
+        post_id = result.get("post_id")
+        if not post_id:
+            logger.warning("Skipping result with missing post_id: %s", result.get("title", "(no title)"))
+            continue
 
         if result["status"] == "success" and result["mdx_content"]:
             slug = result["slug"]
@@ -200,6 +203,8 @@ def _save_generation_metadata(results: dict) -> None:
     This metadata file is read by generate_pin_content.py to know which
     blog posts were generated and their locations.
 
+    Uses atomic write (temp file + rename) to prevent data loss.
+
     Args:
         results: Generation results dict.
     """
@@ -217,11 +222,21 @@ def _save_generation_metadata(results: dict) -> None:
         }
 
     metadata_path = DATA_DIR / "blog-generation-results.json"
-    metadata_path.write_text(
-        json.dumps(metadata, indent=2, ensure_ascii=False),
-        encoding="utf-8",
-    )
-    logger.info("Saved generation metadata to %s", metadata_path)
+    tmp = metadata_path.with_suffix(".tmp")
+    try:
+        tmp.write_text(
+            json.dumps(metadata, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        tmp.replace(metadata_path)
+        logger.info("Saved generation metadata to %s", metadata_path)
+    except OSError as e:
+        logger.error("Failed to save generation metadata: %s", e)
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise
 
 
 if __name__ == "__main__":

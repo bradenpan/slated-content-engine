@@ -57,7 +57,7 @@ jobs:
         run: python -m src.blog_deployer promote
 
       - name: Override pin schedule dates (test mode)
-        if: ${{ github.event.inputs.override_pin_start_date != '' }}
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.override_pin_start_date != '' }}
         env:
           PIN_START_DATE: ${{ github.event.inputs.override_pin_start_date }}
         run: python -m src.redate_schedule "$PIN_START_DATE"

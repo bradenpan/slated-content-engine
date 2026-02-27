@@ -729,6 +729,12 @@ def source_ai_image(
         style="natural",
     )
 
+    # Validate the generated image exists before post-processing
+    if generated_path is None or not Path(generated_path).exists():
+        raise FileNotFoundError(
+            f"Image generation returned invalid path for pin {pin_id}: {generated_path}"
+        )
+
     # Strip AI metadata and apply anti-detection post-processing
     clean_image(generated_path)
 
@@ -784,11 +790,21 @@ def _save_pin_results(generated_pins: list[dict], failures: list[dict]) -> None:
     }
 
     results_path = DATA_DIR / "pin-generation-results.json"
-    results_path.write_text(
-        json.dumps(results, indent=2, ensure_ascii=False),
-        encoding="utf-8",
-    )
-    logger.info("Saved pin generation results to %s", results_path)
+    tmp = results_path.with_suffix(".tmp")
+    try:
+        tmp.write_text(
+            json.dumps(results, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        tmp.replace(results_path)
+        logger.info("Saved pin generation results to %s", results_path)
+    except OSError as e:
+        logger.error("Failed to save pin generation results: %s", e)
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise
 
 
 if __name__ == "__main__":
