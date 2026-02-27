@@ -129,6 +129,8 @@ def generate_plan(
         negative_keywords=negative_keywords,
     )
 
+    _validate_plan_structure(plan)
+
     # Step 8: Validate against constraints
     content_log = _load_content_log()
     board_structure = strategy_context.get("board_structure", {})
@@ -303,13 +305,23 @@ def generate_plan(
     except Exception as e:
         logger.error("Failed to write to Google Sheets: %s", e)
 
-    # Step 11: Save plan locally as JSON
+    # Step 11: Save plan locally as JSON (atomic write via temp+rename)
     plan_filename = f"weekly-plan-{start_date.isoformat()}.json"
     plan_path = DATA_DIR / plan_filename
-    plan_path.write_text(
-        json.dumps(plan, indent=2, ensure_ascii=False),
-        encoding="utf-8",
-    )
+    tmp_path = plan_path.with_suffix(".tmp")
+    try:
+        tmp_path.write_text(
+            json.dumps(plan, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        tmp_path.replace(plan_path)
+    except OSError as e:
+        logger.error("Failed to write plan file: %s", e)
+        try:
+            tmp_path.unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise
     logger.info("Saved plan to %s", plan_path)
 
     # Step 12: Send Slack notification
@@ -324,6 +336,43 @@ def generate_plan(
         logger.error("Failed to send Slack notification: %s", e)
 
     return plan
+
+
+def _validate_plan_structure(plan: object) -> None:
+    """Validate that the Claude-generated plan has the expected structure.
+
+    Checks that plan is a dict with non-empty "blog_posts" and "pins" lists.
+    Raises ValueError immediately if the structure is wrong, rather than
+    silently producing an empty week via .get() defaults.
+
+    Args:
+        plan: The parsed plan object from Claude's response.
+
+    Raises:
+        ValueError: If the plan structure is invalid.
+    """
+    if not isinstance(plan, dict):
+        raise ValueError(
+            f"Plan must be a dict, got {type(plan).__name__}. "
+            "Claude may have returned an unexpected response format."
+        )
+
+    missing = []
+    if "blog_posts" not in plan:
+        missing.append("blog_posts")
+    elif not isinstance(plan["blog_posts"], list) or not plan["blog_posts"]:
+        missing.append("blog_posts (must be a non-empty list)")
+
+    if "pins" not in plan:
+        missing.append("pins")
+    elif not isinstance(plan["pins"], list) or not plan["pins"]:
+        missing.append("pins (must be a non-empty list)")
+
+    if missing:
+        raise ValueError(
+            f"Plan is missing required fields: {', '.join(missing)}. "
+            "Claude may have returned different key names or an empty plan."
+        )
 
 
 def _build_reprompt_context(violations: list[dict]) -> str:

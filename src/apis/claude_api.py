@@ -31,7 +31,9 @@ from typing import Optional
 
 import anthropic
 
-from src.apis.openai_chat_api import call_gpt5_mini
+import requests
+
+from src.apis.openai_chat_api import OpenAIChatAPIError, call_gpt5_mini
 from src.paths import PROMPTS_DIR, STRATEGY_DIR
 from src.config import (
     CLAUDE_MODEL_ROUTINE as MODEL_ROUTINE,
@@ -251,7 +253,7 @@ class ClaudeAPI:
             try:
                 response_text = call_gpt5_mini(prompt=prompt, system=system, max_tokens=4096, temperature=0.7, timeout=90)
                 batch_results = self._parse_json_response(response_text, "pin copy batch")
-            except Exception as e:
+            except (OpenAIChatAPIError, ValueError, requests.HTTPError) as e:
                 logger.warning("GPT-5 Mini failed for pin copy batch %d-%d, falling back to Claude Sonnet: %s", i + 1, i + len(batch), str(e))
                 response_text = self._call_api(prompt=prompt, system=system, model=MODEL_ROUTINE, max_tokens=4096, temperature=0.7)
                 batch_results = self._parse_json_response(response_text, "pin copy batch")

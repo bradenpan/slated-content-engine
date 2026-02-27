@@ -277,8 +277,8 @@ def post_pins(
                         status="failed",
                         error_message=str(e),
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning("Failed to update Sheet with failure status for %s: %s", pin_id, e)
 
             # Record failure count for permanent failure detection
             _record_failure(pin_id, str(e))
@@ -661,8 +661,8 @@ def _record_failure(pin_id: str, error_msg: str) -> None:
                 f"Pin {pin_id} has failed {pin_failures['count']} times and needs manual investigation.\n"
                 f"Last error: {error_msg[:300]}",
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error("Failed to send permanent failure alert for %s: %s", pin_id, e)
 
 
 if __name__ == "__main__":

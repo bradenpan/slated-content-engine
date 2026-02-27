@@ -263,7 +263,23 @@ class BlogDeployer:
         except Exception as e:
             logger.error("Failed to update Sheet with live URLs: %s", e)
 
-        # Step 5: Create pin schedule
+        # Step 5: Create pin schedule (exclude pins for blogs that failed verification)
+        failed_slugs = {
+            slug for slug, ok in results["verification_results"].items()
+            if not ok
+        }
+        if failed_slugs:
+            original_count = len(approved_pins)
+            approved_pins = [
+                pin for pin in approved_pins
+                if pin.get("blog_slug", pin.get("slug", "")) not in failed_slugs
+            ]
+            filtered_count = original_count - len(approved_pins)
+            if filtered_count:
+                logger.warning(
+                    "Excluded %d pins linked to blogs that failed URL verification: %s",
+                    filtered_count, failed_slugs,
+                )
         if approved_pins:
             results["pins_scheduled"] = self._create_pin_schedule(
                 approved_pins, plan_path=None

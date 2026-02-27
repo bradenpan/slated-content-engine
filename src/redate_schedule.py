@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from src.paths import DATA_DIR
+from src.utils.plan_utils import save_pin_schedule
 
 
 def redate(start_date: str, schedule_path: Path = None, num_days: int = 7) -> None:
@@ -37,7 +38,7 @@ def redate(start_date: str, schedule_path: Path = None, num_days: int = 7) -> No
         pin["scheduled_date"] = (start + timedelta(days=day_offset)).isoformat()
         pin["scheduled_slot"] = slots[i % len(slots)]
 
-    path.write_text(json.dumps(schedule, indent=2), encoding="utf-8")
+    save_pin_schedule(schedule, path)
     print(f"Redated {len(schedule)} pins across {num_days} days starting {start}")
     for d in range(num_days):
         day = start + timedelta(days=d)

@@ -119,13 +119,19 @@ def publish() -> None:
                             f"https://drive.google.com/uc?id={_fid}&export=download"
                         )
         try:
-            pin_results_path.write_text(
+            tmp = pin_results_path.with_suffix(".tmp")
+            tmp.write_text(
                 json.dumps(pin_data, indent=2, ensure_ascii=False),
                 encoding="utf-8",
             )
+            tmp.replace(pin_results_path)
             logger.info("Saved %s URLs back to pin-generation-results.json", upload_backend)
         except OSError as e:
             logger.error("Failed to save image URLs to pin results: %s", e)
+            try:
+                tmp.unlink(missing_ok=True)
+            except OSError:
+                pass
 
     # Upload blog hero images for Sheet preview
     if upload_backend == "gcs" and gcs.client and blog_results:
@@ -185,6 +191,7 @@ def publish() -> None:
     )
 
     # Write to Google Sheets with IMAGE() formulas
+    sheets_write_ok = True
     try:
         sheets = SheetsAPI()
         sheets.write_content_queue(
@@ -226,14 +233,23 @@ def publish() -> None:
 
     except Exception as e:
         logger.error("Failed to write Content Queue to Google Sheets: %s", e)
+        sheets_write_ok = False
 
     # Send Slack notification
     try:
         slack = SlackNotify()
-        slack.notify_content_ready(
-            num_pins=len(generated_pins),
-            num_blog_posts=len(blog_entries),
-        )
+        if sheets_write_ok:
+            slack.notify_content_ready(
+                num_pins=len(generated_pins),
+                num_blog_posts=len(blog_entries),
+            )
+        else:
+            slack.notify(
+                "Content Queue write failed — check workflow logs. "
+                f"Generated {len(generated_pins)} pins and "
+                f"{len(blog_entries)} blog posts, but the Sheet was not updated.",
+                level="warning",
+            )
         if upload_failed:
             slack.notify(
                 "Warning: Image upload failed (GCS + Drive). Image previews will NOT "

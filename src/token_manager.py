@@ -388,11 +388,17 @@ class TokenManager:
         self.token_store_path.parent.mkdir(parents=True, exist_ok=True)
 
         try:
-            with open(self.token_store_path, "w", encoding="utf-8") as f:
+            tmp = self.token_store_path.with_suffix(".tmp")
+            with open(tmp, "w", encoding="utf-8") as f:
                 json.dump(token_data, f, indent=2)
+            tmp.replace(self.token_store_path)
             logger.info("Tokens saved to %s", self.token_store_path)
         except OSError as e:
             logger.error("Failed to save tokens to file: %s", e)
+            try:
+                tmp.unlink(missing_ok=True)
+            except OSError:
+                pass
             # Don't raise -- the in-memory token data is still valid for this run
 
 

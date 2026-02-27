@@ -436,6 +436,15 @@ class BlogGenerator:
         for w in fm_warnings:
             logger.warning("Post %s: %s", spec.get("post_id"), w)
 
+        # Hard-fail on critical missing frontmatter that would break deployment
+        for critical_field in ("title", "slug", "description"):
+            value = frontmatter.get(critical_field)
+            if not value or (isinstance(value, str) and not value.strip()):
+                raise BlogGeneratorError(
+                    f"Post {spec.get('post_id')} is missing required "
+                    f"frontmatter field: {critical_field}"
+                )
+
         # Validate schema fields for recipe posts
         if post_type == "recipe":
             schema_warnings = self.validate_schema_fields(frontmatter)

@@ -55,8 +55,7 @@ def call_gpt5_mini(
 
     Raises:
         ValueError: If OPENAI_API_KEY is not set.
-        requests.HTTPError: On non-retryable HTTP errors.
-        OpenAIChatAPIError: On unexpected failures.
+        OpenAIChatAPIError: On HTTP errors or unexpected failures.
     """
     openai_key = os.environ.get("OPENAI_API_KEY", "")
     if not openai_key:
@@ -121,7 +120,12 @@ def call_gpt5_mini(
     if response is None:
         raise OpenAIChatAPIError("OpenAI API request failed: no response received")
 
-    response.raise_for_status()
+    try:
+        response.raise_for_status()
+    except requests.HTTPError as e:
+        raise OpenAIChatAPIError(
+            f"OpenAI API HTTP error {response.status_code}: {e}"
+        ) from e
 
     data = response.json()
     choices = data.get("choices")

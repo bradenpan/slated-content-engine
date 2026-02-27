@@ -142,15 +142,16 @@ class SheetsAPI:
     def _validate_headers(self, tab_name: str, expected_headers: list[str]) -> None:
         """Validate that row 1 of a tab matches expected column headers.
 
-        Logs a warning if headers don't match. Does NOT raise an exception.
-        Results are cached so validation runs at most once per tab per session.
-
-        # TODO: Once confirmed working in production, this can be upgraded to
-        # raise ValueError on mismatch to prevent silent data corruption.
+        Raises SheetsAPIError if headers don't match, preventing silent data
+        corruption from manual Sheet edits. Results are cached so validation
+        runs at most once per tab per session.
 
         Args:
             tab_name: Sheet tab name.
             expected_headers: List of expected column header strings.
+
+        Raises:
+            SheetsAPIError: If actual headers don't match expected headers.
         """
         if tab_name in self._validated_tabs:
             return
@@ -167,10 +168,10 @@ class SheetsAPI:
             return
 
         if list(actual) != list(expected_headers):
-            logger.warning(
-                "Header mismatch in '%s'! Expected %s, got %s. "
-                "Column indices may be wrong — check for data corruption.",
-                tab_name, expected_headers, actual,
+            raise SheetsAPIError(
+                f"Header mismatch in '{tab_name}'! Expected {expected_headers}, "
+                f"got {actual}. Column indices may be wrong — check for manual "
+                f"Sheet edits or data corruption."
             )
         else:
             logger.debug("Header validation passed for '%s'.", tab_name)
@@ -808,10 +809,11 @@ class SheetsAPI:
         value_input_option: str = "RAW",
     ) -> None:
         """
-        Clear a tab and write new data.
+        Overwrite a tab with new data, then clear any leftover rows.
 
-        If the write fails after clearing, retries once. If the retry also
-        fails, logs which tab was affected for manual recovery.
+        Uses write-then-clear to avoid a data loss window: the `update` call
+        overwrites rows in-place, so if the subsequent clear of excess rows
+        fails, the new data is already persisted.
 
         Args:
             tab_name: Sheet tab name.
@@ -819,17 +821,10 @@ class SheetsAPI:
             value_input_option: "RAW" for literal values, "USER_ENTERED"
                 to interpret formulas like =IMAGE().
         """
-        range_str = f"'{tab_name}'"
-
         try:
-            # Clear existing content
-            self.sheets.values().clear(
-                spreadsheetId=self.sheet_id,
-                range=range_str,
-                body={},
-            ).execute()
-
-            # Write new content (with one retry on failure)
+            # Step 1: Write new data (overwrites existing rows in-place).
+            # With one retry on failure — old data remains intact until
+            # the write succeeds.
             if rows:
                 write_error = None
                 for write_attempt in range(2):
@@ -851,13 +846,32 @@ class SheetsAPI:
 
                 if write_error:
                     logger.error(
-                        "Write to '%s' failed after retry. Tab may be empty — "
-                        "manual recovery needed. Error: %s",
+                        "Write to '%s' failed after retry. Old data preserved. "
+                        "Error: %s",
                         tab_name, write_error,
                     )
                     raise SheetsAPIError(
                         f"Failed to write to '{tab_name}' after retry: {write_error}"
                     ) from write_error
+
+            # Step 2: Clear rows beyond the new data length.
+            # If this fails, the tab has the new data plus stale trailing
+            # rows — much better than the old pattern where a failed write
+            # left the tab completely empty.
+            new_row_count = len(rows)
+            clear_start = new_row_count + 1  # 1-based row index
+            try:
+                self.sheets.values().clear(
+                    spreadsheetId=self.sheet_id,
+                    range=f"'{tab_name}'!A{clear_start}:ZZ",
+                    body={},
+                ).execute()
+            except Exception as e:
+                logger.warning(
+                    "Failed to clear excess rows in '%s' beyond row %d: %s. "
+                    "Stale trailing rows may remain.",
+                    tab_name, new_row_count, e,
+                )
 
             logger.debug("Wrote %d rows to '%s'.", len(rows), tab_name)
 

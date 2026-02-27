@@ -204,11 +204,20 @@ def regen_plan(
         offending_post_ids, all_offending_pin_ids,
     )
 
-    # Step 7: Save updated plan JSON (overwrite the same file)
-    plan_path.write_text(
-        json.dumps(updated_plan, indent=2, ensure_ascii=False),
-        encoding="utf-8",
-    )
+    # Step 7: Save updated plan JSON (atomic write via temp+rename)
+    tmp = plan_path.with_suffix(".tmp")
+    try:
+        tmp.write_text(
+            json.dumps(updated_plan, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        tmp.replace(plan_path)
+    except OSError:
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise
     logger.info("Saved updated plan to %s", plan_path)
 
     # Step 8: Re-write Weekly Review sheet with updated plan, preserving B3/B4

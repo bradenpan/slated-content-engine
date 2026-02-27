@@ -164,8 +164,8 @@ def regen(
                         notes="Regen failed — blog data not found in results JSON",
                         feedback="",
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning("Failed to update Sheet for %s: %s", item_id, e)
                 regen_results.append({
                     "pin_id": item_id,
                     "type": item_type,
@@ -195,8 +195,8 @@ def regen(
                         notes=f"Blog regen failed — {str(e)[:100]}",
                         feedback="",
                     )
-                except Exception:
-                    pass
+                except Exception as e2:
+                    logger.warning("Failed to update Sheet for %s: %s", item_id, e2)
                 regen_results.append({
                     "pin_id": item_id,
                     "type": item_type,
@@ -265,8 +265,8 @@ def regen(
                     notes="Regen failed — pin data not found in results JSON",
                     feedback="",
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("Failed to update Sheet for %s: %s", item_id, e)
             regen_results.append({
                 "pin_id": item_id,
                 "type": item_type,
@@ -311,8 +311,8 @@ def regen(
                     notes=f"Regen failed — {str(e)[:100]}",
                     feedback="",
                 )
-            except Exception:
-                pass
+            except Exception as e2:
+                logger.warning("Failed to update Sheet for %s: %s", item_id, e2)
             regen_results.append({
                 "pin_id": item_id,
                 "type": item_type,
@@ -376,15 +376,21 @@ def regen(
             "warning": warning,
         })
 
-    # Step 6: Save updated pin results
+    # Step 6: Save updated pin results (atomic write via temp+rename)
     try:
-        pin_results_path.write_text(
+        tmp = pin_results_path.with_suffix(".tmp")
+        tmp.write_text(
             json.dumps(pin_results, indent=2, ensure_ascii=False),
             encoding="utf-8",
         )
+        tmp.replace(pin_results_path)
         logger.info("Saved updated pin generation results")
     except OSError as e:
         logger.error("Failed to save pin generation results: %s", e)
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            pass
 
     # Step 6b: Update pin-schedule.json with regenerated data
     regen_pin_ids = {r["pin_id"] for r in regen_results if r["type"] == "pin" and not r.get("error")}
@@ -458,7 +464,7 @@ def _regen_item(
     image_gen_api: ImageGenAPI,
     assembler: PinAssembler,
     gcs: GcsAPI,
-    drive: DriveAPI,
+    drive: Optional[DriveAPI],
     used_image_ids: list[str],
     brand_voice: str,
     keyword_targets: dict,
@@ -572,7 +578,7 @@ def _regen_item(
         # Fall back to Drive download
         if not downloaded and image_url:
             drive_file_id = extract_drive_file_id(image_url)
-            if drive_file_id:
+            if drive_file_id and drive is not None:
                 try:
                     hero_path = PIN_OUTPUT_DIR / f"{pin_id}-hero-downloaded.png"
                     drive.download_image(drive_file_id, hero_path)
