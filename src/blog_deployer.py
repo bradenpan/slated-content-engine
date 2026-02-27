@@ -503,6 +503,10 @@ class BlogDeployer:
                     hero_image_path = candidate
                     break
 
+            if hero_image_path:
+                from src.image_cleaner import clean_image
+                clean_image(hero_image_path)
+
             # Update heroImage frontmatter to match actual image extension
             if hero_image_path:
                 actual_ext = Path(hero_image_path).suffix
@@ -614,6 +618,10 @@ class BlogDeployer:
 
             if not hero_image_path:
                 logger.warning("No hero image found for blog %s", slug)
+
+            if hero_image_path:
+                from src.image_cleaner import clean_image
+                clean_image(hero_image_path)
 
             # Update heroImage frontmatter to match actual image extension
             if hero_image_path:

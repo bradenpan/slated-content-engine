@@ -504,6 +504,10 @@ class PinAssembler:
             # Step 6: Optimize file size
             self._optimize_image(output_path)
 
+            # Step 7: Strip AI metadata and apply anti-detection post-processing
+            from src.image_cleaner import clean_image
+            clean_image(output_path)
+
             logger.info("Pin rendered successfully: %s (%d bytes)", output_path, output_path.stat().st_size)
             return output_path
 
@@ -710,6 +714,8 @@ class PinAssembler:
 
             if output_path.exists():
                 self._optimize_image(output_path)
+                from src.image_cleaner import clean_image
+                clean_image(output_path)
                 results.append(output_path)
             else:
                 results.append(None)

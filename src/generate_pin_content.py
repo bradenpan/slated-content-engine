@@ -26,6 +26,7 @@ from pathlib import Path
 from typing import Optional
 from src.apis.claude_api import ClaudeAPI
 from src.apis.image_gen import ImageGenAPI
+from src.image_cleaner import clean_image
 from src.pin_assembler import PinAssembler
 
 logger = logging.getLogger(__name__)
@@ -742,6 +743,9 @@ def _source_ai_image(
         output_path=output_path,
         style="natural",
     )
+
+    # Strip AI metadata and apply anti-detection post-processing
+    clean_image(generated_path)
 
     # Use a hash of the prompt as the image ID for tracking
     prompt_hash = hashlib.md5(image_prompt.encode()).hexdigest()[:12]

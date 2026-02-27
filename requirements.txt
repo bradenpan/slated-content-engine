@@ -8,6 +8,7 @@ requests>=2.31.0               # HTTP client for Pinterest v5 API
 
 # --- Image Processing ---
 Pillow>=10.0.0                 # Image manipulation, validation, optimization
+numpy>=1.24.0,<3.0             # Image post-processing (noise generation for anti-detection)
 
 # --- Image Generation ---
 openai>=1.30.0                 # OpenAI API (DALL-E image generation)
