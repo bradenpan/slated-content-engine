@@ -60,6 +60,8 @@ Slated's Pinterest voice is the voice of a friend who has already figured out th
 - **Middle sentences:** Secondary keywords woven into genuinely useful context about the content. Describe what the reader will find.
 - **Final sentence:** What the user gets if they click — the promise of the blog post. No CTA language ("click here," "check it out," "download now").
 - Length: **Always use 250-500 characters.** Longer descriptions provide more keyword signals. Never submit a short 1-sentence description.
+- **Sentence variation:** Do not start 3+ sentences with the same word ("This," "A," "The"). Vary openers.
+- **Contractions:** Use at least one contraction per description ("it's," "you'll," "doesn't"). Uncontracted pin descriptions read as bot-generated.
 - **No hashtags.** Deprecated on Pinterest. Waste of space.
 - **No calls to action.** Pinterest penalizes engagement bait ("save this pin," "click the link," "follow for more").
 - **No emojis.** They reduce perceived quality in search results.
@@ -421,6 +423,11 @@ Do not use language that attracts excluded personas:
 - Budget Optimizer: "cheap," "budget," "save money," "frugal," "cheapest"
 - Perfectionist: "gourmet," "authentic," "from scratch," "restaurant quality," "artisan"
 - Weight loss: "weight loss," "diet plan," "calorie counting," "lose weight"
+
+### AI-Detection Vocabulary
+Avoid in pin titles and descriptions — they flag as AI-generated:
+- "delve," "navigate," "landscape," "leverage," "elevate," "unlock," "harness," "empower," "seamlessly," "multifaceted"
+- "In conclusion," "It's worth noting," "comprehensive"
 
 ---
 ## PROCESS

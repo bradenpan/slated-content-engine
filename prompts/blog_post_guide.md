@@ -105,6 +105,34 @@ Make it tangible and relatable.}
 - **Concrete scenarios.** Use specific, recognizable family dinner situations. "When your teenager announces they're vegetarian on a Sunday night" is better than "when dietary needs change."
 - **Empathetic tone.** Acknowledge the struggle before presenting the solution. Never blame the reader for the problem.
 
+### Writing Style (Natural Voice)
+
+Google's December 2025 core update penalizes content that reads as unedited AI output. These rules ensure the text reads as naturally written.
+
+**Sentence variation:**
+- Vary sentence length. Mix short punchy sentences (5-8 words) with longer ones (20-30 words). Never write 4+ medium-length sentences in a row.
+- Start at least 2 paragraphs per post with something other than the grammatical subject — a prepositional phrase, a dependent clause, a question, or a single-word transition.
+
+**Voice texture:**
+- Use contractions naturally throughout — "it's," "you'll," "doesn't," "won't," "here's." Uncontracted prose is an AI signal.
+- Use occasional parenthetical asides (like this) for informal commentary.
+
+**Specificity over generality:**
+- Use specific quantities, ages, and scenarios instead of vague language. "Your 8-year-old" not "your child." "28 minutes" not "under 30 minutes." "Tuesday night after soccer practice" not "a busy weeknight."
+- Reference concrete, recognizable situations a generic model wouldn't invent.
+
+**Structure variation:**
+- Do NOT start every section the same way. If Section 1 opens with a statement, Section 2 should open with a question, scenario, or bold claim.
+- Vary paragraph lengths: include some 1-sentence paragraphs and some 3-4 sentence paragraphs.
+
+### Experience Signals (E-E-A-T)
+
+Google rewards content that demonstrates first-hand experience. Include these signals naturally:
+
+- **First-person experience markers:** Use phrases like "what I've found works," "after trying both," "the approach that actually sticks" — at least 2 per post. Not in every paragraph, but enough to sound experienced.
+- **Honest qualifiers:** Include realistic caveats: "this won't work for every family," "your mileage may vary," "the exception is..." Universally perfect advice reads as AI.
+- **Concrete examples by name:** When mentioning tools, stores, or products, use real names. "A 12-inch cast iron skillet" not "a large pan." "Costco rotisserie chicken" not "pre-cooked chicken." Specificity signals lived experience.
+
 ### Pillar-Specific Framing
 
 **Pillar 1 (Your Whole Week, Planned):**
@@ -142,9 +170,11 @@ Make it tangible and relatable.}
 2. **End-of-post CTA:** `<BlogCTA variant="end" pillar={N} />` after the final section.
 
 ### SEO
-- Title must include primary keyword. Use "How to" or actionable framing.
-- Meta description: 150-160 characters with primary keyword. Describe the problem solved.
+- Title must include primary keyword, ideally near the beginning. Use actionable framing ("How to," number + benefit).
+- Meta description: 150-160 characters with primary keyword. Describe the specific problem solved or value delivered.
 - Keywords: 3-5 terms including primary and secondary keywords.
+- **Semantic coverage:** Use synonyms and related terms for the primary keyword naturally throughout the body. If the primary keyword is "weekly meal plan," also work in "dinner plan," "meal prep," "weekly menu," or "dinner rotation" where they fit — once or twice each, not stuffed. This signals topical depth to Google without keyword repetition.
+- **Header keywords:** Include the primary keyword or a close variant in at least one H2 heading. Use secondary keywords in other H2s where natural.
 
 ---
 ## EXCLUDED LANGUAGE
@@ -155,3 +185,15 @@ Make it tangible and relatable.}
 - "baby food," "baby led weaning"
 - No excessive superlatives or exclamation marks
 - No "you should" / "you need to" preachy framing
+
+### AI-Detection Vocabulary (never use)
+These words and phrases are flagged by AI content detectors. Their presence marks content as machine-generated:
+- "delve," "delve into," "dive into," "navigate," "landscape," "leverage," "multifaceted"
+- "moreover," "furthermore," "additionally," "it's worth noting," "it's important to note"
+- "in today's [adjective] world," "in this day and age," "in the realm of"
+- "game-changer," "unlock," "harness," "elevate," "empower," "foster"
+- "seamlessly," "effortlessly," "robust," "synergy," "tapestry"
+- "In conclusion," "To sum up," "All in all," "In summary"
+- "Whether you're a [X] or a [Y]" framing
+- Starting a sentence with "Remember," as a transition
+- "This comprehensive guide," "this article will," "let's explore"

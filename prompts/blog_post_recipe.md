@@ -122,6 +122,21 @@ and make-ahead tips where relevant.}
 - **Family-tested framing.** Use language like "your whole family will eat this," "kid-approved," "everyone comes back for seconds."
 - **"This could be your Tuesday" positioning.** Frame the recipe as one night in a planned week, not an isolated project.
 
+### Writing Style (Natural Voice)
+
+Google's December 2025 core update penalizes content that reads as unedited AI output.
+
+- Use contractions naturally throughout. "It's," "you'll," "doesn't." Formal prose reads as AI.
+- Vary sentence length. Mix short fragments with longer sentences. Not every sentence should be the same rhythm.
+- Be specific: "golden-brown in about 4 minutes" not "cook until done." Specificity signals experience.
+- The intro and "Why This Recipe Works" sections are the most AI-detectable parts. Make them sound like a real person talking — not a product description.
+
+### Experience Signals (E-E-A-T)
+
+- Write as someone who has made this recipe repeatedly. Include the kind of tips only experience produces: "The garlic burns fast at this temp — have everything prepped before you start the pan."
+- Include at least one honest qualifier: "This reheats well, but the broccoli gets a little soft — your call."
+- Name real brands or specific items where natural: "a sheet of Reynolds parchment" not just "parchment paper."
+
 ### What NOT to Include
 - No "from scratch" or artisan framing. These are practical weeknight meals.
 - No diet/weight loss framing. No calorie counts, no "guilt-free" language.
@@ -135,9 +150,10 @@ and make-ahead tips where relevant.}
 
 ### SEO
 - Title must include the primary keyword and be specific (recipe name + time or benefit).
-- Meta description: 150-160 characters, includes primary keyword, describes the recipe.
+- Meta description: 150-160 characters, includes primary keyword, describes the recipe and why it works.
 - Keywords array: 3-5 terms including the primary and secondary keywords.
 - Ingredients and instructions in frontmatter enable Schema.org Recipe markup, which enables Rich Pins on Pinterest.
+- **Semantic coverage:** Use related terms for the primary keyword naturally in the intro and "Why This Recipe Works" sections. If the primary keyword is "easy chicken dinner," also use "quick chicken recipe," "weeknight chicken," or "simple chicken meal" where natural.
 
 ---
 ## FEW-SHOT EXAMPLE
@@ -238,3 +254,15 @@ Never use these terms or framings:
 - "baby food," "baby led weaning" (wrong audience)
 - Excessive exclamation marks or all-caps emphasis
 - "THE BEST [recipe] EVER" or similar hyperbole
+
+### AI-Detection Vocabulary (never use)
+These words and phrases are flagged by AI content detectors. Their presence marks content as machine-generated:
+- "delve," "delve into," "dive into," "navigate," "landscape," "leverage," "multifaceted"
+- "moreover," "furthermore," "additionally," "it's worth noting," "it's important to note"
+- "in today's [adjective] world," "in this day and age," "in the realm of"
+- "game-changer," "unlock," "harness," "elevate," "empower," "foster"
+- "seamlessly," "effortlessly," "robust," "synergy," "tapestry"
+- "In conclusion," "To sum up," "All in all," "In summary"
+- "Whether you're a [X] or a [Y]" framing
+- Starting a sentence with "Remember," as a transition
+- "This comprehensive guide," "this article will," "let's explore"

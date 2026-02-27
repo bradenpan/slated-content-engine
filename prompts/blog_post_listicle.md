@@ -161,6 +161,34 @@ Include specific, actionable detail.}
 - **If recipe entries:** Include a brief but complete ingredient list and instructions. Not as detailed as a standalone recipe post, but enough to be useful.
 - **If non-recipe entries:** Include specific, actionable detail. "Plan on Sunday" is vague. "Spend 15 minutes Sunday evening choosing 5 recipes and building a single grocery list" is actionable.
 
+### Writing Style (Natural Voice)
+
+Google's December 2025 core update penalizes content that reads as unedited AI output. These rules ensure the text reads as naturally written.
+
+**Sentence variation:**
+- Vary sentence length. Mix short punchy sentences (5-8 words) with longer ones (20-30 words). Never write 4+ medium-length sentences in a row.
+- Start at least 2 paragraphs per post with something other than the grammatical subject — a prepositional phrase, a dependent clause, a question, or a single-word transition.
+
+**Voice texture:**
+- Use contractions naturally throughout — "it's," "you'll," "doesn't," "won't," "here's." Uncontracted prose is an AI signal.
+- Use occasional parenthetical asides (like this) for informal commentary.
+
+**Specificity over generality:**
+- Use specific quantities, ages, and scenarios instead of vague language. "Your 8-year-old" not "your child." "28 minutes" not "under 30 minutes." "Tuesday night after soccer practice" not "a busy weeknight."
+- Reference concrete, recognizable situations a generic model wouldn't invent.
+
+**Structure variation:**
+- Do NOT start every section the same way. If Section 1 opens with a statement, Section 2 should open with a question, scenario, or bold claim.
+- Vary paragraph lengths: include some 1-sentence paragraphs and some 3-4 sentence paragraphs.
+
+### Experience Signals (E-E-A-T)
+
+Google rewards content that demonstrates first-hand experience. Include these signals naturally:
+
+- **First-person experience markers:** Use phrases like "what I've found works," "after trying both," "the approach that actually sticks" — at least 2 per post. Not in every paragraph, but enough to sound experienced.
+- **Honest qualifiers:** Include realistic caveats: "this won't work for every family," "your mileage may vary," "the exception is..." Universally perfect advice reads as AI.
+- **Concrete examples by name:** When mentioning tools, stores, or products, use real names. "A 12-inch cast iron skillet" not "a large pan." "Costco rotisserie chicken" not "pre-cooked chicken." Specificity signals lived experience.
+
 ### Recipe Listicle Specifics (include_recipes=true)
 - Each recipe entry includes abbreviated ingredients and instructions.
 - Include prep/cook time and servings for Schema.org compatibility.
@@ -187,8 +215,10 @@ Include specific, actionable detail.}
 
 ### SEO
 - Title: Number + primary keyword + benefit hook.
-- Meta description: Include the number, primary keyword, and what the reader gets.
+- Meta description: Include the number, primary keyword, and what the reader gets. 150-160 characters.
 - Keywords: 3-5 terms.
+- **Semantic coverage:** Use synonyms and related terms for the primary keyword naturally throughout the body — once or twice each, not stuffed. If the primary keyword is "easy weeknight dinners," also work in "quick family meals," "simple dinner ideas," or "fast weeknight recipes" where they fit. This signals topical depth without keyword repetition.
+- **Header keywords:** Include the primary keyword or a close variant in at least one H2 heading.
 
 ---
 ## EXCLUDED LANGUAGE
@@ -198,3 +228,15 @@ Include specific, actionable detail.}
 - Weight loss language: "diet plan," "calorie counting," "guilt-free"
 - Clickbait: "You won't believe," "number X will shock you," all-caps emphasis
 - Excessive exclamation marks
+
+### AI-Detection Vocabulary (never use)
+These words and phrases are flagged by AI content detectors. Their presence marks content as machine-generated:
+- "delve," "delve into," "dive into," "navigate," "landscape," "leverage," "multifaceted"
+- "moreover," "furthermore," "additionally," "it's worth noting," "it's important to note"
+- "in today's [adjective] world," "in this day and age," "in the realm of"
+- "game-changer," "unlock," "harness," "elevate," "empower," "foster"
+- "seamlessly," "effortlessly," "robust," "synergy," "tapestry"
+- "In conclusion," "To sum up," "All in all," "In summary"
+- "Whether you're a [X] or a [Y]" framing
+- Starting a sentence with "Remember," as a transition
+- "This comprehensive guide," "this article will," "let's explore"

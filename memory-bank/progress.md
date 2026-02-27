@@ -1673,3 +1673,86 @@ All reports in `architecture/reviews/`:
 ### Status
 
 Complete. All fixes applied and verified.
+
+---
+
+## Phase 8: Anti-AI Detection & SEO Readiness for Content Prompts
+
+**Date:** 2026-02-27
+
+### Problem
+
+All content generation prompts (blog posts, pin copy, image prompts) had zero instructions addressing AI content detection or SEO readiness of the generated text. Google's December 2025 core update penalizes content that reads as unedited AI output (87% negative impact on mass-produced AI content), and the pipeline's prompts contained no countermeasures for the two primary detection signals: low perplexity (predictable word choices) and low burstiness (uniform sentence structure). Additionally, prompts lacked E-E-A-T experience signals and semantic keyword coverage.
+
+### Research Basis
+
+Two comprehensive research reports informed the changes:
+- `seo-deep-dive.md` — Technical SEO, content strategy, E-E-A-T framework, Google's December 2025 core update analysis
+- `ai-content-detection-countermeasures.md` — How Google detects AI text/images, prompt engineering countermeasures, post-processing pipelines
+
+### What Was Changed
+
+**6 prompt files modified** with 4 categories of changes:
+
+#### 1. Writing Style (Natural Voice) — all 4 blog prompts
+
+Added anti-AI writing rules to CONTENT RULES sections:
+- **Sentence variation:** Mix short (5-8 word) and long (20-30 word) sentences; vary paragraph openers
+- **Voice texture:** Contractions throughout; occasional parenthetical asides
+- **Specificity over generality:** Concrete quantities, ages, scenarios instead of vague language
+- **Structure variation:** Different section openers; varied paragraph lengths
+- Recipe prompt gets a lighter version (4 bullets) matching its 600-800 word target
+
+#### 2. Experience Signals (E-E-A-T) — all 4 blog prompts
+
+Added instructions to include first-hand experience markers:
+- Guide/Listicle: First-person experience phrases, honest qualifiers, named brands/products
+- Recipe: Write as someone who has cooked it repeatedly; include experience-only tips
+- Weekly Plan: Recipe intros as lived experience; practical cooking tips from practice
+
+#### 3. Enhanced SEO Sections — all 4 blog prompts
+
+Added to existing SEO rules:
+- **Semantic coverage:** Use synonyms/related terms for primary keyword naturally throughout body
+- **Header keywords:** Include primary keyword variant in at least one H2 (where applicable)
+
+#### 4. AI-Detection Vocabulary Ban — 4 blog prompts + pin copy
+
+Banned ~30 words/phrases flagged by AI detectors:
+- "delve," "navigate," "landscape," "leverage," "multifaceted," "moreover," "furthermore," "additionally," "it's worth noting," "in today's [adjective] world," "game-changer," "unlock," "harness," "elevate," "seamlessly," "In conclusion," etc.
+- Pin copy gets a shorter list appropriate for 250-500 character descriptions
+
+#### 5. Pin Copy Natural Voice — pin_copy.md
+
+- Sentence variation rule (don't start 3+ sentences with same word)
+- Contraction requirement (at least one per description)
+
+#### 6. Image Metadata Note — image_prompt.md
+
+- POST-GENERATION NOTE about stripping EXIF/IPTC metadata from AI images
+- AI generators embed `trainedAlgorithmicMedia` tags that Google reads
+
+#### 7. Few-Shot Example Fixes — blog_post_weekly_plan.md
+
+- "Here is what is on the menu" → "Here's what's on the menu"
+- "That is your week" → "That's your week"
+
+### Files Changed
+
+| File | Changes |
+|------|---------|
+| `prompts/blog_post_guide.md` | Writing Style, E-E-A-T, enhanced SEO, AI vocab ban |
+| `prompts/blog_post_listicle.md` | Writing Style, E-E-A-T, enhanced SEO, AI vocab ban |
+| `prompts/blog_post_recipe.md` | Writing Style (short), E-E-A-T (short), enhanced SEO, AI vocab ban |
+| `prompts/blog_post_weekly_plan.md` | Writing Style, E-E-A-T, enhanced SEO, AI vocab ban, few-shot fixes |
+| `prompts/pin_copy.md` | Sentence variation, contractions, AI vocab ban (short) |
+| `prompts/image_prompt.md` | Post-generation metadata stripping note |
+
+### Review
+
+Automated review agent verified all 7 checks PASS:
+- Structural integrity, cross-prompt consistency, no contradictions with existing rules, pin copy additions, image prompt addition, few-shot contractions, pipeline compatibility (no new template variables, output formats unchanged)
+
+### Status
+
+Complete. All changes applied and verified.

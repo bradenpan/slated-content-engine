@@ -195,6 +195,32 @@ The 5 recipes must form a cohesive, realistic weekly dinner plan:
 - Realistic prep and cook times. If prep is 10 minutes and cook is 20 minutes, total is 30 minutes.
 - All recipes should serve 4 (standard family serving).
 
+### Writing Style (Natural Voice)
+
+Google's December 2025 core update penalizes content that reads as unedited AI output. These rules ensure the text reads as naturally written.
+
+**Sentence variation:**
+- Vary sentence length. Mix short punchy sentences (5-8 words) with longer ones (20-30 words). Never write 4+ medium-length sentences in a row.
+- Start at least 2 paragraphs per post with something other than the grammatical subject — a prepositional phrase, a dependent clause, a question, or a single-word transition.
+
+**Voice texture:**
+- Use contractions naturally throughout — "it's," "you'll," "doesn't," "won't," "here's." Uncontracted prose is an AI signal.
+- Use occasional parenthetical asides (like this) for informal commentary.
+
+**Specificity over generality:**
+- Use specific quantities, ages, and scenarios instead of vague language. "Your 8-year-old" not "your child." "28 minutes" not "under 30 minutes." "Tuesday night after soccer practice" not "a busy weeknight."
+- Reference concrete, recognizable situations a generic model wouldn't invent.
+
+**Structure variation:**
+- Do NOT start every section the same way. If Section 1 opens with a statement, Section 2 should open with a question, scenario, or bold claim.
+- Vary paragraph lengths: include some 1-sentence paragraphs and some 3-4 sentence paragraphs.
+
+### Experience Signals (E-E-A-T)
+
+- Write each recipe intro as someone who has cooked this meal for their family multiple times. "This is one of those dinners that just works" reads human; "This recipe is a great option for families" reads AI.
+- Include at least 1 practical cooking tip per recipe that comes from experience, not from a recipe database. "Don't skip patting the chicken dry — the sear is everything."
+- The plan-level intro should read like someone sharing their actual week, not describing a theoretical plan.
+
 ### Combined Grocery List
 - De-duplicate ingredients across all 5 recipes. If 3 recipes use olive oil, list it once.
 - Combine quantities where possible ("3 lbs chicken total" not three separate chicken entries).
@@ -214,8 +240,10 @@ The 5 recipes must form a cohesive, realistic weekly dinner plan:
 
 ### SEO
 - Title: "This Week's Family Dinner Plan — [Theme]" format. Include "weekly meal plan" or "dinner plan."
-- Meta description: Emphasize completeness (5 recipes + grocery list).
+- Meta description: Emphasize completeness (5 recipes + grocery list). 150-160 characters.
 - Keywords: Lead with "weekly meal plan" + related planning keywords + recipe-specific keywords that recipe-pull pins will target.
+- **Semantic coverage:** Use related terms naturally throughout — "dinner plan," "meal prep," "weekly menu," "dinner schedule" as natural variants of "weekly meal plan." Each variant once or twice, not stuffed.
+- **Header keywords:** The recipe H2s naturally include recipe-specific keywords. Ensure the plan overview section includes the primary keyword or a variant.
 
 ---
 ## FEW-SHOT EXAMPLE (abbreviated)
@@ -270,7 +298,7 @@ recipes:
       - "Build bowls: rice base, seasoned beef, black beans, then toppings."
 ---
 
-Your whole week of dinners, planned. Five meals, none over 30 minutes, one grocery trip. Here is what is on the menu.
+Your whole week of dinners, planned. Five meals, none over 30 minutes, one grocery trip. Here's what's on the menu.
 
 ## This Week's Plan
 
@@ -360,7 +388,7 @@ The simplest dinner in the rotation. Brown the beef, season it, build your bowl.
 
 ---
 
-That is your week. Five dinners, no repeats, one list, done.
+That's your week. Five dinners, no repeats, one list, done.
 
 <BlogCTA variant="end" pillar={1} />
 ```
@@ -374,3 +402,15 @@ Never use these terms or framings:
 - "weight loss," "diet," "calorie counting," "guilt-free" (misaligned positioning)
 - No 800-word intro preambles. Get to the plan within the first 3 sentences.
 - Do not mention Slated or the app outside of CTA sections.
+
+### AI-Detection Vocabulary (never use)
+These words and phrases are flagged by AI content detectors. Their presence marks content as machine-generated:
+- "delve," "delve into," "dive into," "navigate," "landscape," "leverage," "multifaceted"
+- "moreover," "furthermore," "additionally," "it's worth noting," "it's important to note"
+- "in today's [adjective] world," "in this day and age," "in the realm of"
+- "game-changer," "unlock," "harness," "elevate," "empower," "foster"
+- "seamlessly," "effortlessly," "robust," "synergy," "tapestry"
+- "In conclusion," "To sum up," "All in all," "In summary"
+- "Whether you're a [X] or a [Y]" framing
+- Starting a sentence with "Remember," as a transition
+- "This comprehensive guide," "this article will," "let's explore"

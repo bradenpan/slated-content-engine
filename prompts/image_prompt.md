@@ -160,3 +160,12 @@ Generated image dimensions: **1024 x 1536 pixels** (portrait orientation, 2:3 ra
 Final pin dimensions after resize: **1000 x 1500 pixels**.
 
 Design the composition knowing the image will be in portrait orientation. The bottom 30-40% should have simpler composition to accommodate text overlay.
+
+---
+## POST-GENERATION NOTE
+
+The pipeline's image processing step should strip all EXIF/IPTC metadata from
+AI-generated images before deployment. AI generators embed metadata tags
+(IPTC DigitalSourceType: trainedAlgorithmicMedia) that explicitly identify the
+image as AI-generated. Google reads these tags. Stripping is handled in the
+image processing code, not in this prompt — noted here for completeness.
