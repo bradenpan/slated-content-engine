@@ -1,0 +1,17 @@
+name: Commit Data Files
+description: Commit and push data file changes
+inputs:
+  message:
+    description: Commit message
+    required: true
+runs:
+  using: composite
+  steps:
+    - run: |
+        git config user.name "pinterest-pipeline-bot"
+        git config user.email "bot@pinterest-pipeline.local"
+        git add data/ analysis/
+        git diff --staged --quiet || git commit -m "${{ inputs.message }}"
+        git pull --rebase
+        git push
+      shell: bash

@@ -42,14 +42,8 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
-
-      - name: Install dependencies
-        run: pip install -r requirements.txt
+      - name: Setup pipeline
+        uses: ./.github/actions/setup-pipeline
 
       - name: Refresh Pinterest token
         run: python -m src.token_manager
@@ -64,51 +58,16 @@ jobs:
 
       - name: Override pin schedule dates (test mode)
         if: ${{ github.event.inputs.override_pin_start_date != '' }}
-        run: |
-          python -c "
-          import json
-          from datetime import datetime, timedelta
-          from pathlib import Path
-
-          start = datetime.strptime('${{ github.event.inputs.override_pin_start_date }}', '%Y-%m-%d').date()
-          schedule_path = Path('data/pin-schedule.json')
-          if not schedule_path.exists():
-              print('No pin-schedule.json found, skipping redate')
-              exit(0)
-
-          schedule = json.loads(schedule_path.read_text())
-          slots = ['morning', 'afternoon', 'evening-1', 'evening-2']
-          num_days = 3  # spread across 3 days
-          total_slots = num_days * len(slots)
-
-          for i, pin in enumerate(schedule):
-              day_offset = (i // len(slots)) % num_days
-              slot_idx = i % len(slots)
-              pin['scheduled_date'] = (start + timedelta(days=day_offset)).isoformat()
-              pin['scheduled_slot'] = slots[slot_idx]
-
-          schedule_path.write_text(json.dumps(schedule, indent=2))
-          print(f'Redated {len(schedule)} pins across {num_days} days starting {start}')
-          for d in range(num_days):
-              day = start + timedelta(days=d)
-              day_pins = [p for p in schedule if p['scheduled_date'] == day.isoformat()]
-              print(f'  {day}: {len(day_pins)} pins')
-          "
+        run: python -m src.redate_schedule ${{ github.event.inputs.override_pin_start_date }}
 
       - name: Commit updated data files
-        run: |
-          git config user.name "pinterest-pipeline-bot"
-          git config user.email "bot@pinterest-pipeline.local"
-          git add data/ analysis/
-          git diff --staged --quiet || git commit -m "chore: production deploy + pin schedule [skip ci]"
-          git pull --rebase
-          git push
+        uses: ./.github/actions/commit-data
+        with:
+          message: "chore: production deploy + pin schedule [skip ci]"
 
       - name: Notify failure
         if: failure()
-        run: |
-          python -c "
-          from src.apis.slack_notify import SlackNotify
-          notifier = SlackNotify()
-          notifier.notify_failure('${{ github.workflow }}', 'Production promotion failed. Check: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}')
-          "
+        uses: ./.github/actions/notify-failure
+        with:
+          workflow_name: "Promote to Production & Schedule Pins"
+          run_url: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

@@ -23,14 +23,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
-
-      - name: Install dependencies
-        run: pip install -r requirements.txt
+      - name: Setup pipeline
+        uses: ./.github/actions/setup-pipeline
 
       - name: Refresh Pinterest token
         run: python -m src.token_manager
@@ -40,9 +34,7 @@ jobs:
 
       - name: Notify failure
         if: failure()
-        run: |
-          python -c "
-          from src.apis.slack_notify import SlackNotify
-          notifier = SlackNotify()
-          notifier.notify_failure('${{ github.workflow }}', 'Workflow failed. Check: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}')
-          "
+        uses: ./.github/actions/notify-failure
+        with:
+          workflow_name: "Setup Pinterest Boards"
+          run_url: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

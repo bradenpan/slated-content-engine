@@ -1,0 +1,19 @@
+name: Notify Failure
+description: Send Slack notification on workflow failure
+inputs:
+  workflow_name:
+    description: Name of the failed workflow
+    required: true
+  run_url:
+    description: URL to the failed run
+    required: true
+runs:
+  using: composite
+  steps:
+    - run: |
+        python -c "
+        from src.apis.slack_notify import SlackNotify
+        notifier = SlackNotify()
+        notifier.notify_failure('${{ inputs.workflow_name }}', 'Workflow failed. Check: ${{ inputs.run_url }}')
+        "
+      shell: bash
