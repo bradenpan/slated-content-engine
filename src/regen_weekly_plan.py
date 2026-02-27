@@ -211,12 +211,14 @@ def regen_plan() -> None:
     # Read current B3 (plan approval) and B4 (deploy status) before clearing
     try:
         plan_status = sheets.read_plan_approval_status()
-    except Exception:
+    except Exception as e:
+        logger.warning("Could not read plan approval status, defaulting to pending_review: %s", e)
         plan_status = "pending_review"
 
     try:
         deploy_status = sheets.read_deploy_status()
-    except Exception:
+    except Exception as e:
+        logger.warning("Could not read deploy status, defaulting to pending_review: %s", e)
         deploy_status = "pending_review"
 
     # Re-write the Weekly Review tab with the updated plan
@@ -227,12 +229,8 @@ def regen_plan() -> None:
     )
 
     # Restore B3 and B4 values that were cleared by write_weekly_review
-    sheets.sheets.values().update(
-        spreadsheetId=sheets.sheet_id,
-        range=f"'Weekly Review'!B3",
-        valueInputOption="RAW",
-        body={"values": [[plan_status]]},
-    ).execute()
+    from src.apis.sheets_api import TAB_WEEKLY_REVIEW, WR_CELL_PLAN_STATUS
+    sheets.write_cell(TAB_WEEKLY_REVIEW, WR_CELL_PLAN_STATUS, plan_status)
 
     sheets.write_deploy_status(status=deploy_status)
 

@@ -58,6 +58,20 @@ CQ_COL_STATUS = 9       # J: content_status
 CQ_COL_NOTES = 10       # K: Reviewer notes
 CQ_COL_FEEDBACK = 11    # L: Reviewer feedback for regen
 
+# Expected Content Queue header row — used for validation
+EXPECTED_CQ_HEADERS = [
+    "ID", "Type", "Title", "Description", "Board", "Blog URL",
+    "Schedule", "Pillar", "Thumbnail", "Status", "Notes", "Feedback",
+]
+
+# === Sheet Cell References ===
+# Weekly Review control cells
+WR_CELL_PLAN_STATUS = "B3"
+WR_CELL_DEPLOY_STATUS = "B4"
+WR_CELL_REGEN_TRIGGER = "B5"
+
+# Content Queue control cells
+CQ_CELL_REGEN_TRIGGER = "N1"
 
 
 class SheetsAPIError(Exception):
@@ -120,6 +134,67 @@ class SheetsAPI:
             ) from e
         except Exception as e:
             raise SheetsAPIError(f"Failed to initialize Google Sheets API: {e}") from e
+
+        self._validated_tabs: set[str] = set()
+
+    # === Header Validation ===
+
+    def _validate_headers(self, tab_name: str, expected_headers: list[str]) -> None:
+        """Validate that row 1 of a tab matches expected column headers.
+
+        Logs a warning if headers don't match. Does NOT raise an exception.
+        Results are cached so validation runs at most once per tab per session.
+
+        # TODO: Once confirmed working in production, this can be upgraded to
+        # raise ValueError on mismatch to prevent silent data corruption.
+
+        Args:
+            tab_name: Sheet tab name.
+            expected_headers: List of expected column header strings.
+        """
+        if tab_name in self._validated_tabs:
+            return
+        self._validated_tabs.add(tab_name)
+
+        try:
+            result = self.sheets.values().get(
+                spreadsheetId=self.sheet_id,
+                range=f"'{tab_name}'!1:1",
+            ).execute()
+            actual = result.get("values", [[]])[0] if result.get("values") else []
+        except Exception as e:
+            logger.warning("Header validation failed for '%s' (could not read row 1): %s", tab_name, e)
+            return
+
+        if list(actual) != list(expected_headers):
+            logger.warning(
+                "Header mismatch in '%s'! Expected %s, got %s. "
+                "Column indices may be wrong — check for data corruption.",
+                tab_name, expected_headers, actual,
+            )
+        else:
+            logger.debug("Header validation passed for '%s'.", tab_name)
+
+    # === Cell Read/Write ===
+
+    def write_cell(self, tab_name: str, cell: str, value: str) -> None:
+        """Write a single value to a specific cell.
+
+        Args:
+            tab_name: Sheet tab name.
+            cell: Cell reference (e.g., "B3", "N1").
+            value: Value to write.
+        """
+        try:
+            self.sheets.values().update(
+                spreadsheetId=self.sheet_id,
+                range=f"'{tab_name}'!{cell}",
+                valueInputOption="RAW",
+                body={"values": [[value]]},
+            ).execute()
+            logger.debug("Wrote '%s' to '%s'!%s.", value, tab_name, cell)
+        except Exception as e:
+            raise SheetsAPIError(f"Failed to write to '{tab_name}'!{cell}: {e}") from e
 
     # === Weekly Review Operations ===
 
@@ -214,7 +289,7 @@ class SheetsAPI:
         try:
             result = self.sheets.values().get(
                 spreadsheetId=self.sheet_id,
-                range=f"'{TAB_WEEKLY_REVIEW}'!B3",
+                range=f"'{TAB_WEEKLY_REVIEW}'!{WR_CELL_PLAN_STATUS}",
             ).execute()
 
             values = result.get("values", [[]])
@@ -258,7 +333,7 @@ class SheetsAPI:
         try:
             result = self.sheets.values().get(
                 spreadsheetId=self.sheet_id,
-                range=f"'{TAB_WEEKLY_REVIEW}'!B4",
+                range=f"'{TAB_WEEKLY_REVIEW}'!{WR_CELL_DEPLOY_STATUS}",
             ).execute()
 
             values = result.get("values", [[]])
@@ -397,6 +472,7 @@ class SheetsAPI:
         Returns:
             list[dict]: Each item with id, type (blog/pin), status, and notes.
         """
+        self._validate_headers(TAB_CONTENT_QUEUE, EXPECTED_CQ_HEADERS)
         try:
             result = self.sheets.values().get(
                 spreadsheetId=self.sheet_id,
@@ -449,6 +525,7 @@ class SheetsAPI:
                         description, board, slug, schedule, pillar, status,
                         feedback, and notes.
         """
+        self._validate_headers(TAB_CONTENT_QUEUE, EXPECTED_CQ_HEADERS)
         try:
             result = self.sheets.values().get(
                 spreadsheetId=self.sheet_id,
@@ -549,14 +626,9 @@ class SheetsAPI:
             raise SheetsAPIError(f"Failed to update content row {row_index}: {e}") from e
 
     def reset_regen_trigger(self) -> None:
-        """Write 'idle' to cell N1 of Content Queue to reset the regen trigger."""
+        """Write 'idle' to Content Queue regen trigger cell to reset it."""
         try:
-            self.sheets.values().update(
-                spreadsheetId=self.sheet_id,
-                range=f"'{TAB_CONTENT_QUEUE}'!N1",
-                valueInputOption="RAW",
-                body={"values": [["idle"]]},
-            ).execute()
+            self.write_cell(TAB_CONTENT_QUEUE, CQ_CELL_REGEN_TRIGGER, "idle")
             logger.info("Reset regen trigger to 'idle'.")
         except Exception as e:
             raise SheetsAPIError(f"Failed to reset regen trigger: {e}") from e
@@ -633,14 +705,9 @@ class SheetsAPI:
             raise SheetsAPIError(f"Failed to read plan regen requests: {e}") from e
 
     def reset_plan_regen_trigger(self) -> None:
-        """Write 'idle' to cell B5 of Weekly Review to reset the plan regen trigger."""
+        """Write 'idle' to Weekly Review plan regen trigger cell to reset it."""
         try:
-            self.sheets.values().update(
-                spreadsheetId=self.sheet_id,
-                range=f"'{TAB_WEEKLY_REVIEW}'!B5",
-                valueInputOption="RAW",
-                body={"values": [["idle"]]},
-            ).execute()
+            self.write_cell(TAB_WEEKLY_REVIEW, WR_CELL_REGEN_TRIGGER, "idle")
             logger.info("Reset plan regen trigger to 'idle'.")
         except Exception as e:
             raise SheetsAPIError(f"Failed to reset plan regen trigger: {e}") from e

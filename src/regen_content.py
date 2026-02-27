@@ -33,13 +33,14 @@ from src.apis.slack_notify import SlackNotify
 from src.generate_pin_content import (
     generate_copy_batch,
     load_used_image_ids,
-    _source_ai_image,
-    _load_brand_voice,
-    _load_keyword_targets,
+    source_ai_image,
+    load_keyword_targets,
     build_template_context,
 )
+from src.utils.strategy_utils import load_brand_voice
 from src.pin_assembler import PinAssembler
 from src.paths import DATA_DIR, PIN_OUTPUT_DIR
+from src.utils.plan_utils import save_pin_schedule
 from src.utils.image_utils import extract_drive_file_id
 
 logger = logging.getLogger(__name__)
@@ -66,8 +67,8 @@ def regen() -> None:
     slack = SlackNotify()
 
     used_image_ids = load_used_image_ids()
-    brand_voice = _load_brand_voice()
-    keyword_targets = _load_keyword_targets()
+    brand_voice = load_brand_voice()
+    keyword_targets = load_keyword_targets()
 
     # Step 1: Read regen requests
     requests = sheets.read_regen_requests()
@@ -393,10 +394,7 @@ def regen() -> None:
                         changed += 1
 
                 if changed:
-                    schedule_path.write_text(
-                        json.dumps(schedule, indent=2, ensure_ascii=False),
-                        encoding="utf-8",
-                    )
+                    save_pin_schedule(schedule)
                     logger.info("Updated pin-schedule.json for %d regenerated pins", changed)
             except (json.JSONDecodeError, OSError, KeyError) as e:
                 logger.error("Failed to update pin-schedule.json: %s", e)
@@ -515,7 +513,7 @@ def _regen_item(
         if pin_template == "infographic-pin":
             image_path, image_source, image_id, quality_meta = None, "template", "", {}
         else:
-            image_path, image_source, image_id, quality_meta = _source_ai_image(
+            image_path, image_source, image_id, quality_meta = source_ai_image(
                 pin_spec, claude, image_gen_api, PIN_OUTPUT_DIR
             )
 
@@ -690,7 +688,7 @@ def _regen_blog_image(
 
     logger.info("Regenerating blog hero image for %s (slug=%s)", post_id, slug)
 
-    # Build a pin_spec-like dict for _source_ai_image()
+    # Build a pin_spec-like dict for source_ai_image()
     pin_spec = {
         "pin_id": post_id,
         "pin_topic": title,
@@ -705,7 +703,7 @@ def _regen_blog_image(
 
     PIN_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    image_path, image_source, image_id, quality_meta = _source_ai_image(
+    image_path, image_source, image_id, quality_meta = source_ai_image(
         pin_spec, claude, image_gen_api, PIN_OUTPUT_DIR
     )
 

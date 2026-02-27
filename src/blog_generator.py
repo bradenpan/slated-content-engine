@@ -28,6 +28,8 @@ import unicodedata
 from pathlib import Path
 from typing import Optional
 
+import yaml
+
 from src.apis.claude_api import ClaudeAPI
 from src.paths import STRATEGY_DIR, TEMPLATES_DIR as _BASE_TEMPLATES_DIR
 from src.utils.strategy_utils import load_brand_voice
@@ -474,8 +476,9 @@ class BlogGenerator:
         """
         Extract frontmatter from MDX content as a dictionary.
 
-        Parses the YAML block between --- delimiters. Uses a simple parser
-        rather than requiring PyYAML to minimize dependencies.
+        Parses the YAML block between --- delimiters using yaml.safe_load(),
+        which correctly handles all YAML types (nested objects, quoted strings,
+        multiline values) that the previous custom parser could misparse.
 
         Args:
             mdx_content: Complete MDX content.
@@ -486,76 +489,23 @@ class BlogGenerator:
         if not mdx_content.startswith("---"):
             return {}
 
-        # Find the closing ---
-        end_idx = mdx_content.index("---", 3)
-        if end_idx == -1:
+        try:
+            end_idx = mdx_content.index("---", 3)
+        except ValueError:
             return {}
 
         yaml_block = mdx_content[3:end_idx].strip()
 
-        # Simple YAML parser for flat + simple list fields
-        frontmatter: dict = {}
-        current_key: Optional[str] = None
-        current_list: Optional[list] = None
+        try:
+            parsed = yaml.safe_load(yaml_block)
+        except yaml.YAMLError as e:
+            logger.warning("Failed to parse frontmatter YAML: %s", e)
+            return {}
 
-        for line in yaml_block.split("\n"):
-            stripped = line.strip()
+        if not isinstance(parsed, dict):
+            return {}
 
-            # Skip empty lines and comments
-            if not stripped or stripped.startswith("#"):
-                continue
-
-            # Check if this is a list item (indented with -)
-            if stripped.startswith("- ") and current_key is not None:
-                value = stripped[2:].strip().strip('"').strip("'")
-                if current_list is not None:
-                    current_list.append(value)
-                continue
-
-            # Check if this is a key: value pair
-            if ":" in stripped:
-                # Save previous list if any
-                if current_key and current_list is not None:
-                    frontmatter[current_key] = current_list
-
-                colon_idx = stripped.index(":")
-                key = stripped[:colon_idx].strip()
-                value_str = stripped[colon_idx + 1:].strip()
-
-                if not value_str:
-                    # Value might be a list on following lines
-                    current_key = key
-                    current_list = []
-                    continue
-
-                # Parse value
-                current_key = key
-                current_list = None
-
-                # Remove quotes
-                if (value_str.startswith('"') and value_str.endswith('"')) or \
-                   (value_str.startswith("'") and value_str.endswith("'")):
-                    frontmatter[key] = value_str[1:-1]
-                # Check for inline list [a, b, c]
-                elif value_str.startswith("[") and value_str.endswith("]"):
-                    items = value_str[1:-1].split(",")
-                    frontmatter[key] = [
-                        item.strip().strip('"').strip("'") for item in items if item.strip()
-                    ]
-                # Check for integer
-                elif value_str.isdigit():
-                    frontmatter[key] = int(value_str)
-                # Check for boolean
-                elif value_str.lower() in ("true", "false"):
-                    frontmatter[key] = value_str.lower() == "true"
-                else:
-                    frontmatter[key] = value_str
-
-        # Don't forget the last list
-        if current_key and current_list is not None:
-            frontmatter[current_key] = current_list
-
-        return frontmatter
+        return parsed
 
     def _extract_body(self, mdx_content: str) -> str:
         """

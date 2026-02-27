@@ -189,6 +189,7 @@ class GcsAPI:
             dict: pin_id -> public URL mapping.
         """
         if not self.client:
+            logger.warning("GCS client not configured — skipping pin image upload")
             return {}
 
         if not pin_results:
@@ -243,6 +244,7 @@ class GcsAPI:
             dict: post_id -> public URL mapping.
         """
         if not self.client:
+            logger.warning("GCS client not configured — skipping blog hero image upload")
             return {}
 
         urls: dict[str, str] = {}
@@ -297,6 +299,7 @@ class GcsAPI:
             int: Number of objects deleted.
         """
         if not self.client:
+            logger.warning("GCS client not configured — skipping delete_old_images")
             return 0
 
         deleted = 0

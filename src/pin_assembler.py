@@ -590,7 +590,7 @@ class PinAssembler:
 
         except ImportError:
             logger.warning("Pillow not installed — skipping image optimization")
-        except Exception as e:
+        except (OSError, ValueError) as e:
             logger.warning("Image optimization failed: %s", e)
 
 

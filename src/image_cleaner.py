@@ -96,6 +96,6 @@ def clean_image(
         )
         return output_path
 
-    except Exception as e:
+    except (OSError, ValueError) as e:
         logger.warning("Image cleaning failed for %s: %s", input_path, e)
         return input_path

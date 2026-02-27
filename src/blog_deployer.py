@@ -31,6 +31,7 @@ from src.apis.slack_notify import SlackNotify
 from src.paths import DATA_DIR, BLOG_OUTPUT_DIR, PIN_OUTPUT_DIR
 from src.config import BLOG_BASE_URL, DEPLOY_VERIFY_TIMEOUT
 from src.utils.content_log import load_content_log, append_content_log_entry
+from src.utils.plan_utils import save_pin_schedule
 
 logger = logging.getLogger(__name__)
 
@@ -504,13 +505,8 @@ class BlogDeployer:
             }
             schedule.append(schedule_entry)
 
-        # Write the schedule file
-        schedule_path = DATA_DIR / "pin-schedule.json"
-        schedule_path.write_text(
-            json.dumps(schedule, indent=2, ensure_ascii=False),
-            encoding="utf-8",
-        )
-        logger.info("Created pin schedule with %d pins at %s", len(schedule), schedule_path)
+        # Write the schedule file atomically
+        save_pin_schedule(schedule)
 
         return len(schedule)
 

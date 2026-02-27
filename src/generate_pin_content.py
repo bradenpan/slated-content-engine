@@ -80,8 +80,8 @@ def generate_pin_content(
         blog_posts = _load_blog_generation_results()
 
     # Load strategy context
-    brand_voice = _load_brand_voice()
-    keyword_targets = _load_keyword_targets()
+    brand_voice = load_brand_voice()
+    keyword_targets = load_keyword_targets()
     used_image_ids = load_used_image_ids()
     board_id_map = _load_board_id_map()
 
@@ -131,7 +131,7 @@ def generate_pin_content(
                 image_path, image_source, image_id, quality_meta = None, "template", "", {}
             else:
                 # All other templates get an AI-generated image
-                image_path, image_source, image_id, quality_meta = _source_ai_image(
+                image_path, image_source, image_id, quality_meta = source_ai_image(
                     pin_spec, claude, image_gen_api, PIN_OUTPUT_DIR
                 )
 
@@ -361,12 +361,7 @@ def _load_blog_generation_results() -> dict:
         return {}
 
 
-def _load_brand_voice() -> str:
-    """Load brand voice guidelines."""
-    return load_brand_voice()
-
-
-def _load_keyword_targets() -> dict:
+def load_keyword_targets() -> dict:
     """Load keyword targets from strategy."""
     kw_path = STRATEGY_DIR / "keyword-lists.json"
     try:
@@ -665,7 +660,7 @@ def _extract_steps(description: str) -> list[dict]:
 
 
 
-def _source_ai_image(
+def source_ai_image(
     pin_spec: dict,
     claude: ClaudeAPI,
     image_gen_api: ImageGenAPI,

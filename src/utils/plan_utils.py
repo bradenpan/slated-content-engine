@@ -244,3 +244,17 @@ def extract_recent_topics(content_log: list[dict], topic_repetition_window_weeks
             if topic:
                 topics.add(topic)
     return list(topics)
+
+
+def save_pin_schedule(schedule: list[dict], path: Path = None) -> None:
+    """Atomically write pin-schedule.json using temp file + rename.
+
+    Args:
+        schedule: List of pin schedule entry dicts.
+        path: Output path. Defaults to DATA_DIR / "pin-schedule.json".
+    """
+    p = path or (DATA_DIR / "pin-schedule.json")
+    tmp = p.with_suffix(".tmp")
+    tmp.write_text(json.dumps(schedule, indent=2, ensure_ascii=False), encoding="utf-8")
+    tmp.replace(p)
+    logger.info("Saved pin schedule (%d entries) to %s", len(schedule), p)

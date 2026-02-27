@@ -17,7 +17,7 @@ import yaml
 
 from src.apis.gcs_api import GcsAPI
 from src.apis.drive_api import DriveAPI, DriveAPIError
-from src.apis.sheets_api import SheetsAPI, TAB_CONTENT_QUEUE
+from src.apis.sheets_api import SheetsAPI, TAB_CONTENT_QUEUE, CQ_CELL_REGEN_TRIGGER
 from src.apis.slack_notify import SlackNotify
 from src.paths import DATA_DIR, BLOG_OUTPUT_DIR, PIN_OUTPUT_DIR
 from src.utils.image_utils import extract_drive_file_id
@@ -219,12 +219,8 @@ def publish() -> None:
 
         # Write regen trigger cells: M1 = label, N1 = trigger value
         try:
-            sheets.sheets.values().update(
-                spreadsheetId=sheets.sheet_id,
-                range=f"'{TAB_CONTENT_QUEUE}'!M1:N1",
-                valueInputOption="RAW",
-                body={"values": [["Regen \u2192", "idle"]]},
-            ).execute()
+            sheets.write_cell(TAB_CONTENT_QUEUE, "M1", "Regen \u2192")
+            sheets.write_cell(TAB_CONTENT_QUEUE, CQ_CELL_REGEN_TRIGGER, "idle")
         except Exception as e:
             logger.warning("Failed to write regen trigger cells: %s", e)
 
