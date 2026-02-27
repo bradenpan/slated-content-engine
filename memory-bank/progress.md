@@ -47,6 +47,17 @@ Plan → Generate → Review → Deploy → Post → Analyze → (feeds next Pla
 - `monthly_review.py` — Claude Opus deep monthly strategy review
 - `pull_analytics.py` — Pinterest Analytics API pull (impressions, saves, clicks, outbound)
 - `regen_weekly_plan.py` — Plan-level feedback and regeneration orchestrator
+- `plan_validator.py` — Plan validation logic (extracted from generate_weekly_plan.py)
+- `redate_schedule.py` — Pin schedule redating (extracted from workflow inline Python)
+- `paths.py` — Centralized path constants (PROJECT_ROOT, DATA_DIR, PROMPTS_DIR, etc.)
+- `config.py` — Centralized config values (model names, costs, URLs, dimensions, timing)
+
+**Shared Utilities (src/utils/)**
+- `image_utils.py` — MIME detection + Drive file ID parsing
+- `content_log.py` — JSONL content log CRUD operations
+- `plan_utils.py` — Plan loading, validation helpers, atomic pin-schedule writes
+- `strategy_utils.py` — Brand voice loading
+- `content_memory.py` — Content memory summary generation (canonical version)
 
 **API Wrappers (src/apis/)**
 - `claude_api.py` — Claude Sonnet/Opus with prompt templates, GPT-5 Mini integration, token/cost tracking
@@ -1558,3 +1569,63 @@ Rewrote `build_template_context()` with structured-first extraction: reads the n
 ### Status
 
 Complete. Merged to main via PR #2 (commit `678fbba`).
+
+## Phase 13: Code Refactor — Architecture Cleanup
+
+**Date:** 2026-02-26 – 2026-02-27
+**Commits:** `1893b52` through `16db0e6` (8 commits on main)
+
+### Problem
+
+After 12 phases of feature additions, the codebase had accumulated structural debt: god files (1000+ line modules), duplicated utility code across modules, hardcoded paths/config scattered throughout, tight coupling between orchestration and I/O, no test suite, and ~56 dead code items.
+
+### What Was Done
+
+Eight sequential refactoring commits:
+
+| Commit | Change | Impact |
+|--------|--------|--------|
+| `1893b52` | Remove dead code — 56 items across 15 files | Eliminated unreachable functions, unused imports, stale parameters |
+| `281c184` | Extract composite GitHub Actions | 3 reusable actions (`setup-pipeline`, `commit-data`, `notify-failure`), reduced workflow boilerplate |
+| `22bb876` | Update audit documentation | Recorded Phase 0 and Phase 6 execution details |
+| `6637e5d` | Centralize configuration | New `paths.py` (path constants) and `config.py` (model names, costs, URLs, dimensions, timing) |
+| `33e42e3` | Extract 6 shared utilities | `image_utils.py`, `content_log.py`, `plan_utils.py`, `strategy_utils.py`, `content_memory.py` |
+| `d167dc3` | Split god files | Reduced largest modules by 40-50% — extracted `plan_validator.py`, `redate_schedule.py` |
+| `53bc8a8` | Fix coupling patterns | Standardized error handling, removed circular dependencies |
+| `16db0e6` | Add dependency injection + test suite | DI parameters on all orchestration functions, 93 tests across 7 test files |
+
+### Code Review & Fix Cycle
+
+Three independent code reviews ran in parallel, producing strong consensus on key issues:
+
+**22 unique issues found** (8 flagged by 2+ reviewers independently):
+
+| Issue | Severity | Reviewers | Fix |
+|-------|----------|-----------|-----|
+| `PROJECT_ROOT` NameError in `monthly_review.py:498` | Critical | 3/3 | Replaced with `STRATEGY_DIR` |
+| Shell injection in `promote-and-schedule.yml` | Critical | 1/3 | Moved input to env var |
+| `extract_drive_file_id()` missing `/d/` URL pattern | Important | 2/3 | Added regex for `/d/FILE_ID/` format |
+| Private `_parse_date`/`_get_entry_date` used cross-module | Important | 3/3 | Renamed to public API |
+| `notify-failure` action string interpolation risk | Important | 3/3 | Moved to env vars |
+| `redate_schedule.py` hardcoded paths + missing UTF-8 | Important | 3/3 | Used `DATA_DIR`, added encoding |
+| `plan_validator.py` zero test coverage | Important | 2/3 | Added 21 tests covering all 8 checks |
+| `monthly_review.py` missing DI pattern | Important | 1/3 | Added DI parameters |
+| Fragile string parsing in `identify_replaceable_posts` | Important | 1/3 | Added `post_id`/`pin_id` fields to violations |
+| `redate_schedule.py` hardcodes 3-day spread | Important | 3/3 | Parameterized with `num_days=7` default |
+| 9 minor issues | Minor | Various | Docstrings, encoding, imports, YAML, conftest |
+
+**Round-2 fix cycle** caught 1 logic bug in the initial fixes (dead code path in `identify_replaceable_posts` for negative keyword violations — pin_id was incorrectly placed in `post_id` field) plus 1 minor regression (dangling `__main__` demo block reference in `weekly_analysis.py`). Both fixed and verified.
+
+**Final QA:** 114/114 tests pass, zero stale references, all YAML valid.
+
+### Review Reports
+
+All reports in `architecture/reviews/`:
+- `review-a.md`, `review-b.md`, `review-c.md` — 3 independent code reviews
+- `fix-plan.md` — Consolidated fix plan (22 issues)
+- `fix-review.md`, `qa-report.md` — Round 1 fix review + QA
+- `fix-review-round2.md`, `qa-report-round2.md` — Round 2 fix review + QA
+
+### Status
+
+Complete. All fixes applied and verified. Ready to commit.

@@ -47,8 +47,8 @@ from typing import Optional
 from src.apis.claude_api import ClaudeAPI
 from src.apis.sheets_api import SheetsAPI
 from src.apis.slack_notify import SlackNotify
+from src.utils.content_log import load_content_log
 from src.pull_analytics import (
-    load_content_log,
     compute_derived_metrics,
     aggregate_by_dimension,
 )
@@ -60,7 +60,7 @@ ANALYSIS_DIR = _ANALYSIS_BASE / "monthly"
 WEEKLY_DIR = _ANALYSIS_BASE / "weekly"
 
 
-def run_monthly_review(month: Optional[int] = None, year: Optional[int] = None) -> str:
+def run_monthly_review(month: Optional[int] = None, year: Optional[int] = None, claude=None, sheets=None, slack=None) -> str:
     """
     Run the full monthly strategy review.
 
@@ -109,7 +109,7 @@ def run_monthly_review(month: Optional[int] = None, year: Optional[int] = None) 
 
     # Step 5: Call Claude Opus for monthly review
     try:
-        claude = ClaudeAPI()
+        claude = claude or ClaudeAPI()
         review_md = claude.run_monthly_review(
             monthly_data=monthly_context,
             weekly_analyses=weekly_analyses,
@@ -127,7 +127,7 @@ def run_monthly_review(month: Optional[int] = None, year: Optional[int] = None) 
 
     # Step 7: Write highlights to Google Sheet
     try:
-        sheets = SheetsAPI()
+        sheets = sheets or SheetsAPI()
         sheets.update_dashboard({
             "monthly_review_date": f"{year}-{month:02d}",
             "monthly_review_path": str(output_path),
@@ -137,7 +137,7 @@ def run_monthly_review(month: Optional[int] = None, year: Optional[int] = None) 
 
     # Step 8: Send Slack notification
     try:
-        slack = SlackNotify()
+        slack = slack or SlackNotify()
         summary_lines = review_md.split("\n")[:10]
         brief_summary = "\n".join(summary_lines)
         slack.notify_monthly_review_ready(brief_summary)
@@ -495,7 +495,7 @@ def _analyze_board_density(entries: list[dict]) -> dict:
         board_counts[board] += 1
 
     # Load board structure for expected boards
-    board_structure_path = PROJECT_ROOT / "strategy" / "board-structure.json"
+    board_structure_path = STRATEGY_DIR / "board-structure.json"
     expected_boards = set()
     try:
         if board_structure_path.exists():

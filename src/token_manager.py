@@ -351,7 +351,7 @@ class TokenManager:
         # Try loading from file first
         if self.token_store_path.exists():
             try:
-                with open(self.token_store_path, "r") as f:
+                with open(self.token_store_path, "r", encoding="utf-8") as f:
                     self._token_data = json.load(f)
                 logger.debug("Loaded tokens from %s", self.token_store_path)
                 return self._token_data
@@ -388,7 +388,7 @@ class TokenManager:
         self.token_store_path.parent.mkdir(parents=True, exist_ok=True)
 
         try:
-            with open(self.token_store_path, "w") as f:
+            with open(self.token_store_path, "w", encoding="utf-8") as f:
                 json.dump(token_data, f, indent=2)
             logger.info("Tokens saved to %s", self.token_store_path)
         except OSError as e:

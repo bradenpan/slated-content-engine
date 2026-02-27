@@ -131,7 +131,7 @@ class PinterestAPI:
         else:
             # Detect actual image format from magic bytes
             from src.utils.image_utils import detect_mime_type
-            raw_bytes = base64.b64decode(image_base64[:16])
+            raw_bytes = base64.b64decode(image_base64[:24])
             detected = detect_mime_type(raw_bytes)
             content_type = detected if detected != "application/octet-stream" else "image/png"
 

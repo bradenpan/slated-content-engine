@@ -302,8 +302,8 @@ def apply_jitter(time_slot: str, pin_index: int = 0) -> None:
     """
     Sleep for a random duration to avoid bot detection.
 
-    First pin: random(0, 5400) seconds from window start.
-    Subsequent pins: random(300, 1200) seconds between each.
+    First pin: random(0, INITIAL_JITTER_MAX) seconds from window start.
+    Subsequent pins: random(INTER_PIN_JITTER_MIN, INTER_PIN_JITTER_MAX) seconds between each.
 
     The jitter seed is derived from date + slot + pin_index, so it is
     reproducible for debugging but different every day.

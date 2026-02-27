@@ -20,7 +20,8 @@ PINTEREST_REFRESH_THRESHOLD_DAYS = 5
 CLAUDE_MODEL_ROUTINE = "claude-sonnet-4-6"
 CLAUDE_MODEL_DEEP = "claude-opus-4-6"
 
-# Get GPT model from env with default
+# Read from env at import time to allow runtime model override (unlike
+# other constants, this intentionally supports per-deployment configuration).
 OPENAI_CHAT_MODEL = os.getenv("OPENAI_CHAT_MODEL", "gpt-5-mini")
 
 # --- Cost Tracking (approximate, update periodically) ---

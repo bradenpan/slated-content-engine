@@ -15,9 +15,18 @@ def extract_drive_file_id(url: str) -> str | None:
     """
     if not url:
         return None
+    # Handle ?id=FILE_ID format
     if "id=" in url:
         try:
             file_id = url.split("id=")[1].split("&")[0]
+            return file_id if file_id else None
+        except (IndexError, ValueError):
+            return None
+    # Handle /d/FILE_ID/ format
+    if "/d/" in url:
+        try:
+            parts = url.split("/d/")[1].split("/")
+            file_id = parts[0] if parts else None
             return file_id if file_id else None
         except (IndexError, ValueError):
             return None

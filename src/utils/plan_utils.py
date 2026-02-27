@@ -7,7 +7,7 @@ from pathlib import Path
 
 from src.paths import DATA_DIR
 from src.utils.content_log import load_content_log as _load_content_log
-from src.utils.content_memory import _get_entry_date, _parse_date
+from src.utils.content_memory import get_entry_date, parse_date
 
 logger = logging.getLogger(__name__)
 
@@ -80,16 +80,13 @@ def identify_replaceable_posts(
         if pid:
             offending_post_ids.add(pid)
             violations_by_post[pid].append(v)
-        elif v.get("category") == "negative_keyword_pin":
-            # Extract pin_id from message and trace to source post
-            msg = v.get("message", "")
-            # Message format: "Pin 'W8-03' targets..."
-            if "'" in msg:
-                pin_id = msg.split("'")[1]
-                source_pid = pin_to_source.get(pin_id, "")
-                if source_pid and not source_pid.startswith("existing:"):
-                    offending_post_ids.add(source_pid)
-                    violations_by_post[source_pid].append(v)
+        elif v.get("pin_id"):
+            # Pin-level violation (e.g. negative_keyword_pin); trace to source post
+            pin_id = v["pin_id"]
+            source_pid = pin_to_source.get(pin_id, "")
+            if source_pid and not source_pid.startswith("existing:"):
+                offending_post_ids.add(source_pid)
+                violations_by_post[source_pid].append(v)
 
     # Build the result with post objects, derived pins, and slot info
     result = {}
@@ -243,7 +240,7 @@ def extract_recent_topics(content_log: list[dict], topic_repetition_window_weeks
     topic_window = date.today() - timedelta(weeks=topic_repetition_window_weeks)
     topics = set()
     for entry in content_log:
-        entry_date = _parse_date(_get_entry_date(entry))
+        entry_date = parse_date(get_entry_date(entry))
         if entry_date and entry_date >= topic_window:
             topic = entry.get("topic_summary", "")
             if topic:

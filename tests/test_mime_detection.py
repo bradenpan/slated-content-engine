@@ -43,6 +43,24 @@ def test_drive_url_with_id_param_only():
     assert extract_drive_file_id(url) == "FILE123"
 
 
+def test_drive_url_with_d_path():
+    url = "https://drive.google.com/file/d/ABC123XYZ/view?usp=sharing"
+    assert extract_drive_file_id(url) == "ABC123XYZ"
+
+
+def test_drive_open_url_with_d_path():
+    url = "https://drive.google.com/open?id=&d/FILEID456/"
+    # Has id= before /d/ so id= path takes priority (empty id -> None via id= branch)
+    # Actually "id=" is present so it takes the id= branch, split gives "" after id=
+    # then split("&") gives ["", "d/FILEID456/"] -> first element is "" -> returns None
+    assert extract_drive_file_id(url) is None
+
+
+def test_drive_d_path_no_trailing_slash():
+    url = "https://drive.google.com/file/d/MYFILEID"
+    assert extract_drive_file_id(url) == "MYFILEID"
+
+
 def test_non_drive_url_returns_none():
     url = "https://example.com/image.png"
     assert extract_drive_file_id(url) is None

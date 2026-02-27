@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       override_pin_start_date:
-        description: 'Override pin schedule start date (YYYY-MM-DD). Redistributes all pins across 3 days starting from this date. Leave empty for normal scheduling.'
+        description: 'Override pin schedule start date (YYYY-MM-DD). Redistributes all pins across 7 days starting from this date. Leave empty for normal scheduling.'
         required: false
         default: ''
 
@@ -58,7 +58,9 @@ jobs:
 
       - name: Override pin schedule dates (test mode)
         if: ${{ github.event.inputs.override_pin_start_date != '' }}
-        run: python -m src.redate_schedule ${{ github.event.inputs.override_pin_start_date }}
+        env:
+          PIN_START_DATE: ${{ github.event.inputs.override_pin_start_date }}
+        run: python -m src.redate_schedule "$PIN_START_DATE"
 
       - name: Commit updated data files
         uses: ./.github/actions/commit-data

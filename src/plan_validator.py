@@ -13,7 +13,7 @@ from typing import Optional
 
 from src.paths import STRATEGY_DIR
 from src.utils.content_log import load_content_log as _load_content_log
-from src.utils.content_memory import _get_entry_date, _parse_date
+from src.utils.content_memory import get_entry_date, parse_date
 
 logger = logging.getLogger(__name__)
 
@@ -130,7 +130,7 @@ def validate_plan(
     recent_topics = set()
     recent_slugs = set()
     for entry in content_log:
-        entry_date = _parse_date(_get_entry_date(entry))
+        entry_date = parse_date(get_entry_date(entry))
         if entry_date and entry_date >= topic_window:
             topic = entry.get("topic_summary", "").lower()
             if topic:
@@ -241,6 +241,7 @@ def validate_plan(
 
     # --- Check 8: Negative keywords ---
     for pin in pins:
+        pin_id = pin.get("pin_id")
         pin_keywords = [pin.get("primary_keyword", "")] + pin.get("secondary_keywords", [])
         pin_topic = pin.get("pin_topic", "").lower()
         for neg_kw in negative_keywords:
@@ -250,20 +251,22 @@ def validate_plan(
                     violations.append({
                         "category": "negative_keyword_pin",
                         "message": (
-                            f"Pin '{pin.get('pin_id')}' targets negative keyword: "
+                            f"Pin '{pin_id}' targets negative keyword: "
                             f"'{kw}' matches '{neg_kw}'"
                         ),
                         "post_id": None,
+                        "pin_id": pin_id,
                         "severity": "targeted",
                     })
             if neg_kw_lower in pin_topic:
                 violations.append({
                     "category": "negative_keyword_pin",
                     "message": (
-                        f"Pin '{pin.get('pin_id')}' topic contains negative keyword: "
+                        f"Pin '{pin_id}' topic contains negative keyword: "
                         f"'{neg_kw}'"
                     ),
                     "post_id": None,
+                    "pin_id": pin_id,
                     "severity": "targeted",
                 })
 

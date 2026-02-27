@@ -44,7 +44,6 @@ from src.pull_analytics import (
 )
 from src.paths import ANALYSIS_DIR as _ANALYSIS_BASE, DATA_DIR
 from src.utils.content_log import load_content_log
-from src.utils.content_memory import generate_content_memory_summary  # noqa: F401 — re-exported for weekly-review.yml
 
 logger = logging.getLogger(__name__)
 
@@ -505,6 +504,8 @@ def _generate_fallback_analysis(context: dict, year: int, week: int) -> str:
 
 if __name__ == "__main__":
     import sys
+
+    from src.utils.content_memory import generate_content_memory_summary
 
     logging.basicConfig(
         level=logging.INFO,

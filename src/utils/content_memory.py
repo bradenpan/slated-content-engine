@@ -25,7 +25,7 @@ _DEFAULT_TOPIC_WINDOW_WEEKS = 10
 _DEFAULT_MAX_TREATMENTS = 5
 
 
-def _get_entry_date(entry: dict) -> str:
+def get_entry_date(entry: dict) -> str:
     """Get the date string from a content log entry.
 
     Content log entries may have the date under "date" (written by
@@ -38,7 +38,7 @@ def _get_entry_date(entry: dict) -> str:
     return entry.get("date") or entry.get("posted_date", "")
 
 
-def _parse_date(date_str: Optional[str]) -> Optional[date]:
+def parse_date(date_str: Optional[str]) -> Optional[date]:
     """Parse a date string in YYYY-MM-DD format.
 
     Returns:
@@ -114,19 +114,19 @@ def generate_content_memory_summary(
     # --- Section 1: RECENT TOPICS ---
     recent_entries = [
         e for e in content_log
-        if _parse_date(_get_entry_date(e))
-        and _parse_date(_get_entry_date(e)) >= topic_window_start
+        if (d := parse_date(get_entry_date(e)))
+        and d >= topic_window_start
     ]
 
     section_lines = [f"## 1. RECENT TOPICS (Last {topic_window_weeks} Weeks)\n"]
     if recent_entries:
         seen_slugs: set[str] = set()
-        for entry in sorted(recent_entries, key=lambda e: _get_entry_date(e), reverse=True):
+        for entry in sorted(recent_entries, key=lambda e: get_entry_date(e), reverse=True):
             slug = entry.get("blog_slug", "")
             if slug and slug not in seen_slugs:
                 seen_slugs.add(slug)
                 section_lines.append(
-                    f"- [{_get_entry_date(entry)}] P{entry.get('pillar', '?')}: "
+                    f"- [{get_entry_date(entry)}] P{entry.get('pillar', '?')}: "
                     f"{entry.get('blog_title', slug)} "
                     f"({entry.get('content_type', 'unknown')})"
                 )
@@ -222,7 +222,7 @@ def generate_content_memory_summary(
         pk = entry.get("primary_keyword", "")
         if pk:
             keyword_counts[pk] += 1
-            entry_date = _get_entry_date(entry)
+            entry_date = get_entry_date(entry)
             if entry_date > keyword_last_used.get(pk, ""):
                 keyword_last_used[pk] = entry_date
             keyword_performance[pk]["impressions"] += entry.get("impressions", 0)
@@ -231,7 +231,7 @@ def generate_content_memory_summary(
 
         for sk in entry.get("secondary_keywords", []):
             keyword_counts[sk] += 1
-            entry_date = _get_entry_date(entry)
+            entry_date = get_entry_date(entry)
             if entry_date > keyword_last_used.get(sk, ""):
                 keyword_last_used[sk] = entry_date
 
@@ -259,8 +259,8 @@ def generate_content_memory_summary(
 
     recent_image_entries = [
         e for e in content_log
-        if _parse_date(_get_entry_date(e))
-        and _parse_date(_get_entry_date(e)) >= ninety_days_ago
+        if (d := parse_date(get_entry_date(e)))
+        and d >= ninety_days_ago
     ]
 
     image_ids = []
@@ -290,7 +290,7 @@ def generate_content_memory_summary(
         if not slug:
             continue
 
-        entry_date = _get_entry_date(entry)
+        entry_date = get_entry_date(entry)
         if slug not in slug_data:
             slug_data[slug] = {
                 "title": entry.get("blog_title", slug),
@@ -313,7 +313,7 @@ def generate_content_memory_summary(
 
     candidates = []
     for slug, data in slug_data.items():
-        last_date = _parse_date(data["last_pin_date"])
+        last_date = parse_date(data["last_pin_date"])
         if (
             last_date
             and last_date < fresh_pin_window_start
@@ -344,8 +344,8 @@ def generate_content_memory_summary(
 
     recent_60d_entries = [
         e for e in content_log
-        if _parse_date(_get_entry_date(e))
-        and _parse_date(_get_entry_date(e)) >= sixty_days_ago
+        if (d := parse_date(get_entry_date(e)))
+        and d >= sixty_days_ago
     ]
 
     url_treatments: dict[str, dict] = {}
@@ -361,7 +361,7 @@ def generate_content_memory_summary(
             }
         url_treatments[slug]["treatment_count"] += 1
         url_treatments[slug]["treatments"].append({
-            "date": _get_entry_date(entry),
+            "date": get_entry_date(entry),
             "treatment_number": entry.get("treatment_number", 1),
         })
 

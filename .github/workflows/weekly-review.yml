@@ -49,7 +49,7 @@ jobs:
       - name: Generate content memory summary
         # Python computation only -- no LLM call
         # Reads content-log.jsonl, computes aggregates, writes content-memory-summary.md
-        run: python -c "from src.weekly_analysis import generate_content_memory_summary; generate_content_memory_summary()"
+        run: python -c "from src.utils.content_memory import generate_content_memory_summary; generate_content_memory_summary()"
 
       - name: Run weekly performance analysis
         # Calls Claude Sonnet to analyze last week's performance
