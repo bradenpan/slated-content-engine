@@ -1,7 +1,10 @@
 # Pinterest Pipeline — Codebase Audit
 
 **Audit started:** 2026-02-25
-**Status:** In Progress
+**Last updated:** 2026-02-27
+**Status:** Complete (post-simplification, verified against codebase)
+
+**Simplification summary:** Removed stock photo search (deleted `image_stock.py`), removed AI image validation/ranking/comparison workflows, removed tier-based image routing (all images now AI-generated), added GPT-5 Mini for image prompts and pin copy (Claude Sonnet fallback), added plan-level regen (`regen_weekly_plan.py`), fixed double H1 blog bug, removed Column M from Content Queue, added `image_cleaner.py` for AI detection avoidance.
 
 ---
 
@@ -20,215 +23,209 @@
 
 #### `src/apis/__init__.py`
 - **Purpose:** Empty package init (just a comment).
-- **Dependencies:** None.
 - **Issues:** None.
 
-#### `src/apis/claude_api.py` (~540 lines)
-- **Purpose:** Wraps Anthropic Claude API for all LLM tasks: planning, pin copy, blog posts, image prompts, weekly/monthly analysis.
-- **Dependencies:** `anthropic`, `pathlib`, `json`, `base64`, `logging`. Reads from `prompts/` and `strategy/` directories.
+#### `src/apis/claude_api.py` (~954 lines, was ~540)
+- **Purpose:** Wraps Anthropic Claude API for all LLM tasks. Now also handles GPT-5 Mini calls for image prompts and pin copy, with Claude Sonnet fallback.
+- **Dependencies:** `anthropic`, `requests` (NEW: for GPT-5 Mini HTTP calls), `pathlib`, `json`, `base64`, `logging`. Reads from `prompts/` and `strategy/`.
+- **Changes:** +414 lines. Added `generate_image_prompt()` dual-model support, `generate_pin_copy_batch()` dual-model support, GPT-5 Mini cost tracking. AI image validation/ranking methods removed.
 - **Issues:**
-  - **Hardcoded model IDs** (lines 40-42): `MODEL_ROUTINE = "claude-sonnet-4-6"`, `MODEL_DEEP = "claude-opus-4-6"`, `MODEL_HAIKU = "claude-haiku-4-5-20251001"`. Should be config/env vars.
-  - **Hardcoded cost estimates** (lines 45-49): `COST_PER_MTK` dict. Will go stale as pricing changes.
-  - **God file tendency:** This single file handles planning, copy generation, blog posts, image prompts, analysis, and monthly review — all via different methods on one class. Each concern could be a separate module or at least method group.
-  - **PROMPTS_DIR/STRATEGY_DIR** (lines 36-37): Uses relative path `Path(__file__).parent.parent.parent / "prompts"`. Fragile if file moves.
-  - Prompt template loading is tightly coupled to file naming conventions in `prompts/` directory.
+  - God file **worsened** -- now handles Claude + GPT-5 Mini orchestration, planning, pin copy, blog posts, image prompts, weekly/monthly analysis.
+  - Hardcoded model IDs (lines 40-42): Claude models. Should be config/env vars.
+  - Hardcoded cost estimates (lines 45-49): Will go stale.
+  - Relative path resolution for `PROMPTS_DIR`/`STRATEGY_DIR` is fragile.
+  - NEW: GPT-5 model name has env var override (`OPENAI_CHAT_MODEL`, line 682) but default `"gpt-5-mini"` is hardcoded. Partially configurable.
+  - NEW: Manual HTTP requests to OpenAI instead of using the `openai` Python SDK (already in requirements.txt).
+  - NEW: Fragile GPT-5 Mini fallback logic -- manual try/except with silent fallback to Claude Sonnet.
+  - NEW: Dual-model branching in `generate_image_prompt()` and `generate_pin_copy_batch()` adds complexity.
+  - NEW: Hardcoded GPT-5 Mini cost rates.
 
-#### `src/apis/pinterest_api.py` (~569 lines)
-- **Purpose:** Thin wrapper around Pinterest v5 REST API (pins, boards, analytics, rate limits).
-- **Dependencies:** `requests`, `time`, `base64`, `logging`.
-- **Issues:**
-  - **Hardcoded API URLs** (lines 39-40): `BASE_URL_PRODUCTION`, `BASE_URL_SANDBOX`.
-  - **Hardcoded retry constants** (lines 46-47): `MAX_RETRIES = 3`, `RETRY_BACKOFF_BASE = 2`.
-  - **Hardcoded metric types** (line 43): `DEFAULT_METRIC_TYPES`.
-  - `get_boards()` (line 219-221) is a trivial alias for `list_boards()` — duplication.
-  - Content-type detection via magic bytes (lines 131-139) is **duplicated** across pinterest_api.py, gcs_api.py, and drive_api.py.
-  - `__main__` smoke test block is useful but could be a proper test.
+#### `src/apis/pinterest_api.py` (~568 lines, unchanged)
+- **Purpose:** Thin wrapper around Pinterest v5 REST API.
+- **Issues:** Hardcoded API URLs, retry constants, metric types. `get_boards()` trivial alias. MIME detection duplicated across 3 files. No changes from simplification.
 
-#### `src/apis/gcs_api.py` (~427 lines)
-- **Purpose:** Uploads pin/blog hero images to Google Cloud Storage for Sheets `=IMAGE()` previews.
-- **Dependencies:** `google-cloud-storage`, `google-auth`, `json`, `base64`, `pathlib`.
-- **Issues:**
-  - **Hardcoded bucket name** (line 28): `DEFAULT_BUCKET_NAME = "slated-pipeline-pins"`.
-  - **Duplicated magic-byte MIME detection** (lines 132-142): Same pattern as pinterest_api.py and drive_api.py.
-  - `upload_single_image()` (lines 353-367) is a trivial wrapper around `upload_image()` — duplication.
-  - Fallback for `pyca/cryptography` RSA key issues (lines 83-95): Workaround that should be documented/removed when root cause is fixed.
-  - **Silent failures:** Many methods return `None` on error instead of raising. Callers must remember to check.
-  - `delete_old_images(prefix="W")` (line 203): Hardcoded prefix "W" for weekly pin cleanup. Fragile.
+#### `src/apis/gcs_api.py` (~353 lines, was ~427)
+- **Purpose:** Uploads pin/blog hero images to GCS for Sheets `=IMAGE()` previews.
+- **Changes:** -74 lines. Cleanup from simplification.
+- **Issues:** Hardcoded bucket name, duplicated MIME detection, silent `None` returns on error, hardcoded prefix "W" in `delete_old_images()`.
 
-#### `src/apis/github_api.py` (~544 lines)
-- **Purpose:** Commits blog posts (MDX + images) to goslated.com repo, triggering Vercel deploy.
-- **Dependencies:** `PyGithub`, `requests`, `time`, `pathlib`.
-- **Issues:**
-  - **Hardcoded base URL** (line 43): `GOSLATED_BASE_URL = "https://goslated.com"`. Should be config.
-  - **Three methods for committing blog posts:** `commit_blog_post()`, `commit_blog_posts()`, `commit_multiple_posts()`. Overlapping functionality — consolidation needed.
-  - `_create_or_update_file()` (lines 459-519): Dead code — never called from anywhere in the codebase (superseded by tree-based `_commit_files`).
-  - `verify_deployment()` polls with exponential backoff, but the timeout/interval values are hardcoded.
-  - **Default branch is hardcoded** to `"develop"` in `_commit_files` (line 373) and `"main"` in other methods. Mix of defaults is confusing.
+#### `src/apis/github_api.py` (~543 lines, unchanged)
+- **Purpose:** Commits blog posts to goslated.com repo, triggering Vercel deploy.
+- **Issues:** Hardcoded base URL, three overlapping commit methods, dead `_create_or_update_file()`, mixed default branches. No changes from simplification.
 
-#### `src/apis/sheets_api.py` (~944 lines)
+#### `src/apis/sheets_api.py` (~1,017 lines, was ~944)
 - **Purpose:** Manages Google Sheets (Weekly Review, Content Queue, Post Log, Dashboard tabs).
-- **Dependencies:** `google-api-python-client`, `google-auth`, `json`, `base64`.
-- **Issues:**
-  - **Largest API file (944 lines)** — god file. Manages 4 different sheet tabs with different schemas.
-  - **Hardcoded column indices** (lines 47-69): `CQ_COL_ID = 0`, `CQ_COL_TYPE = 1`, etc. Any column reorder in the Sheet breaks everything silently.
-  - **Hardcoded tab names** (lines 40-43): `TAB_WEEKLY_REVIEW = "Weekly Review"`, etc.
-  - `read_plan_status()` (line 231-233) is trivial alias for `read_plan_approval_status()`.
-  - `read_content_statuses()` (line 456-458) is trivial alias for `read_content_approvals()`.
-  - `update_dashboard_metrics()` (lines 804-806) is trivial alias for `update_dashboard()`.
-  - **Fragile coupling to Sheet layout**: `read_plan_approval_status()` reads from `B3` hardcoded (line 219). `write_deploy_status()` writes to `A4:C4` (line 249). If the layout changes, these silently read/write wrong cells.
-  - `reset_regen_trigger()` writes to `O1` (line 579) — hardcoded cell reference.
-  - `_clear_and_write()` clears entire tab then writes — no atomicity. If write fails after clear, data is lost.
+- **Changes:** +73 lines. Column M removed from Content Queue, regen trigger columns shifted.
+- **Issues:** God file (now largest API file at 1,017 lines). Hardcoded column indices, tab names, cell references. Trivial alias methods. Fragile `_clear_and_write()`. No structural improvement.
 
-#### `src/apis/drive_api.py` (~340 lines)
+#### `src/apis/drive_api.py` (~339 lines, unchanged)
 - **Purpose:** Uploads pin images to Google Drive for Sheets `=IMAGE()` preview.
-- **Dependencies:** `google-api-python-client`, `google-auth`, `json`, `base64`.
-- **Issues:**
-  - **Hardcoded folder name** (line 26): `DRIVE_FOLDER_NAME = "pinterest-pipeline-pins"`.
-  - **Duplicated magic-byte MIME detection** (lines 188-197): Same as gcs_api.py and pinterest_api.py.
-  - **Redundant with GCS:** Both `drive_api.py` and `gcs_api.py` serve the same purpose (hosting images for Sheets preview). The codebase appears to have migrated from Drive to GCS but kept both.
-  - `_clear_folder()` only fetches `pageSize=100` — won't clear all if >100 files.
+- **Issues:** Redundant with GCS, hardcoded folder name, duplicated MIME detection, `_clear_folder()` pagination limit. No changes from simplification.
 
-#### `src/apis/image_gen.py` (~538 lines)
+#### `src/apis/image_gen.py` (~537 lines, unchanged)
 - **Purpose:** AI image generation via OpenAI gpt-image-1.5 and Replicate Flux Pro.
-- **Dependencies:** `requests`, `uuid`, `base64`, `io`, `time`, `PIL` (optional).
-- **Issues:**
-  - **Hardcoded API endpoints** (lines 277, 336-337): OpenAI and Replicate URLs.
-  - **Hardcoded model name** (line 284): `"gpt-image-1.5"`. Should be config.
-  - **Hardcoded cost estimates** (lines 38-41): Will go stale.
-  - **Hardcoded output directory** (line 158): `data/generated_pins` (note: different from `data/generated/pins` used elsewhere — potential bug or inconsistency).
-  - `MIN_IMAGE_SIZE = 10_000` (line 44): Magic number threshold.
-  - `_modify_prompt_for_retry()` uses hardcoded modifier strings (lines 473-478).
-  - Replicate polling uses hardcoded `max_poll_time = 120`, `poll_interval = 3`.
+- **Issues:** Hardcoded API endpoints, model name, cost estimates, output directory mismatch (`data/generated_pins` vs `data/generated/pins`), magic number threshold. No changes from simplification.
 
-#### `src/apis/image_stock.py` (~453 lines)
-- **Purpose:** Stock photo search/download from Unsplash and Pexels.
-- **Dependencies:** `requests`, `pathlib`.
-- **Issues:**
-  - **Hardcoded API base URLs** (lines 36-37): `UNSPLASH_BASE_URL`, `PEXELS_BASE_URL`.
-  - `search_images()` (line 72-92) and `search()` (lines 94-175) are dual interfaces with confusing parameter mapping.
-  - Rate limit tracking is instance-level (not persisted) — resets on each script run.
+#### `src/apis/image_stock.py` -- DELETED
+- **Previous:** ~453 lines. Stock photo search/download from Unsplash and Pexels.
+- **Resolved:** Removed in pipeline simplification. All images now AI-generated.
 
-#### `src/apis/slack_notify.py` (~481 lines)
+#### `src/apis/slack_notify.py` (~537 lines)
 - **Purpose:** Slack webhook notifications for pipeline events.
-- **Dependencies:** `requests`, `json`.
-- **Issues:**
-  - **Hardcoded color constants** (lines 34-37).
-  - Well-structured with clear event-specific methods.
-  - Graceful degradation when webhook URL missing (logs but doesn't crash).
-  - `notify()` method accepts `level` but the level `"success"` (used in blog_deployer.py line 306) is not in `color_map` — falls back to green, but the intent is unclear.
+- **Changes:** +56 lines. Added `notify_plan_regen_complete()` and `notify_regen_complete()` for regen notifications.
+- **Issues:** Hardcoded color constants. `"success"` level not in `color_map` (used by `blog_deployer.py` line 306). Otherwise well-structured.
 
 ### Pipeline Scripts (`src/`)
 
-#### `src/token_manager.py` (~423 lines)
-- **Purpose:** Pinterest OAuth 2.0 token lifecycle (30-day access, 60-day continuous refresh).
-- **Dependencies:** `requests`, `json`, `base64`, `time`, `datetime`, `pathlib`, `src.apis.slack_notify`.
-- **Issues:**
-  - **Hardcoded token store path** (line 51): `TOKEN_STORE_PATH = Path(__file__).parent.parent / "data" / "token-store.json"`.
-  - **Hardcoded redirect URI** (line 53): `REDIRECT_URI = "http://localhost:8085/"`.
-  - **Hardcoded OAuth URL** (line 52): `PINTEREST_OAUTH_URL`.
-  - **Hardcoded refresh threshold** (line 54): `REFRESH_THRESHOLD_DAYS = 5`.
-  - Lazy-loads Slack notifier (lines 99-108): Uses `False` sentinel to prevent retrying — works but unconventional.
-  - Token caching (`_token_data`) is instance-level; if multiple TokenManager instances exist in the same process, they could have stale data.
+#### `src/token_manager.py` (~422 lines, unchanged)
+- **Purpose:** Pinterest OAuth 2.0 token lifecycle.
+- **Issues:** Hardcoded token store path, redirect URI, OAuth URL, refresh threshold. Lazy Slack loading pattern. No changes from simplification.
 
-#### `src/generate_weekly_plan.py` (~large, truncated in read)
-- **Purpose:** Generates the weekly content plan (8-10 blog posts + 28 pins) using Claude Sonnet. The "brain" step.
-- **Dependencies:** `ClaudeAPI`, `SheetsAPI`, `SlackNotify`, `json`, `datetime`, `pathlib`.
-- **Issues:**
-  - File is large (estimated 600+ lines) — another god file candidate.
-  - Loads context from 8+ strategy files — complex initialization.
-  - Tightly coupled to the specific structure of strategy JSON files.
-  - **CRITICAL: Analysis showed truncation — need to re-read this file fully.**
+#### `src/generate_weekly_plan.py` (~1,405 lines, unchanged)
+- **Purpose:** Generates weekly content plan (8-10 blog posts + 28 pins) using Claude Sonnet.
+- **Issues:** God file. Loads context from 8+ strategy files. Tightly coupled to strategy JSON structure. Now has new consumer: `regen_weekly_plan.py` calls `splice_replacements()`.
 
-#### `src/weekly_analysis.py` (~764 lines)
-- **Purpose:** Analyzes past week's Pinterest performance using Claude + data aggregation.
-- **Dependencies:** `ClaudeAPI`, `pull_analytics` (imports `load_content_log`, `compute_derived_metrics`, `aggregate_by_dimension`), `json`, `datetime`, `pathlib`.
-- **Issues:**
-  - **Hardcoded paths** (lines 51-57): `PROJECT_ROOT`, `ANALYSIS_DIR`, `DATA_DIR`, `CONTENT_LOG_PATH`, `PIN_SCHEDULE_PATH`, `STRATEGY_DIR`, `ANALYTICS_DIR`.
-  - `generate_content_memory_summary()` (lines 298-520) is 220 lines — could be its own module.
-  - **Hardcoded date math**: `four_weeks_ago`, `ninety_days_ago`, `sixty_days_ago` computed from `date.today()` — no way to run analysis for a historical date.
-  - Has a fallback analysis generator (lines 643-732) for when Claude is unavailable — good resilience pattern.
-  - `_compute_account_trends()` duplicates some aggregation logic from `build_analysis_context()`.
-
-#### `src/generate_blog_posts.py` (~376 lines)
+#### `src/generate_blog_posts.py` (~375 lines, unchanged)
 - **Purpose:** Orchestrates blog post generation from approved weekly plan.
-- **Dependencies:** `BlogGenerator`, `SheetsAPI`, `SlackNotify`, `json`, `pathlib`.
-- **Issues:**
-  - **Two entry points** that do nearly the same thing: `generate_blog_posts()` (line 42) and `generate_all_blog_posts()` (line 167). ~60% duplicated logic.
-  - `save_generated_posts()` (lines 310-332) duplicates save logic already in `BlogGenerator.save_post()`.
-  - `load_approved_plan()` (lines 280-308) falls back to local file even when Sheets says plan isn't approved — potentially dangerous.
+- **Issues:** Two near-duplicate entry points (60% shared logic). Duplicated save logic. Fallback to local file when Sheets says not approved.
 
-#### `src/blog_generator.py` (~763 lines)
+#### `src/blog_generator.py` (~790 lines)
 - **Purpose:** Generates MDX blog posts with frontmatter from content plan specs.
-- **Dependencies:** `ClaudeAPI`, `json`, `re`, `unicodedata`, `pathlib`.
+- **Changes:** Added H1 stripping safety net (lines 137-164) to fix double H1 blog bug.
 - **Issues:**
-  - **Hardcoded word count targets** (lines 40-45): `WORD_COUNT_TARGETS`.
-  - **Custom YAML parser** (lines 515-600): Implements a simple YAML parser instead of using `PyYAML` or `ruamel.yaml`. Will break on edge cases (nested objects, multi-line strings, special YAML characters).
-  - The four `generate_*_post()` methods (lines 222-349) are nearly identical — only differ in prompt template name and default pillar. Classic duplication.
-  - `_validate_generated_post()` logs warnings but never raises for non-critical issues — validation results are effectively lost.
+  - Custom YAML parser (lines 566-628) instead of PyYAML.
+  - Four near-identical `generate_*_post()` methods (lines 250-377).
+  - `_validate_generated_post()` warnings effectively invisible.
+  - NEW: H1 stripping early break only checks first non-empty line -- blank lines before H1 not detected.
 
-#### `src/generate_pin_content.py` (~large, truncated)
+#### `src/generate_pin_content.py` (~816 lines, was ~1,127, -311 lines)
 - **Purpose:** Generates pin assets (copy + images) for all pins in the approved plan.
-- **Dependencies:** `ClaudeAPI`, `ImageStockAPI`, `ImageGenAPI`, `PinAssembler`, `json`, `pathlib`.
+- **Dependencies:** `ClaudeAPI`, `ImageGenAPI`, `PinAssembler`, `json`, `pathlib` (removed: `ImageStockAPI`).
+- **Changes:** Removed `source_image()`, `_source_stock_image()`, `ImageStockAPI` import, quality gate metadata, AI comparison logic. Added simplified `_source_ai_image()` with JSON code-fence stripping, GPT-5 Mini image prompts, regen feedback loop.
 - **Issues:**
-  - **Hardcoded base URL** (line 41): `BLOG_BASE_URL = "https://goslated.com/blog"`. Duplicated from blog_deployer.py.
-  - **Hardcoded batch size** (line 44): `COPY_BATCH_SIZE = 6`.
-  - Large file (likely 800+ lines) — complex orchestration.
-  - **CRITICAL: File was truncated — need full read for complete audit.**
+  - Hardcoded `BLOG_BASE_URL` (duplicated).
+  - Hardcoded `COPY_BATCH_SIZE = 6`.
+  - O(n) image ID scan.
+  - Fragile blog slug resolution.
+  - NEW: JSON code-fence stripping (lines 710-725) can fail silently if GPT-5 Mini returns bad format.
+  - NEW: Image retry count always 0 -- quality notes show "AI generated" not "retry N".
+  - NEW: Assumes `image_gen_api.generate()` returns Path object.
+  - Uses `image_cleaner.clean_image` (line 748) for AI detection avoidance.
 
-#### `src/pin_assembler.py` (~996 lines)
-- **Purpose:** Assembles pin images from HTML/CSS templates using Puppeteer (headless Chrome).
-- **Dependencies:** `subprocess` (Node.js), `json`, `tempfile`, `pathlib`, `PIL` (optional), `base64`, `html`, `random`.
+#### `src/regen_content.py` (~821 lines)
+- **Purpose:** Handles content regeneration triggered from Content Queue.
+- **Changes:** Removed tier routing, stock API calls, AI comparison regen. Added blog image regen, plan-level feedback.
 - **Issues:**
-  - **Hardcoded dimensions** (lines 47-48): `PIN_WIDTH = 1000`, `PIN_HEIGHT = 1500`.
-  - **Hardcoded max file size** (line 51): `MAX_PNG_SIZE = 500 * 1024`.
-  - `render_pin_sync()` (lines 747-755) is a backward-compat wrapper — should eventually be removed.
-  - `_optimize_image()` (lines 510-559): Renames JPEG to `.png` extension to keep downstream paths valid — this is a **file format lie** that will confuse debugging and MIME detection.
-  - `_activate_variant()` (lines 239-274): Line-by-line HTML parsing to toggle variants — fragile, will break if HTML structure changes.
-  - **Template test data** (lines 770-951) is hardcoded in the module — should be in test fixtures.
-  - `select_variant()` uses `random.choice` — non-deterministic in production.
+  - `_regen_item` is 228 lines (god method).
+  - `_extract_drive_file_id()` duplicated (also in `publish_content_queue.py`).
+  - Fragile GCS URL parsing.
+  - NEW: Non-atomic pin-schedule.json update (load-modify-write with no recovery).
+  - NEW: Hero image download assumes `_drive_image_url` field exists.
 
-#### `src/blog_deployer.py` (~1018 lines)
+#### `src/publish_content_queue.py` (~443 lines)
+- **Purpose:** Publishes approved content to Content Queue sheet with image previews.
+- **Changes:** Removed AI comparison upload, tier-based decisions.
+- **Issues:**
+  - Frontmatter parsing duplication.
+  - Hardcoded Drive/GCS names.
+  - Drive file ID extraction logic duplicated (inline at line 118, same logic as `regen_content._extract_drive_file_id()`).
+  - Uses PyYAML (`yaml.safe_load`, line 22) for frontmatter parsing -- contrast with `blog_generator.py`'s custom parser.
+  - NEW: Malformed pins silently skip URL backup.
+
+#### `src/blog_deployer.py` (~920 lines)
 - **Purpose:** Commits approved blogs to goslated.com repo, verifies deployment, creates pin schedule, logs to content-log.jsonl.
-- **Dependencies:** `GitHubAPI`, `SheetsAPI`, `SlackNotify`, `PinAssembler`, `GcsAPI`, `json`, `pathlib`, `re`, `requests`.
+- **Changes:** Removed `_process_ai_image_swaps()` function. Otherwise unchanged.
 - **Issues:**
-  - **Largest pipeline script (1018 lines)** — god file. Handles blog deployment, URL verification, pin scheduling, content logging, AI image swaps.
-  - **Hardcoded base URL** (line 40): `BLOG_BASE_URL = "https://goslated.com/blog"` — **duplicated** from generate_pin_content.py.
-  - **Hardcoded timeout** (lines 43-44): `DEPLOY_VERIFY_TIMEOUT = 180`, `DEPLOY_VERIFY_RETRY_DELAY = 15`.
-  - **Three deployment modes** with significant code overlap: `deploy_approved_content()`, `deploy_to_preview()`, `promote_to_production()`. Each reads approvals, filters, deploys — 60%+ duplicated logic.
-  - `_append_to_content_log()` (lines 853-948): ~100 lines of content log writing logic that **overlaps with** `post_pins.py`'s `append_to_content_log()`. Both write to the same file with slightly different schemas.
-  - `_create_pin_schedule()` (lines 701-772) loads `pin-generation-results.json` — this is the third time this file is loaded across the codebase.
-  - `_process_ai_image_swaps()` (lines 774-851) imports `requests` inside the function body.
+  - God file (920 lines). Four deployment methods (`deploy_approved_content`, `deploy_to_preview`, `promote_to_production`, `deploy_approved_posts`) with 60%+ duplication.
+  - `BLOG_BASE_URL` duplicated.
+  - Hardcoded deploy verify timeout/delay.
+  - `pin-generation-results.json` loaded multiple times (was 3x, now 2x with swap removal).
+  - `update_pin_status()` semantic mismatch (used for blogs).
 
-#### `src/post_pins.py` (~732 lines)
-- **Purpose:** Posts approved pins to Pinterest via API. Runs 3x daily via cron.
-- **Dependencies:** `PinterestAPI`, `SheetsAPI`, `SlackNotify`, `TokenManager`, `requests`, `json`, `time`, `random`, `hashlib`, `base64`, `zoneinfo`.
+#### `src/regen_weekly_plan.py` (~320 lines -- NEW FILE)
+- **Purpose:** Plan-level regeneration. Replaces underperforming posts in the weekly plan by calling `generate_weekly_plan.splice_replacements()`.
+- **Dependencies:** `SheetsAPI`, `generate_weekly_plan`, `SlackNotify`, `json`, `pathlib`.
 - **Issues:**
-  - **Hardcoded jitter constants** (lines 66-68): `INITIAL_JITTER_MAX = 900`, `INTER_PIN_JITTER_MIN = 300`, `INTER_PIN_JITTER_MAX = 1200`.
-  - **Hardcoded slot pin counts** (lines 59-63): `SLOT_PIN_COUNTS = {"morning": 1, "afternoon": 1, "evening": 2}`.
-  - **Hardcoded timezone** (line 56): `ET = ZoneInfo("America/New_York")`.
-  - `is_already_posted()` (lines 335-366): Scans **entire** content-log.jsonl line by line every time. Will get progressively slower as the log grows. No index.
-  - `append_to_content_log()` (lines 369-386): **Duplicated** from blog_deployer.py with a slightly different schema (this one includes `pin_clicks`, `save_rate`, `click_through_rate`, `last_analytics_pull` — the blog_deployer version doesn't).
-  - `_record_failure()` (lines 652-703): Tracks failures in a separate `posting-failures.json` file — another data store.
-  - Board map includes both original case and lowercase keys (line 468) — doubles the map size unnecessarily.
-  - Comment at line 300 says jitter is "0 to 5400 seconds" but `INITIAL_JITTER_MAX = 900` — **stale comment**.
+  - NEW: Tight coupling to `generate_weekly_plan.splice_replacements()` -- breakage if that method signature changes.
+  - NEW: Silent exception defaults when reading Sheet status.
+  - NEW: No validation that Sheet cells B3/B4 were restored after plan splice.
+  - NEW: Post identification failures silently skipped.
 
-### Remaining Files Still To Audit
-- `src/pull_analytics.py`
-- `src/publish_content_queue.py`
-- `src/regen_content.py`
-- `src/setup_boards.py`
-- `src/backfill_hero_images.py`
-- `src/monthly_review.py`
-- `oauth_setup.py`
-- `render_pin.js`
-- `src/apps-script/trigger.gs`
-- `.github/workflows/*.yml` (10 workflow files)
-- `requirements.txt`, `package.json`
-- `strategy/*.json`, `strategy/*.md`
-- `prompts/*.md`
-- `.env.example`
-- `.gitignore`
-- `templates/pins/**`
+#### `src/pin_assembler.py` (~1,039 lines)
+- **Purpose:** Assembles pin images from HTML/CSS templates using Puppeteer.
+- **Changes:** Added `image_cleaner.clean_image` calls in `render_pin()` (line 508) and `render_batch()` (line 717) for AI detection avoidance.
+- **Issues:** Hardcoded dimensions, max file size. JPEG-as-PNG naming. Fragile HTML variant parsing. ~200 lines of test data in module. `random.choice` variant selection.
+
+#### `src/post_pins.py` (~731 lines, unchanged)
+- **Purpose:** Posts approved pins to Pinterest via API.
+- **Issues:** Hardcoded jitter, slot counts, timezone. O(n) `is_already_posted()`. Duplicate `append_to_content_log()`. Stale jitter comment.
+
+#### `src/pull_analytics.py` (~559 lines, unchanged)
+- **Purpose:** Pulls Pinterest analytics and updates content log.
+- **Issues:** No significant changes or new issues.
+
+#### `src/weekly_analysis.py` (~763 lines, unchanged)
+- **Purpose:** Analyzes past week's Pinterest performance.
+- **Issues:** Hardcoded paths, 220-line `generate_content_memory_summary()`, hardcoded date math, duplicated aggregation logic.
+
+#### `src/monthly_review.py` (~864 lines, unchanged)
+- **Purpose:** Monthly performance review using Claude Opus.
+- **Issues:** No significant changes or new issues.
+
+#### `src/image_cleaner.py` (~101 lines -- NEW FILE)
+- **Purpose:** Strips all metadata (EXIF, IPTC, XMP, PNG text chunks) from images and applies subtle Gaussian noise to defeat AI-content fingerprinting.
+- **Dependencies:** `numpy`, `PIL` (Pillow), `pathlib`, `logging`.
+- **Called by:** `pin_assembler.py` (lines 508, 717), `generate_pin_content.py` (line 748).
+- **Issues:**
+  - Converts all images to JPEG (loses PNG transparency).
+  - Silent failure: catches all exceptions, returns `input_path` unchanged on error (line 99-101).
+  - Random JPEG quality (89-94) may cause inconsistent file sizes.
+
+#### `src/setup_boards.py` (~105 lines -- utility)
+- **Purpose:** One-time Pinterest board and section setup utility.
+- **Dependencies:** `pinterest_api`, `token_manager`, `json`, `pathlib`.
+- **Issues:** No significant issues. Utility script, not part of automated pipeline.
+
+#### `src/backfill_hero_images.py` (~200 lines -- largely obsolete)
+- **Purpose:** Backfill hero images from Google Drive to GCS for existing blog posts.
+- **Dependencies:** `gcs_api`, `sheets_api`, `drive_api`, `pathlib`.
+- **Issues:**
+  - Largely obsolete per its own docstring (line 7-9).
+  - References Column M which no longer exists in the simplified pipeline.
+  - Should be considered for removal.
+
+#### `src/__init__.py` (~1 line)
+- **Purpose:** Empty package init.
+- **Issues:** None.
+
+### Non-Python Files
+
+#### `.github/workflows/` (10 workflow files)
+- All 10 workflows verified -- no broken references to removed features (stock, tier, image_rank).
+- MINOR: `promote-and-schedule.yml` has inline pin schedule redating logic.
+- MINOR: `monthly-review.yml` 30-min timeout may be tight for Opus.
+
+#### `requirements.txt`, `package.json`
+- Clean. All deps still used. No stale stock photo libraries. `openai` SDK present and used by `image_gen.py`, but `claude_api.py` uses raw HTTP `requests` for GPT-5 Mini instead of the SDK.
+- `numpy` dependency added for `image_cleaner.py`.
+- `package.json` only contains puppeteer.
+
+#### `.gitignore`
+- MEDIUM: Stale directory references (`data/generated_posts/`, `data/generated_pins/`) don't match actual dirs (`data/generated/pins/`, `data/generated/blog/`).
+- Negation rules for hero images may contradict `*.png` ignore.
+
+#### Strategy files (`strategy/`)
+- All clean. No stale references to tiers/stock/ranking.
+- `current-strategy.md` properly updated for simplification.
+
+#### Prompt templates (`prompts/`)
+- Deleted prompts confirmed gone: `image_rank.md`, `image_search.md`, `image_validate.md`.
+- No stale references in remaining prompts.
+- MINOR: `image_prompt.md` line 28 mentions dead code (htmlcsstoimage alternative).
+
+#### Pin templates (`templates/pins/`)
+- All 5 template types verified and clean.
+- MINOR: SVG logos repeated across variants (could DRY up).
 
 ---
 
@@ -238,49 +235,42 @@
 
 | Store | Type | Location | Readers | Writers | Canonical? |
 |-------|------|----------|---------|---------|------------|
-| **content-log.jsonl** | File (JSONL) | `data/content-log.jsonl` | `weekly_analysis.py`, `pull_analytics.py`, `post_pins.py` (idempotency check) | `blog_deployer.py` (initial entries, pin_id=None), `post_pins.py` (posted entries, pin_id set), `pull_analytics.py` (analytics updates) | YES — primary record of all content |
-| **pin-schedule.json** | File (JSON) | `data/pin-schedule.json` | `post_pins.py`, `weekly_analysis.py` | `blog_deployer.py` | YES — posting queue |
-| **pin-generation-results.json** | File (JSON) | `data/pin-generation-results.json` | `blog_deployer.py` (3x: deploy, schedule, swap), `regen_content.py` | `generate_pin_content.py`, `blog_deployer.py` (after AI swap) | YES — generated pin metadata |
-| **blog-generation-results.json** | File (JSON) | `data/blog-generation-results.json` | `generate_pin_content.py` | `generate_blog_posts.py` | YES — generated blog metadata |
-| **weekly-plan-*.json** | File (JSON) | `data/weekly-plan-*.json` | `generate_blog_posts.py`, `generate_pin_content.py` | `generate_weekly_plan.py` | YES — weekly plan |
-| **token-store.json** | File (JSON) | `data/token-store.json` | `token_manager.py` | `token_manager.py` | YES — OAuth tokens |
+| **content-log.jsonl** | File (JSONL) | `data/content-log.jsonl` | `weekly_analysis.py`, `pull_analytics.py`, `post_pins.py` (idempotency check) | `blog_deployer.py` (initial entries), `post_pins.py` (posted entries), `pull_analytics.py` (analytics updates) | YES -- primary record of all content |
+| **pin-schedule.json** | File (JSON) | `data/pin-schedule.json` | `post_pins.py`, `weekly_analysis.py` | `blog_deployer.py`, `regen_content.py` (NEW: modifies during regen) | YES -- posting queue |
+| **pin-generation-results.json** | File (JSON) | `data/pin-generation-results.json` | `blog_deployer.py` (2x: deploy, schedule), `regen_content.py` | `generate_pin_content.py` | YES -- generated pin metadata |
+| **blog-generation-results.json** | File (JSON) | `data/blog-generation-results.json` | `generate_pin_content.py` | `generate_blog_posts.py` | YES -- generated blog metadata |
+| **weekly-plan-*.json** | File (JSON) | `data/weekly-plan-*.json` | `generate_blog_posts.py`, `generate_pin_content.py`, `regen_weekly_plan.py` (NEW) | `generate_weekly_plan.py`, `regen_weekly_plan.py` (NEW: splice) | YES -- weekly plan |
+| **token-store.json** | File (JSON) | `data/token-store.json` | `token_manager.py` | `token_manager.py` | YES -- OAuth tokens |
 | **content-memory-summary.md** | File (MD) | `data/content-memory-summary.md` | `generate_weekly_plan.py` | `weekly_analysis.py` | Derived from content-log.jsonl |
-| **posting-failures.json** | File (JSON) | `data/posting-failures.json` | `post_pins.py` | `post_pins.py` | YES — failure tracking |
-| **Google Sheet: Weekly Review** | Cloud | Google Sheets tab | `sheets_api.py` (plan status, deploy status) | `generate_weekly_plan.py`, `blog_deployer.py` | Shared source of truth with manual review |
-| **Google Sheet: Content Queue** | Cloud | Google Sheets tab | `blog_deployer.py`, `post_pins.py`, `regen_content.py` | `publish_content_queue.py`, `regen_content.py` | Shared source of truth with manual review |
-| **Google Sheet: Post Log** | Cloud | Google Sheets tab | — | `sheets_api.py` (append_post_log, update_pin_status) | Derived — also written to content-log.jsonl |
-| **Google Sheet: Dashboard** | Cloud | Google Sheets tab | — | `sheets_api.py` (update_dashboard) | Derived — from analytics |
+| **posting-failures.json** | File (JSON) | `data/posting-failures.json` | `post_pins.py` | `post_pins.py` | YES -- failure tracking |
+| **Google Sheet: Weekly Review** | Cloud | Google Sheets tab | `sheets_api.py`, `regen_weekly_plan.py` (NEW: reads B3/B4) | `generate_weekly_plan.py`, `blog_deployer.py`, `regen_weekly_plan.py` (NEW: restores B3/B4) | Shared source of truth |
+| **Google Sheet: Content Queue** | Cloud | Google Sheets tab | `blog_deployer.py`, `post_pins.py`, `regen_content.py` | `publish_content_queue.py`, `regen_content.py` | Shared source of truth (Column M removed) |
+| **Google Sheet: Post Log** | Cloud | Google Sheets tab | -- | `sheets_api.py` | Derived |
+| **Google Sheet: Dashboard** | Cloud | Google Sheets tab | -- | `sheets_api.py` | Derived |
 | **GCS Bucket** | Cloud | `slated-pipeline-pins` | Google Sheets (=IMAGE()), `regen_content.py` | `gcs_api.py`, `publish_content_queue.py` | Image hosting |
-| **Google Drive Folder** | Cloud | `pinterest-pipeline-pins` | Google Sheets (=IMAGE()) | `drive_api.py` | **REDUNDANT** — same purpose as GCS |
-| **goslated.com GitHub Repo** | Cloud | `content/blog/`, `public/assets/blog/` | Vercel (auto-deploy) | `github_api.py` | Blog content deployment |
-| **Pinterest API** | Cloud | Pinterest v5 API | `pull_analytics.py` | `post_pins.py` | External — pin hosting |
-| **Slack Webhook** | Cloud | Webhook URL | — | `slack_notify.py` | Notification sink |
-| **Anthropic Claude API** | Cloud | API | — | `claude_api.py` | LLM provider |
-| **Unsplash API** | Cloud | API | — | `image_stock.py` | Stock photo source |
-| **Pexels API** | Cloud | API | — | `image_stock.py` | Stock photo source |
-| **OpenAI API** | Cloud | API | — | `image_gen.py` | AI image generation |
-| **Replicate API** | Cloud | API | — | `image_gen.py` | AI image generation |
+| **Google Drive Folder** | Cloud | `pinterest-pipeline-pins` | Google Sheets (=IMAGE()) | `drive_api.py` | **REDUNDANT** -- same purpose as GCS |
+| **goslated.com GitHub Repo** | Cloud | `content/blog/`, `public/assets/blog/` | Vercel (auto-deploy) | `github_api.py` | Blog deployment |
+| **Pinterest API** | Cloud | Pinterest v5 API | `pull_analytics.py` | `post_pins.py` | External -- pin hosting |
+| **Slack Webhook** | Cloud | Webhook URL | -- | `slack_notify.py` | Notification sink |
+| **Anthropic Claude API** | Cloud | API | -- | `claude_api.py` | LLM provider |
+| **OpenAI API** | Cloud | API | -- | `image_gen.py`, `claude_api.py` (NEW: GPT-5 Mini) | AI image gen + NEW: image prompts, pin copy |
+| **Replicate API** | Cloud | API | -- | `image_gen.py` | AI image generation (Flux Pro) |
+
+**Removed stores:**
+- ~~Unsplash API~~ -- removed with `image_stock.py` deletion
+- ~~Pexels API~~ -- removed with `image_stock.py` deletion
 
 ### Data Flow Anomalies
 
-1. **content-log.jsonl has THREE writers with DIFFERENT schemas:**
-   - `blog_deployer.py` writes initial entries with `pin_id=None` and no analytics fields
-   - `post_pins.py` writes entries with `pin_id`, `pinterest_pin_id`, and analytics fields (`pin_clicks`, `save_rate`, `click_through_rate`, `last_analytics_pull`)
-   - `pull_analytics.py` updates existing entries with analytics data
-   - **RISK:** Schema inconsistency between entry types.
+1. **D1: content-log.jsonl has THREE writers with DIFFERENT schemas** -- `blog_deployer.py` writes entries without analytics fields; `post_pins.py` writes entries with `pin_clicks`, `save_rate`, etc.; `pull_analytics.py` updates existing entries. Schema inconsistency persists. STILL PRESENT.
 
-2. **pin-generation-results.json is loaded 3 times in blog_deployer.py:**
-   - `_create_pin_schedule()` loads it
-   - `promote_to_production()` loads it for AI image swaps
-   - `_append_to_content_log()` loads it again
-   - Each load is independent with its own try/except.
+2. **D2: pin-generation-results.json loaded multiple times in blog_deployer.py** -- Was 3x (deploy, schedule, swap). Now 2x after `_process_ai_image_swaps()` removal. PARTIALLY RESOLVED.
 
-3. **Google Drive and GCS serve the same purpose** (image hosting for Sheets =IMAGE()). Unclear which is the canonical store — both are maintained.
+3. **D3: Google Drive and GCS serve the same purpose** -- Both maintained for Sheets =IMAGE(). STILL PRESENT.
 
-4. **BLOG_BASE_URL is defined in 3 places:**
-   - `src/apis/github_api.py` line 43: `GOSLATED_BASE_URL = "https://goslated.com"`
-   - `src/generate_pin_content.py` line 41: `BLOG_BASE_URL = "https://goslated.com/blog"`
-   - `src/blog_deployer.py` line 40: `BLOG_BASE_URL = "https://goslated.com/blog"`
+4. **D4: BLOG_BASE_URL defined in 3 places** -- `github_api.py`, `generate_pin_content.py`, `blog_deployer.py`. STILL PRESENT.
+
+5. **D5 (NEW): pin-schedule.json now has a second writer** -- `regen_content.py` modifies pin-schedule.json with non-atomic load-modify-write. If interrupted, data loss.
 
 ---
 
@@ -288,102 +278,147 @@
 
 ### 3.1 Data Flow & Source of Truth
 
-| # | Severity | File(s) | Issue |
-|---|----------|---------|-------|
-| D1 | HIGH | `blog_deployer.py`, `post_pins.py` | **content-log.jsonl has two append functions with different schemas.** `blog_deployer._append_to_content_log()` writes entries without analytics tracking fields. `post_pins.append_to_content_log()` writes entries with `pin_clicks`, `save_rate`, etc. This causes schema inconsistency — `pull_analytics.py` may fail to update fields that don't exist. |
-| D2 | HIGH | `blog_deployer.py` | **pin-generation-results.json loaded 3 separate times** in a single deployment flow. Each load is independent — if the file changes between loads (e.g., during AI swap), later loads see different data. |
-| D3 | MEDIUM | `drive_api.py`, `gcs_api.py` | **Two image hosting services for the same purpose.** Both Drive and GCS exist to host images for Sheets =IMAGE() formulas. Migration to GCS appears incomplete. |
-| D4 | MEDIUM | `github_api.py`, `generate_pin_content.py`, `blog_deployer.py` | **BLOG_BASE_URL defined in 3 places.** Any URL change requires 3 edits. |
-| D5 | LOW | `post_pins.py` | **Posting failures tracked in separate file** (`posting-failures.json`) not connected to the content log. No cleanup mechanism. |
+| # | Severity | File(s) | Issue | Status |
+|---|----------|---------|-------|--------|
+| D1 | HIGH | `blog_deployer.py`, `post_pins.py` | content-log.jsonl has two append functions with different schemas. | OPEN |
+| D2 | HIGH | `blog_deployer.py` | pin-generation-results.json loaded multiple times in single flow. | PARTIALLY RESOLVED (was 3x, now 2x after `_process_ai_image_swaps()` removal) |
+| D3 | MEDIUM | `drive_api.py`, `gcs_api.py` | Two image hosting services for same purpose. Migration to GCS incomplete. | OPEN |
+| D4 | MEDIUM | `github_api.py`, `generate_pin_content.py`, `blog_deployer.py` | BLOG_BASE_URL defined in 3 places. | OPEN |
+| D5 | LOW | `post_pins.py` | Posting failures tracked in separate file, not connected to content log. | OPEN |
 
-### 3.2 Hardcoded Values
+### 3.2 Hardcoded Values (27+ instances)
 
-| # | File | Line | Value | Should Be |
-|---|------|------|-------|-----------|
-| H1 | `claude_api.py` | 40-42 | Model IDs (`claude-sonnet-4-6`, etc.) | `CONFIG.CLAUDE_MODEL_ROUTINE` or env var |
-| H2 | `claude_api.py` | 45-49 | Cost per million tokens | Config or dynamic lookup |
-| H3 | `pinterest_api.py` | 39-40 | Pinterest API base URLs | Config constant |
-| H4 | `gcs_api.py` | 28 | `DEFAULT_BUCKET_NAME = "slated-pipeline-pins"` | Env var only (already has env fallback, but hardcoded default) |
-| H5 | `github_api.py` | 43 | `GOSLATED_BASE_URL = "https://goslated.com"` | Env var or shared config |
-| H6 | `drive_api.py` | 26 | `DRIVE_FOLDER_NAME = "pinterest-pipeline-pins"` | Config constant |
-| H7 | `image_gen.py` | 38-41 | Cost per image dict | Config |
-| H8 | `image_gen.py` | 44 | `MIN_IMAGE_SIZE = 10_000` | Config constant |
-| H9 | `image_gen.py` | 158 | Output dir `data/generated_pins` | Shared path constant (note: differs from `data/generated/pins` used elsewhere!) |
-| H10 | `image_gen.py` | 284 | `"gpt-image-1.5"` model name | Config/env var |
-| H11 | `sheets_api.py` | 40-43 | Tab names (Weekly Review, etc.) | Config file |
-| H12 | `sheets_api.py` | 47-69 | Column indices (CQ_COL_ID=0, etc.) | Config or schema definition file |
-| H13 | `sheets_api.py` | 219 | Cell reference `B3` for plan status | Named range or config |
-| H14 | `sheets_api.py` | 249 | Cell range `A4:C4` for deploy status | Named range or config |
-| H15 | `sheets_api.py` | 579 | Cell reference `O1` for regen trigger | Named range or config |
-| H16 | `token_manager.py` | 53 | `REDIRECT_URI = "http://localhost:8085/"` | Env var |
-| H17 | `token_manager.py` | 54 | `REFRESH_THRESHOLD_DAYS = 5` | Config |
-| H18 | `pin_assembler.py` | 47-48 | `PIN_WIDTH=1000, PIN_HEIGHT=1500` | Config constants |
-| H19 | `pin_assembler.py` | 51 | `MAX_PNG_SIZE = 500 * 1024` | Config constant |
-| H20 | `blog_deployer.py` | 40 | `BLOG_BASE_URL` (duplicate of H5) | Shared config |
-| H21 | `blog_deployer.py` | 43-44 | Deploy verify timeout/delay | Config |
-| H22 | `post_pins.py` | 56 | `ET = ZoneInfo("America/New_York")` | Config |
-| H23 | `post_pins.py` | 59-63 | Slot pin counts | Config or strategy file |
-| H24 | `post_pins.py` | 66-68 | Jitter constants | Config |
-| H25 | `generate_pin_content.py` | 41 | `BLOG_BASE_URL` (duplicate of H5, H20) | Shared config |
-| H26 | `generate_pin_content.py` | 44 | `COPY_BATCH_SIZE = 6` | Config |
-| H27 | `blog_generator.py` | 40-45 | `WORD_COUNT_TARGETS` | Config or strategy file |
+| # | File | Value | Should Be | Status |
+|---|------|-------|-----------|--------|
+| H1 | `claude_api.py` | Claude model IDs | Config/env var | OPEN |
+| H2 | `claude_api.py` | Cost per million tokens | Config or dynamic lookup | OPEN |
+| H3 | `pinterest_api.py` | Pinterest API base URLs | Config constant | OPEN |
+| H4 | `gcs_api.py` | `DEFAULT_BUCKET_NAME` | Env var only | OPEN |
+| H5 | `github_api.py` | `GOSLATED_BASE_URL` | Env var or shared config | OPEN |
+| H6 | `drive_api.py` | `DRIVE_FOLDER_NAME` | Config constant | OPEN |
+| H7 | `image_gen.py` | Cost per image dict | Config | OPEN |
+| H8 | `image_gen.py` | `MIN_IMAGE_SIZE = 10_000` | Config constant | OPEN |
+| H9 | `image_gen.py` | Output dir `data/generated_pins` | Shared path constant (mismatches `data/generated/pins`) | OPEN |
+| H10 | `image_gen.py` | `"gpt-image-1.5"` model name | Config/env var | OPEN |
+| H11 | `sheets_api.py` | Tab names | Config file | OPEN |
+| H12 | `sheets_api.py` | Column indices | Config or schema definition | OPEN |
+| H13 | `sheets_api.py` | Cell reference `B3` | Named range or config | OPEN |
+| H14 | `sheets_api.py` | Cell range `A4:C4` | Named range or config | OPEN |
+| H15 | `sheets_api.py` | Cell reference for regen trigger now at `N1` (line 569), plan regen at `B5` (line 653) | Named range or config | OPEN |
+| H16 | `token_manager.py` | `REDIRECT_URI` | Env var | OPEN |
+| H17 | `token_manager.py` | `REFRESH_THRESHOLD_DAYS = 5` | Config | OPEN |
+| H18 | `pin_assembler.py` | Pin dimensions | Config constants | OPEN |
+| H19 | `pin_assembler.py` | `MAX_PNG_SIZE` | Config constant | OPEN |
+| H20 | `blog_deployer.py` | `BLOG_BASE_URL` (dup of H5) | Shared config | OPEN |
+| H21 | `blog_deployer.py` | Deploy verify timeout/delay | Config | OPEN |
+| H22 | `post_pins.py` | Timezone `America/New_York` | Config | OPEN |
+| H23 | `post_pins.py` | Slot pin counts | Config or strategy file | OPEN |
+| H24 | `post_pins.py` | Jitter constants | Config | OPEN |
+| H25 | `generate_pin_content.py` | `BLOG_BASE_URL` (dup of H5, H20) | Shared config | OPEN |
+| H26 | `generate_pin_content.py` | `COPY_BATCH_SIZE = 6` | Config | OPEN |
+| H27 | `blog_generator.py` | `WORD_COUNT_TARGETS` | Config or strategy file | OPEN |
+| H28 | `claude_api.py` | NEW: GPT-5 model name default `"gpt-5-mini"` (has env var `OPENAI_CHAT_MODEL` override) | Already partially configurable | PARTIALLY RESOLVED |
+| H29 | `claude_api.py` | NEW: GPT-5 Mini cost rates | Config | NEW |
 
 ### 3.3 Fragile Coupling
 
-| # | File(s) | Issue |
-|---|---------|-------|
-| F1 | `sheets_api.py` | Column indices (H12) create fragile coupling to Sheet layout. If user adds a column, all indices shift and break silently. |
-| F2 | `sheets_api.py` | Cell references (H13-H15) hardcoded to specific cells. No validation that the cell contains the expected data type. |
-| F3 | `blog_deployer.py`, `generate_pin_content.py` | Pin generation results JSON schema assumed but never validated. Key lookups use `.get()` with empty defaults, masking missing data. |
-| F4 | `pin_assembler.py` | `_activate_variant()` parses HTML line-by-line looking for `data-variant=` and `pin-canvas` strings. Any HTML template restructuring breaks this. |
-| F5 | `blog_generator.py` | Custom YAML parser (lines 515-600) will break on: nested objects, multi-line strings, YAML anchors/aliases, colons in values, special characters. |
-| F6 | `post_pins.py` | `build_board_map()` creates a runtime mapping of board names to IDs. If Pinterest board names are changed, all scheduled pins with old names fail. |
-| F7 | All pipeline scripts | All scripts resolve paths relative to `Path(__file__).parent.parent`. If the directory structure changes, everything breaks. |
+| # | File(s) | Issue | Status |
+|---|---------|-------|--------|
+| F1 | `sheets_api.py` | Column indices create fragile coupling to Sheet layout. | OPEN |
+| F2 | `sheets_api.py` | Cell references hardcoded to specific cells. | OPEN |
+| F3 | `blog_deployer.py`, `generate_pin_content.py` | Pin generation results JSON schema assumed, never validated. | OPEN |
+| F4 | `pin_assembler.py` | `_activate_variant()` parses HTML line-by-line -- fragile. | OPEN |
+| F5 | `blog_generator.py` | Custom YAML parser will break on edge cases. | OPEN |
+| F6 | `post_pins.py` | Board name mapping fails if Pinterest board names change. | OPEN |
+| F7 | All pipeline scripts | All resolve paths via `Path(__file__).parent.parent`. | OPEN |
+| F8 | `regen_weekly_plan.py` | NEW: Tight coupling to `generate_weekly_plan.splice_replacements()`. | NEW |
+| F9 | `regen_content.py` | NEW: Fragile GCS URL parsing. | OPEN (existed before, still present) |
+| F10 | `generate_pin_content.py` | NEW: Fragile blog slug resolution. | OPEN (existed before, still present) |
 
 ### 3.4 Duplication
 
-| # | Files | Issue |
-|---|-------|-------|
-| DU1 | `pinterest_api.py:131-139`, `gcs_api.py:132-142`, `drive_api.py:188-197` | **Magic-byte MIME type detection** (JPEG/PNG/WebP) duplicated in 3 files with identical logic. Should be a shared utility. |
-| DU2 | `blog_deployer.py:853-948`, `post_pins.py:369-386` | **Two `append_to_content_log()` functions** writing to the same file with different schemas. |
-| DU3 | `generate_blog_posts.py:42-164`, `generate_blog_posts.py:167-241` | **`generate_blog_posts()` and `generate_all_blog_posts()`** are ~60% identical. |
-| DU4 | `blog_generator.py:222-349` | **Four `generate_*_post()` methods** are structurally identical — only differ in post_type string and default pillar. |
-| DU5 | `github_api.py:90-218` | **Three commit methods** (`commit_blog_post`, `commit_blog_posts`, `commit_multiple_posts`) with overlapping functionality. |
-| DU6 | `sheets_api.py` | **Three alias methods** that are trivial wrappers: `read_plan_status()`, `read_content_statuses()`, `update_dashboard_metrics()`. |
-| DU7 | `gcs_api.py:353-367` | `upload_single_image()` is a trivial wrapper around `upload_image()`. |
-| DU8 | `pinterest_api.py:219-221` | `get_boards()` is a trivial alias for `list_boards()`. |
-| DU9 | `blog_deployer.py:73-221,223-317,319-491` | **Three deployment modes** (`deploy_approved_content`, `deploy_to_preview`, `promote_to_production`) with 60%+ shared logic (read approvals, filter, deploy, verify, schedule, log, notify). |
-| DU10 | `github_api.py:43`, `generate_pin_content.py:41`, `blog_deployer.py:40` | **BLOG_BASE_URL defined 3 times**. |
+| # | Files | Issue | Status |
+|---|-------|-------|--------|
+| DU1 | `pinterest_api.py`, `gcs_api.py`, `drive_api.py` | Magic-byte MIME detection duplicated in 3 files. | OPEN |
+| DU2 | `blog_deployer.py`, `post_pins.py` | Two `append_to_content_log()` functions with different schemas. | OPEN |
+| DU3 | `generate_blog_posts.py` | `generate_blog_posts()` and `generate_all_blog_posts()` ~60% identical. | OPEN |
+| DU4 | `blog_generator.py` | Four `generate_*_post()` methods structurally identical. | OPEN |
+| DU5 | `github_api.py` | Three commit methods with overlapping functionality. | OPEN |
+| DU6 | `sheets_api.py` | Three trivial alias methods. | OPEN |
+| DU7 | -- | ~~`upload_single_image()` trivial wrapper in `gcs_api.py`.~~ | RESOLVED (method does not exist -- audit error) |
+| DU8 | `pinterest_api.py` | `get_boards()` trivial alias for `list_boards()`. | OPEN |
+| DU9 | `blog_deployer.py` | Four deployment methods with 60%+ shared logic (`deploy_approved_content`, `deploy_to_preview`, `promote_to_production`, `deploy_approved_posts`). | OPEN |
+| DU10 | `github_api.py`, `generate_pin_content.py`, `blog_deployer.py` | BLOG_BASE_URL defined 3 times. | OPEN |
+| DU11 | `regen_content.py`, `publish_content_queue.py` | NEW: Drive file ID extraction logic duplicated. Named function in `regen_content.py` (lines 667-676), inline `url.split("id=")` in `publish_content_queue.py` (line 118). | NEW |
+| DU12 | `claude_api.py` | NEW: Alias methods `generate_weekly_analysis()` (line 584) and `generate_monthly_review()` (line 664) are trivial wrappers. | NEW |
 
 ### 3.5 Missing Error Handling
 
-| # | File | Line(s) | Issue |
-|---|------|---------|-------|
-| E1 | `gcs_api.py` | Many methods | Returns `None` on failure instead of raising. Callers often don't check return values. |
-| E2 | `blog_generator.py` | 447-513 | `_validate_generated_post()` logs warnings but never raises or returns validation results. Failed validations are effectively invisible. |
-| E3 | `sheets_api.py` | 823-845 | `_clear_and_write()` clears tab, then writes. If write fails, data is lost with no recovery. |
-| E4 | `post_pins.py` | 335-366 | `is_already_posted()` scans entire JSONL file — O(n) per pin. Will degrade as content log grows. Not an error handling issue per se, but a silent performance degradation. |
-| E5 | `blog_deployer.py` | 184-189 | Uses `sheets.update_pin_status()` to update blog post status — this function is designed for *pins* in the *Post Log* tab, not blogs. Semantic mismatch. |
+| # | Severity | File | Issue | Status |
+|---|----------|------|-------|--------|
+| E1 | MEDIUM | `gcs_api.py` | Returns `None` on failure instead of raising. Callers don't check. | OPEN |
+| E2 | LOW | `blog_generator.py` | `_validate_generated_post()` logs warnings but never raises. Results invisible. | OPEN |
+| E3 | HIGH | `sheets_api.py` | `_clear_and_write()` clears tab then writes. Write failure = data loss. | OPEN |
+| E4 | MEDIUM | `post_pins.py` | `is_already_posted()` scans entire JSONL file -- O(n) per pin. | OPEN |
+| E5 | MEDIUM | `blog_deployer.py` | Uses `update_pin_status()` for blog posts -- semantic mismatch. | OPEN |
 
 ### 3.6 Structural Issues
 
-| # | File | Issue |
-|---|------|-------|
-| S1 | `sheets_api.py` (944 lines) | **God file** managing 4 different Sheet tabs with different schemas, column mappings, read/write patterns. Should be split into per-tab classes or at minimum per-tab method groups. |
-| S2 | `blog_deployer.py` (1018 lines) | **God file** handling blog deployment, URL verification, pin scheduling, content logging, AI image swaps, and Slack notification orchestration. |
-| S3 | `claude_api.py` (~540 lines) | **God file** handling all LLM interactions for planning, pin copy, blog generation, image prompts, weekly analysis, and monthly review. |
-| S4 | `pin_assembler.py` (~996 lines) | Contains both the assembler logic and ~200 lines of test render data. Test data should be external. |
-| S5 | No `config.py` or central configuration | Hardcoded values scattered across 15+ files. No single place to change URLs, thresholds, model names, etc. |
-| S6 | No shared utility module | Duplicated code (MIME detection, path resolution, content log operations) suggests need for a `src/utils.py` or similar. |
+| # | File | Issue | Status |
+|---|------|-------|--------|
+| S1 | `sheets_api.py` (1,017 lines) | God file managing 4 Sheet tabs. | OPEN (worsened: +73 lines) |
+| S2 | `blog_deployer.py` (920 lines) | God file. Four deployment methods, logging, scheduling. | OPEN (reduced from ~1,018: `_process_ai_image_swaps()` removed) |
+| S3 | `claude_api.py` (~954 lines) | God file. Now handles Claude + GPT-5 Mini orchestration. | OPEN (worsened: +414 lines, dual-model logic) |
+| S4 | `pin_assembler.py` (~1,039 lines) | ~200 lines of test render data in module. | OPEN |
+| S5 | No `config.py` or central configuration | 27+ hardcoded values across 15+ files. | OPEN |
+| S6 | No shared utility module | Duplicated MIME detection, path resolution, content log ops. | OPEN |
+| S7 | `regen_content.py` | `_regen_item` is 228 lines -- god method. | OPEN (existed before, still present) |
 
 ### 3.7 Configuration & Environment
 
-| # | Issue |
-|---|-------|
-| C1 | No central configuration module. Each file defines its own constants. |
-| C2 | `image_gen.py` line 158 uses `data/generated_pins` but everywhere else uses `data/generated/pins`. Potential path mismatch bug. |
-| C3 | Environment variable names are consistent but documented in each file's docstring rather than a central reference. `.env.example` exists but may be incomplete. |
-| C4 | Google credentials shared between Sheets, Drive, and GCS (`GOOGLE_SHEETS_CREDENTIALS_JSON`) — semantically named for Sheets but used for all Google services. |
+| # | Issue | Status |
+|---|-------|--------|
+| C1 | No central configuration module. Each file defines own constants. | OPEN |
+| C2 | `image_gen.py` uses `data/generated_pins` but elsewhere uses `data/generated/pins`. Path mismatch. | OPEN |
+| C3 | Env var names documented per-file, not centrally. `.env.example` may be incomplete. | OPEN |
+| C4 | Google credentials named `GOOGLE_SHEETS_CREDENTIALS_JSON` but used for Drive/GCS too. | OPEN |
+
+### 3.8 New Issues from Simplification
+
+| # | Severity | File | Issue |
+|---|----------|------|-------|
+| NEW-1 | MEDIUM | `generate_pin_content.py` | JSON code-fence stripping (lines 709-716) can fail silently if GPT-5 Mini returns bad format. |
+| NEW-2 | LOW | `generate_pin_content.py` | Image retry count always 0 -- quality notes show "AI generated" not "retry N". |
+| NEW-3 | LOW | `generate_pin_content.py` | Assumes `image_gen_api.generate()` returns Path object (no type check). |
+| NEW-4 | MEDIUM | `regen_content.py` | Non-atomic pin-schedule.json update (load-modify-write with no recovery). |
+| NEW-5 | LOW | `regen_content.py` | Hero image download assumes `_drive_image_url` field exists. |
+| NEW-6 | MEDIUM | `publish_content_queue.py` | Malformed pins silently skip URL backup. |
+| NEW-7 | LOW | `blog_generator.py` | H1 stripping early break only checks first non-empty line -- blank lines before H1 not detected. |
+| NEW-8 | HIGH | `regen_weekly_plan.py` | Tight coupling to `generate_weekly_plan.splice_replacements()` -- breakage if method signature changes. |
+| NEW-9 | MEDIUM | `regen_weekly_plan.py` | Silent exception defaults when reading Sheet status. |
+| NEW-10 | MEDIUM | `regen_weekly_plan.py` | No validation that Sheet cells B3/B4 were restored after plan splice. |
+| NEW-11 | LOW | `regen_weekly_plan.py` | Post identification failures silently skipped. |
+| NEW-12 | LOW | `claude_api.py` | GPT-5 model name has env var override (`OPENAI_CHAT_MODEL`) but hardcoded default `"gpt-5-mini"` (line 682). Partially configurable -- severity reduced from HIGH. |
+| NEW-13 | HIGH | `claude_api.py` | Manual HTTP requests to OpenAI instead of using the `openai` Python SDK (already in requirements.txt). |
+| NEW-14 | HIGH | `claude_api.py` | Fragile GPT-5 Mini fallback -- manual try/except, silent fallback to Claude Sonnet on OpenAI failure. |
+| NEW-15 | MEDIUM | `claude_api.py` | Dual-model branching complexity in `generate_image_prompt()` and `generate_pin_copy_batch()`. |
+| NEW-16 | LOW | `claude_api.py` | Hardcoded GPT-5 Mini cost rates. |
+| NEW-17 | MEDIUM | `.gitignore` | Stale directory refs (`data/generated_posts/`, `data/generated_pins/`) don't match actual dirs. |
+
+### 3.9 Resolved Issues
+
+| # | Was | Resolution |
+|---|-----|------------|
+| RESOLVED-1 | `image_stock.py` god file (453 lines), Unsplash/Pexels dependency | Deleted in pipeline simplification. |
+| RESOLVED-2 | AI image validation/ranking methods in `claude_api.py` | Removed in pipeline simplification. |
+| RESOLVED-3 | `source_image()` tier routing in `generate_pin_content.py` | Removed -- all images now AI-generated. |
+| RESOLVED-4 | `_source_stock_image()` in `generate_pin_content.py` | Removed with stock image path. |
+| RESOLVED-5 | AI comparison regen in `regen_content.py` | Removed in pipeline simplification. |
+| RESOLVED-6 | AI comparison upload in `publish_content_queue.py` | Removed in pipeline simplification. |
+| RESOLVED-7 | `_process_ai_image_swaps()` in `blog_deployer.py` | Removed in pipeline simplification. |
+| RESOLVED-8 | Double H1 bug in blog output | Fixed with H1 stripping safety net in `blog_generator.py`. |
+| RESOLVED-9 | Column M in Content Queue (tier indicator) | Removed; regen trigger columns shifted. |
+| RESOLVED-10 | Stale prompt templates (`image_rank.md`, `image_search.md`, `image_validate.md`) | Deleted. |
 
 ---
 
@@ -392,236 +427,201 @@
 ### Module Dependency Graph
 
 ```
-                    ┌─────────────────────────────┐
-                    │   GitHub Actions Workflows   │
-                    │  (10 .yml files — triggers)  │
-                    └──────────────┬───────────────┘
-                                   │
-          ┌────────────────────────┼────────────────────────┐
-          │                        │                        │
+                    +-----------------------------+
+                    |   GitHub Actions Workflows   |
+                    |  (10 .yml files -- triggers) |
+                    +--------------+--------------+
+                                   |
+          +------------------------+------------------------+
+          |                        |                        |
           v                        v                        v
    weekly-review.yml        generate-content.yml     daily-post-*.yml
-          │                        │                        │
+          |                        |                        |
           v                        v                        v
-  ┌───────────────┐     ┌──────────────────┐     ┌──────────────┐
-  │ pull_analytics │     │generate_weekly_  │     │  post_pins   │
-  │               │     │     plan         │     │              │
-  └───────┬───────┘     └────────┬─────────┘     └──────┬───────┘
-          │                      │                       │
-          v                      v                       │
-  ┌───────────────┐     ┌──────────────────┐            │
-  │weekly_analysis│     │generate_blog_    │            │
-  │               │     │    posts         │            │
-  └───────┬───────┘     └────────┬─────────┘            │
-          │                      │                       │
-          │                      v                       │
-          │             ┌──────────────────┐            │
-          │             │ blog_generator   │            │
-          │             └────────┬─────────┘            │
-          │                      │                       │
-          │                      v                       │
-          │             ┌──────────────────┐            │
-          │             │generate_pin_     │            │
-          │             │   content        │            │
-          │             └────────┬─────────┘            │
-          │                      │                       │
-          │              ┌───────┼───────┐              │
-          │              v       v       v              │
-          │        ┌─────────┐ ┌────┐ ┌──────┐         │
-          │        │image_   │ │pin_│ │image_│         │
-          │        │stock    │ │asm │ │gen   │         │
-          │        └─────────┘ └────┘ └──────┘         │
-          │                      │                       │
-          │                      v                       │
-          │             ┌──────────────────┐            │
-          │             │publish_content_  │            │
-          │             │    queue         │            │
-          │             └────────┬─────────┘            │
-          │                      │                       │
-          │              ┌───────┼───────┐              │
-          │              v       v       v              │
-          │        ┌─────────┐ ┌────┐ ┌──────┐         │
-          │        │gcs_api  │ │drv │ │sheets│         │
-          │        └─────────┘ └────┘ └──────┘         │
-          │                      │                       │
-          │                      v                       │
-          │             ┌──────────────────┐            │
-          │             │  blog_deployer   │◄───────────┘
-          │             └────────┬─────────┘     (uses board map)
-          │              ┌───────┼───────┐
-          │              v       v       v
-          │        ┌─────────┐ ┌────┐ ┌──────┐
-          │        │github_  │ │shts│ │slack │
-          │        │api      │ │api │ │notfy │
-          │        └─────────┘ └────┘ └──────┘
-          │
-          │         ┌──────────────────┐
-          └────────>│  content-log.    │
-                    │    jsonl         │
-                    └──────────────────┘
+  +---------------+     +------------------+     +--------------+
+  | pull_analytics |     |generate_weekly_  |     |  post_pins   |
+  |               |     |     plan         |     |              |
+  +-------+-------+     +--------+---------+     +------+-------+
+          |                      |                       |
+          v                      v                       |
+  +---------------+     +------------------+             |
+  |weekly_analysis|     |generate_blog_    |             |
+  |               |     |    posts         |             |
+  +-------+-------+     +--------+---------+             |
+          |                      |                       |
+          |                      v                       |
+          |             +------------------+             |
+          |             | blog_generator   |             |
+          |             +--------+---------+             |
+          |                      |                       |
+          |                      v                       |
+          |             +------------------+             |
+          |             |generate_pin_     |             |
+          |             |   content        |             |
+          |             +--------+---------+             |
+          |                      |                       |
+          |              +-------+-------+               |
+          |              v               v               |
+          |        +---------+     +----------+          |
+          |        |pin_asm  |     |image_gen |          |
+          |        +---------+     +----------+          |
+          |                      |                       |
+          |                      v                       |
+          |             +------------------+             |
+          |             |publish_content_  |             |
+          |             |    queue         |             |
+          |             +--------+---------+             |
+          |              +-------+-------+               |
+          |              v       v       v               |
+          |        +---------+ +----+ +------+           |
+          |        |gcs_api  | |drv | |sheets|           |
+          |        +---------+ +----+ +------+           |
+          |                      |                       |
+          |                      v                       |
+          |             +------------------+             |
+          |             |  blog_deployer   |<------------+
+          |             +--------+---------+     (uses board map)
+          |              +-------+-------+
+          |              v       v       v
+          |        +---------+ +----+ +------+
+          |        |github_  | |shts| |slack |
+          |        |api      | |api | |notfy |
+          |        +---------+ +----+ +------+
+          |
+          |         +------------------+
+          +-------->|  content-log.    |
+                    |    jsonl         |
+                    +------------------+
+
+  NEW: Regen paths (triggered from Content Queue / manual):
+
+  +--------------------+        +-------------------+
+  | regen_weekly_plan  |------->| generate_weekly_  |
+  | (NEW, 320 lines)   |       |   plan            |
+  +--------------------+        | .splice_replace() |
+          |                     +-------------------+
+          v
+  +--------------------+
+  |   sheets_api       |  (reads/restores B3/B4)
+  +--------------------+
+
+  +--------------------+
+  |   regen_content    |------->  claude_api, image_gen,
+  |   (821 lines)      |         gcs_api, sheets_api,
+  +--------------------+         slack_notify
 ```
 
-### Shared API Dependencies (all import these)
+**Removed node:** ~~`image_stock.py`~~ -- no longer consumed by `generate_pin_content.py`, `regen_content.py`, or `backfill_hero_images.py`.
+
+**New node:** `image_cleaner.py` (101 lines) -- consumed by `pin_assembler.py` and `generate_pin_content.py`. AI detection avoidance (metadata stripping + Gaussian noise).
+
+**Candidate for removal:** `backfill_hero_images.py` (200 lines) -- largely obsolete, references removed Column M.
+
+### Shared API Dependencies
 
 | API Module | Used By |
 |------------|---------|
 | `claude_api.py` | `generate_weekly_plan`, `blog_generator`, `generate_pin_content`, `weekly_analysis`, `monthly_review`, `regen_content` |
-| `sheets_api.py` | `generate_weekly_plan`, `generate_blog_posts`, `blog_deployer`, `post_pins`, `publish_content_queue`, `regen_content`, `monthly_review` |
-| `slack_notify.py` | `generate_weekly_plan`, `generate_blog_posts`, `blog_deployer`, `post_pins`, `publish_content_queue`, `regen_content`, `token_manager`, `monthly_review` |
+| `sheets_api.py` | `generate_weekly_plan`, `generate_blog_posts`, `blog_deployer`, `post_pins`, `publish_content_queue`, `regen_content`, `regen_weekly_plan` (NEW), `monthly_review` |
+| `slack_notify.py` | `generate_weekly_plan`, `generate_blog_posts`, `blog_deployer`, `post_pins`, `publish_content_queue`, `regen_content`, `regen_weekly_plan` (NEW), `token_manager`, `monthly_review` |
 | `pinterest_api.py` | `post_pins`, `pull_analytics`, `setup_boards` |
 | `gcs_api.py` | `publish_content_queue`, `blog_deployer`, `regen_content`, `backfill_hero_images` |
 | `github_api.py` | `blog_deployer` |
-| `image_stock.py` | `generate_pin_content`, `regen_content`, `backfill_hero_images` |
+| ~~`image_stock.py`~~ | ~~`generate_pin_content`, `regen_content`, `backfill_hero_images`~~ DELETED |
 | `image_gen.py` | `generate_pin_content`, `regen_content` |
+| `image_cleaner.py` (NEW) | `pin_assembler`, `generate_pin_content` |
 
 ### Highest-Risk Nodes (change cascades)
 
-1. **`sheets_api.py`** — Used by 7+ scripts. Any column index change breaks multiple workflows.
-2. **`content-log.jsonl`** — Written by 3 modules, read by 3 modules, with schema inconsistency.
-3. **`claude_api.py`** — Used by 6 scripts. Model ID change or prompt format change affects everything.
-4. **`slack_notify.py`** — Used by 8+ scripts but low risk (notification-only, graceful degradation).
-5. **`pin-generation-results.json`** — Written by 1 module, read by 3+ modules with no schema validation.
+1. **`sheets_api.py`** -- Used by 8 scripts (was 7, +`regen_weekly_plan`). Any column index change breaks multiple workflows.
+2. **`content-log.jsonl`** -- Written by 3 modules, read by 3 modules, schema inconsistency.
+3. **`claude_api.py`** -- Used by 6 scripts. Now also manages GPT-5 Mini. Model ID or prompt format change affects everything. God file risk increased.
+4. **`pin-schedule.json`** -- Now has 2 writers (`blog_deployer`, `regen_content`). Non-atomic writes risk corruption.
+5. **`generate_weekly_plan.py`** -- `regen_weekly_plan.py` tightly coupled to `splice_replacements()`. Signature change breaks regen.
+6. **`slack_notify.py`** -- Used by 9 scripts but low risk (notification-only, graceful degradation).
 
 ---
 
 ## Phase 5: Refactoring Plan
 
-### Tier 0: Data (Establish single source of truth — zero logic change)
+### Tier 0: Data (Establish single source of truth -- zero logic change)
 
-#### T0-1: Unify content-log.jsonl schema
-- **What:** Define a canonical schema for content-log.jsonl entries. Ensure both `blog_deployer._append_to_content_log()` and `post_pins.append_to_content_log()` write identical field sets.
-- **Why:** Two writers produce entries with different fields, causing downstream readers to handle missing fields.
-- **Files:** `src/blog_deployer.py`, `src/post_pins.py`
-- **Verify:** Both functions produce entries with the same keys. `pull_analytics.py` and `weekly_analysis.py` continue to work.
+| # | Task | Files | Status |
+|---|------|-------|--------|
+| T0-1 | Unify content-log.jsonl schema -- both append functions write identical field sets | `blog_deployer.py`, `post_pins.py` | OPEN |
+| T0-2 | Create shared `content_log.py` module -- single `append_entry()`, `load_entries()`, `is_pin_posted()` | New `src/content_log.py`, modify 4 files | OPEN |
+| T0-3 | Consolidate image hosting (Drive vs GCS) -- remove the redundant one | `drive_api.py` (potentially remove), `gcs_api.py`, callers | OPEN |
+| T0-4 | Single-load pin-generation-results.json in blog_deployer | `blog_deployer.py` | PARTIALLY RESOLVED (was 3x, now 2x after swap removal; still should be 1x) |
+| T0-5 | NEW: Make pin-schedule.json writes atomic | `blog_deployer.py`, `regen_content.py` | NEW |
 
-#### T0-2: Create shared content_log module
-- **What:** Extract content log read/write operations into `src/content_log.py`. Single `append_entry()`, `load_entries()`, `is_pin_posted()` function set.
-- **Why:** Eliminates duplicate write functions and provides consistent schema.
-- **Files:** New `src/content_log.py`, modify `src/blog_deployer.py`, `src/post_pins.py`, `src/weekly_analysis.py`, `src/pull_analytics.py`
-- **Verify:** All existing tests pass. Content log entries match unified schema.
+### Tier 1: Safety (Extract hardcoded values, add error handling -- zero behavior change)
 
-#### T0-3: Consolidate image hosting (Drive vs GCS)
-- **What:** Determine whether Drive or GCS is the canonical image host. Remove the unused one. Update all callers.
-- **Why:** Two systems serving the same purpose. Maintaining both wastes API calls and creates confusion.
-- **Files:** `src/apis/drive_api.py` (potentially remove), `src/apis/gcs_api.py`, `src/publish_content_queue.py`
-- **Verify:** Sheets =IMAGE() formulas still render. No broken image URLs.
-
-#### T0-4: Single-load pin-generation-results.json in blog_deployer
-- **What:** Load `pin-generation-results.json` once at the start of deployment and pass the data to all methods that need it.
-- **Why:** Currently loaded 3 separate times in a single deployment flow.
-- **Files:** `src/blog_deployer.py`
-- **Verify:** Deployment still works correctly. AI image swaps still function.
-
-### Tier 1: Safety (Extract hardcoded values, add error handling — zero behavior change)
-
-#### T1-1: Create central config module
-- **What:** Create `src/config.py` with all hardcoded values: URLs, model IDs, thresholds, timeouts, path constants, Sheet column indices, tab names.
-- **Why:** 27+ hardcoded values across 15+ files (H1-H27). Changes require multi-file edits.
-- **Files:** New `src/config.py`, all files with hardcoded values.
-- **Verify:** All scripts still work identically. Config values match originals.
-
-#### T1-2: Extract shared MIME detection utility
-- **What:** Create `src/utils.py` with `detect_mime_type(file_path_or_bytes)` function.
-- **Why:** MIME detection duplicated in 3 files (DU1).
-- **Files:** New `src/utils.py`, modify `src/apis/pinterest_api.py`, `src/apis/gcs_api.py`, `src/apis/drive_api.py`
-- **Verify:** All image uploads still detect correct MIME type.
-
-#### T1-3: Add schema validation for pin-generation-results.json
-- **What:** Add a validation function that checks pin-generation-results.json structure before use.
-- **Why:** Multiple files assume specific keys exist without validation (F3).
-- **Files:** `src/blog_deployer.py`, potentially new `src/schemas.py`
-- **Verify:** Existing valid data passes. Invalid data raises clear errors.
-
-#### T1-4: Make Sheets _clear_and_write() atomic
-- **What:** Write new data first (to a temp range), then clear old data, then copy. Or at minimum, catch write failures and log a recovery path.
-- **Why:** Current implementation clears then writes — data loss if write fails (E3).
-- **Files:** `src/apis/sheets_api.py`
-- **Verify:** Tab updates still work. Simulated write failure doesn't lose data.
-
-#### T1-5: Add content-log.jsonl index for idempotency checks
-- **What:** Load pin IDs into a set at startup instead of scanning the file line by line for each check.
-- **Why:** `is_already_posted()` is O(n) per check and will degrade (E4).
-- **Files:** `src/post_pins.py`
-- **Verify:** Idempotency still works. Performance improves for large logs.
+| # | Task | Files | Status |
+|---|------|-------|--------|
+| T1-1 | Create central `config.py` with all hardcoded values (H1-H29) | New `src/config.py`, all files | OPEN |
+| T1-2 | Extract shared MIME detection utility | New `src/utils.py`, 3 API files | OPEN |
+| T1-3 | Add schema validation for pin-generation-results.json | `blog_deployer.py`, potentially new `src/schemas.py` | OPEN |
+| T1-4 | Make Sheets `_clear_and_write()` atomic (or add recovery) | `sheets_api.py` | OPEN |
+| T1-5 | Add content-log.jsonl index for O(1) idempotency checks | `post_pins.py` | OPEN |
+| T1-6 | NEW: Migrate GPT-5 Mini calls to `openai` SDK | `claude_api.py` | NEW |
+| T1-7 | NEW: Make GPT-5 Mini fallback explicit (log warnings, not silent) | `claude_api.py` | NEW |
+| T1-8 | NEW: Extract `_extract_drive_file_id()` to shared utility | `regen_content.py`, `publish_content_queue.py` | NEW |
+| T1-9 | NEW: Add validation for regen Sheet cell restoration (B3/B4) | `regen_weekly_plan.py` | NEW |
+| T1-10 | NEW: Fix .gitignore stale directory references | `.gitignore` | NEW |
 
 ### Tier 2: Structure (Consolidate duplication, break apart god files)
 
-#### T2-1: Consolidate blog post generation entry points
-- **What:** Merge `generate_blog_posts()` and `generate_all_blog_posts()` into one function with an optional `plan` parameter.
-- **Why:** 60% duplicated logic (DU3).
-- **Files:** `src/generate_blog_posts.py`
-- **Verify:** Both workflows still work.
-
-#### T2-2: Consolidate blog generator type methods
-- **What:** Replace four `generate_*_post()` methods with a single `_generate_post()` that takes `post_type` as parameter.
-- **Why:** Methods are structurally identical (DU4).
-- **Files:** `src/blog_generator.py`
-- **Verify:** All four post types still generate correctly.
-
-#### T2-3: Consolidate GitHub commit methods
-- **What:** Merge `commit_blog_post()`, `commit_blog_posts()`, and `commit_multiple_posts()` into one `commit_posts()` method.
-- **Why:** Three overlapping methods (DU5). Remove dead `_create_or_update_file()`.
-- **Files:** `src/apis/github_api.py`
-- **Verify:** Blog deployment still works.
-
-#### T2-4: Consolidate blog deployer deployment modes
-- **What:** Extract shared deployment logic into helper methods. The three modes become thin orchestrators.
-- **Why:** 60%+ code duplication across three methods (DU9).
-- **Files:** `src/blog_deployer.py`
-- **Verify:** All three deployment modes still work.
-
-#### T2-5: Remove trivial aliases
-- **What:** Remove `get_boards()`, `read_plan_status()`, `read_content_statuses()`, `update_dashboard_metrics()`, `upload_single_image()`. Update all callers.
-- **Why:** Trivial wrappers that add no value (DU6, DU7, DU8).
-- **Files:** `src/apis/sheets_api.py`, `src/apis/gcs_api.py`, `src/apis/pinterest_api.py`, callers.
-- **Verify:** All callers updated. No broken imports.
-
-#### T2-6: Split sheets_api.py into per-tab modules
-- **What:** Create `sheets_weekly_review.py`, `sheets_content_queue.py`, `sheets_post_log.py`, `sheets_dashboard.py` or use inner classes.
-- **Why:** 944-line god file (S1).
-- **Files:** `src/apis/sheets_api.py` → multiple files
-- **Verify:** All Sheet operations still work.
-
-#### T2-7: Extract content memory summary to its own module
-- **What:** Move `generate_content_memory_summary()` (220 lines) from `weekly_analysis.py` to `src/content_memory.py`.
-- **Why:** It's a standalone function with no coupling to the analysis logic.
-- **Files:** `src/weekly_analysis.py`, new `src/content_memory.py`
-- **Verify:** Memory summary generation still works. Weekly plan still loads it.
+| # | Task | Files | Status |
+|---|------|-------|--------|
+| T2-1 | Consolidate blog post generation entry points | `generate_blog_posts.py` | OPEN |
+| T2-2 | Consolidate blog generator type methods (4 -> 1 parameterized) | `blog_generator.py` | OPEN |
+| T2-3 | Consolidate GitHub commit methods (3 -> 1) | `github_api.py` | OPEN |
+| T2-4 | Consolidate blog deployer deployment modes (extract shared logic) | `blog_deployer.py` | OPEN |
+| T2-5 | Remove trivial aliases (`get_boards`, `read_plan_status`, `generate_weekly_analysis`, `generate_monthly_review`, etc.) | `sheets_api.py`, `pinterest_api.py`, `claude_api.py` | OPEN |
+| T2-6 | Split `sheets_api.py` into per-tab modules | `sheets_api.py` -> multiple files | OPEN |
+| T2-7 | Extract `generate_content_memory_summary()` to own module | `weekly_analysis.py` | OPEN |
+| T2-8 | NEW: Split GPT-5 Mini logic out of `claude_api.py` into `openai_api.py` | `claude_api.py` -> `claude_api.py` + new `openai_api.py` | NEW |
 
 ### Tier 3: Robustness (Validation, logging, edge cases)
 
-#### T3-1: Replace custom YAML parser with PyYAML
-- **What:** Use `pyyaml` or `ruamel.yaml` in `blog_generator._extract_frontmatter()`.
-- **Why:** Custom parser (F5) will break on edge cases.
-- **Files:** `src/blog_generator.py`, `requirements.txt`
-- **Verify:** All existing MDX frontmatter parses correctly.
+| # | Task | Files | Status |
+|---|------|-------|--------|
+| T3-1 | Replace custom YAML parser with PyYAML (already used in `publish_content_queue.py` line 22) | `blog_generator.py` | OPEN |
+| T3-2 | Add Sheet column validation (verify headers on first read) | `sheets_api.py` | OPEN |
+| T3-3 | Fix `image_gen.py` output directory inconsistency | `image_gen.py` | OPEN |
+| T3-4 | Fix pin_assembler JPEG-as-PNG naming | `pin_assembler.py` | OPEN |
+| T3-5 | Add content-log.jsonl rotation/archival | New utility or cron job | OPEN |
+| T3-6 | Fix stale jitter comment in post_pins.py | `post_pins.py` | OPEN |
+| T3-7 | NEW: Harden JSON code-fence stripping in `generate_pin_content.py` | `generate_pin_content.py` | NEW |
+| T3-8 | NEW: Add explicit error on missing `_drive_image_url` in regen | `regen_content.py` | NEW |
+| T3-9 | NEW: Fix H1 stripping to handle blank lines before H1 | `blog_generator.py` | NEW |
+| T3-10 | NEW: Remove dead htmlcsstoimage reference from `image_prompt.md` | `prompts/image_prompt.md` | NEW |
 
-#### T3-2: Add Sheet column validation
-- **What:** On first read, verify that Sheet headers match expected column order. Raise clear error if mismatched.
-- **Why:** Column index hardcoding (F1) causes silent failures on layout changes.
-- **Files:** `src/apis/sheets_api.py`
-- **Verify:** Correct layout passes. Incorrect layout raises descriptive error.
+### Priority Summary
 
-#### T3-3: Fix image_gen.py output directory inconsistency
-- **What:** Change `data/generated_pins` (line 158) to `data/generated/pins` to match the rest of the codebase.
-- **Why:** Path mismatch (C2) — generated images may be written to wrong directory.
-- **Files:** `src/apis/image_gen.py`
-- **Verify:** AI-generated images saved to correct directory.
+**Highest priority (new HIGH issues from simplification):**
+1. T1-6/T1-7: GPT-5 Mini SDK migration + explicit fallback (NEW-13, NEW-14)
+2. T0-5: Atomic pin-schedule.json writes (NEW-4)
+3. T2-8: Split dual-model logic out of claude_api.py (S3 worsened)
+4. T1-9: Validate regen Sheet cell restoration (NEW-8, NEW-10)
 
-#### T3-4: Fix pin_assembler JPEG-as-PNG naming
-- **What:** When converting oversized PNGs to JPEG, use the `.jpg` extension and update downstream references.
-- **Why:** Currently renames `.jpg` to `.png` (S4), creating files with wrong extension for their format.
-- **Files:** `src/pin_assembler.py`, downstream callers
-- **Verify:** Optimized images have correct extensions. MIME detection still works.
+**Carried forward HIGH issues (unchanged):**
+1. T0-1/T0-2: Unify content-log.jsonl (D1, DU2)
+2. T1-1: Central config module (S5, H1-H29)
+3. T1-4: Atomic Sheets _clear_and_write() (E3)
 
-#### T3-5: Add content-log.jsonl rotation/archival
-- **What:** Implement log rotation (e.g., archive entries older than 6 months to a separate file).
-- **Why:** File grows indefinitely. `is_already_posted()` and `load_content_log()` scan the entire file.
-- **Files:** New utility or cron job
-- **Verify:** Old data archived. Current operations unaffected.
+### Simplification Impact Summary
 
-#### T3-6: Fix stale comment in post_pins.py
-- **What:** Line 300 says "random(0, 5400)" but actual value is `INITIAL_JITTER_MAX = 900` (0-15 min, not 0-90 min).
-- **Why:** Misleading documentation.
-- **Files:** `src/post_pins.py` line 300
-- **Verify:** Comment matches code.
+| Metric | Before | After (verified) | Delta |
+|--------|--------|-------------------|-------|
+| Python files (src/apis/) | 10 | 9 | -1 (image_stock.py deleted) |
+| Python files (src/*.py) | 16 | 18 | +2 (regen_weekly_plan.py, image_cleaner.py added) |
+| Total Python files | 26 | 27 | +1 (1 deleted, 2 added) |
+| Total lines (src/apis/) | ~4,836 | 4,849 | +13 (stock deleted -453, claude grew +414, slack grew +56) |
+| Total lines (src/*.py) | ~9,236 | 10,675 | +1,439 (regen_weekly_plan +320, image_cleaner +101, pin_content shrunk -311, blog_deployer shrunk ~-98) |
+| God files (>800 lines) | 5 | 6 | +1 (claude_api.py joined, image_stock.py left, blog_deployer dropped from 1,018 to 920 but still >800) |
+| Hardcoded values | 27 | 28+ | +1 (GPT-5 cost rates; model name now has env var) |
+| External API dependencies | 7 | 5 | -2 (Unsplash, Pexels removed) |
+| HIGH severity issues | 5 | 7 | +2 (NEW-12 downgraded to LOW -- model name has env var override) |
+| RESOLVED issues | 0 | 10 | +10 |
+| Duplication instances | 10 | 12 | +2 (DU11: drive file ID extraction, DU12: claude_api aliases) |

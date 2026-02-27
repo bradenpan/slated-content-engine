@@ -68,7 +68,7 @@ Plan → Generate → Review → Deploy → Post → Analyze → (feeds next Pla
 
 **Strategy (strategy/)** — Content strategy, brand voice, board structure, keyword lists, seasonal calendar, CTA variants, product overview
 
-**Pin Templates (templates/pins/)** — 5 template types (recipe, tip, listicle, problem-solution, infographic) × 3 visual variants each, rendered via Puppeteer
+**Pin Templates (templates/pins/)** — 5 template types (recipe, tip, listicle, problem-solution, infographic) × 3 visual variants each, rendered via Puppeteer. Structured JSON content extraction per template type, CTA pill buttons on all 15 variants, mobile-optimized font sizes, and template-specific polish (recipe time badges, listicle truncation, problem/solution weights, dynamic labels).
 
 **Production cadence:** 8-10 blog posts + 28 pins/week, posted 4x daily
 
@@ -1487,3 +1487,74 @@ Removed the entire stock photo pipeline (Unsplash/Pexels search, Claude Haiku ra
 ### Status
 
 Complete. Merged to main via PR #1.
+
+---
+
+## Phase 12: Pin Template Improvements
+
+**Date:** 2026-02-26
+**Branch:** `pin-template-redesign` → merged to `main`
+**PR:** [#2](https://github.com/bradenpan/slated-pinterest-bot/pull/2)
+**Merge Commit:** `678fbba`
+
+### Problem
+
+Pin templates rendered with generic/empty text because the content extraction pipeline was too simplistic. The `text_overlay` field only contained `headline` and `sub_text` — all template-specific content (bullets, list items, steps, problem/solution text, time badges) was reverse-engineered from the `description` field by splitting on sentence boundaries, producing 1-2 usable items when 3-5 were needed. Font sizes were too small for mobile viewing. No CTA elements existed on any template. Several template-specific features (recipe time badges, listicle item counts, problem/solution visual hierarchy) were missing or broken.
+
+### Phase 1: Prompt + Extraction Overhaul
+
+Expanded `text_overlay` from a flat `{headline, sub_text}` object to structured JSON with template-specific fields:
+
+| Template | New Fields |
+|----------|-----------|
+| tip-pin | `bullets` (array of 3 tip strings) |
+| listicle-pin | `list_items` (array of 5 numbered items) |
+| infographic-pin | `steps` (array of 3-5 process steps) |
+| problem-solution-pin | `problem_text`, `solution_text` |
+| recipe-pin | `time_badge` (e.g., "25 min") |
+| All templates | `cta_text` (e.g., "Get the Recipe") |
+
+Rewrote `build_template_context()` with structured-first extraction: reads the new structured fields directly from `text_overlay`, with backwards-compatible fallback paths that derive content from `description` when the AI returns the old flat format. Updated the system message in `claude_api.py` to instruct the LLM to produce the new schema.
+
+### Phase 2: Font Sizes + CTAs
+
+**Font size bumps for mobile readability:**
+- `.text-body`: 30px → 32px
+- `.text-label`: 22px → 24px
+- Template-specific size increases for headlines, subtitles, and body text
+
+**CTA pill button on all 15 template variants** (5 templates x 3 variants):
+- Added `.cta-pill` element to every template HTML file
+- Class-based hiding (`.hide-cta { display: none }`) so templates degrade gracefully when no CTA text is provided
+- Light and dark variants matching each template's color scheme
+
+### Phase 3: Template Polish
+
+- **Recipe time badge** — new `.time-badge` element with class-based hiding (`.hide-time-badge { display: none }`), displayed when `time_badge` is provided
+- **Problem/solution font weights** — problem text at weight 500, solution text at weight 800 for visual hierarchy
+- **Listicle 5-item truncation** — if more than 5 items provided, truncates to 5 with an "...and more" row
+- **Logo opacity** — standardized to 0.6 across all 15 variants for consistent branding
+- **Dynamic labels** — category labels and problem/solution labels driven by template variables instead of hardcoded text
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `prompts/pin_copy.md` | Expanded `text_overlay` schema with template-specific fields, added examples for each template type |
+| `src/generate_pin_content.py` | Rewrote `build_template_context()` with structured-first extraction + fallback paths for all 5 template types |
+| `src/apis/claude_api.py` | Updated system message to instruct LLM to produce structured `text_overlay` per template type |
+| `src/pin_assembler.py` | CTA pill injection, time badge injection, class-based hiding logic for optional elements |
+| `templates/pins/shared/base-styles.css` | Font size bumps (`.text-body` 30→32px, `.text-label` 22→24px), `.cta-pill` styles, `.hide-cta`/`.hide-time-badge` utility classes |
+| `templates/pins/recipe-pin/*.html` (3 files) | CTA pill, time badge element, dynamic category label |
+| `templates/pins/tip-pin/*.html` (3 files) | CTA pill, dynamic category label |
+| `templates/pins/listicle-pin/*.html` (3 files) | CTA pill, 5-item truncation with "...and more" row, dynamic category label |
+| `templates/pins/problem-solution-pin/*.html` (3 files) | CTA pill, dynamic problem/solution labels, font weight adjustments |
+| `templates/pins/infographic-pin/*.html` (3 files) | CTA pill, dynamic category label |
+| `templates/pins/recipe-pin/recipe-pin.css` | Time badge styles, font size adjustments |
+| `templates/pins/listicle-pin/listicle-pin.css` | "...and more" row styles, font size adjustments |
+| `templates/pins/infographic-pin/infographic-pin.css` | Step layout adjustments |
+| `templates/pins/problem-solution-pin/problem-solution-pin.css` | Problem/solution font weights (500/800), layout adjustments |
+
+### Status
+
+Complete. Merged to main via PR #2 (commit `678fbba`).
