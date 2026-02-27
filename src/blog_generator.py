@@ -247,134 +247,64 @@ class BlogGenerator:
 
         return results
 
-    def generate_recipe_post(self, spec: dict) -> str:
-        """
-        Generate a recipe blog post (600-800 words) with Schema.org Recipe markup.
+    # Default pillar fallback by post type (used when spec omits pillar)
+    _DEFAULT_PILLAR = {
+        "recipe": 3,
+        "weekly-plan": 1,
+        "guide": 2,
+        "listicle": 3,
+    }
 
-        Uses the blog_post_recipe.md prompt template. The output includes
-        frontmatter with prepTime, cookTime, recipeIngredient, and
-        recipeInstructions fields for Schema.org Recipe schema.
+    def _generate_typed_post(self, spec: dict, post_type: str) -> str:
+        """
+        Generate a blog post of the given type.
+
+        Loads brand voice, CTA copy, product overview, and example post,
+        then delegates to ClaudeAPI.generate_blog_post() and validates
+        the output.
 
         Args:
-            spec: Blog post specification.
+            spec: Blog post specification from the weekly plan.
+            post_type: One of "recipe", "weekly-plan", "guide", "listicle".
 
         Returns:
             str: Complete MDX content.
         """
-        pillar = spec.get("pillar", 3)
+        default_pillar = self._DEFAULT_PILLAR.get(post_type, 3)
+        pillar = spec.get("pillar", default_pillar)
         cta_copy = self._load_cta_copy(pillar)
         brand_voice = self._load_brand_voice()
         product_overview = self._load_product_overview()
-        example = self._load_example_post("recipe")
+        example = self._load_example_post(post_type)
 
         mdx_content = self.claude.generate_blog_post(
             post_spec=spec,
-            post_type="recipe",
+            post_type=post_type,
             brand_voice=brand_voice,
             cta_copy=cta_copy,
             examples=example,
             product_overview=product_overview,
         )
 
-        # Validate the output
-        self._validate_generated_post(mdx_content, "recipe", spec)
+        self._validate_generated_post(mdx_content, post_type, spec)
 
         return mdx_content
+
+    def generate_recipe_post(self, spec: dict) -> str:
+        """Generate a recipe blog post (600-800 words) with Schema.org Recipe markup."""
+        return self._generate_typed_post(spec, "recipe")
 
     def generate_weekly_plan_post(self, spec: dict) -> str:
-        """
-        Generate a weekly plan blog post (1200-1800 words).
-
-        This is the most complex post type: generates 5 coherent recipes that
-        form a weekly dinner plan, plus a combined grocery list. Each embedded
-        recipe gets its own Recipe schema data in the frontmatter.
-
-        Args:
-            spec: Blog post specification.
-
-        Returns:
-            str: Complete MDX content.
-        """
-        pillar = spec.get("pillar", 1)
-        cta_copy = self._load_cta_copy(pillar)
-        brand_voice = self._load_brand_voice()
-        product_overview = self._load_product_overview()
-        example = self._load_example_post("weekly-plan")
-
-        mdx_content = self.claude.generate_blog_post(
-            post_spec=spec,
-            post_type="weekly-plan",
-            brand_voice=brand_voice,
-            cta_copy=cta_copy,
-            examples=example,
-            product_overview=product_overview,
-        )
-
-        self._validate_generated_post(mdx_content, "weekly-plan", spec)
-
-        return mdx_content
+        """Generate a weekly plan blog post (1200-1800 words)."""
+        return self._generate_typed_post(spec, "weekly-plan")
 
     def generate_guide_post(self, spec: dict) -> str:
-        """
-        Generate a guide/tips blog post (800-1200 words).
-
-        Uses Article schema. Structured with 3-5 sections and subheadings.
-
-        Args:
-            spec: Blog post specification.
-
-        Returns:
-            str: Complete MDX content.
-        """
-        pillar = spec.get("pillar", 2)
-        cta_copy = self._load_cta_copy(pillar)
-        brand_voice = self._load_brand_voice()
-        product_overview = self._load_product_overview()
-        example = self._load_example_post("guide")
-
-        mdx_content = self.claude.generate_blog_post(
-            post_spec=spec,
-            post_type="guide",
-            brand_voice=brand_voice,
-            cta_copy=cta_copy,
-            examples=example,
-            product_overview=product_overview,
-        )
-
-        self._validate_generated_post(mdx_content, "guide", spec)
-
-        return mdx_content
+        """Generate a guide/tips blog post (800-1200 words)."""
+        return self._generate_typed_post(spec, "guide")
 
     def generate_listicle_post(self, spec: dict) -> str:
-        """
-        Generate a listicle blog post (800-1200 words).
-
-        Numbered entries with descriptions. Uses Article schema.
-
-        Args:
-            spec: Blog post specification.
-
-        Returns:
-            str: Complete MDX content.
-        """
-        pillar = spec.get("pillar", 3)
-        cta_copy = self._load_cta_copy(pillar)
-        brand_voice = self._load_brand_voice()
-        product_overview = self._load_product_overview()
-        example = self._load_example_post("listicle")
-
-        mdx_content = self.claude.generate_blog_post(
-            post_spec=spec,
-            post_type="listicle",
-            brand_voice=brand_voice,
-            cta_copy=cta_copy,
-            examples=example,
-            product_overview=product_overview,
-        )
-
-        self._validate_generated_post(mdx_content, "listicle", spec)
-
-        return mdx_content
+        """Generate a listicle blog post (800-1200 words)."""
+        return self._generate_typed_post(spec, "listicle")
 
     def validate_frontmatter(self, frontmatter: dict) -> list[str]:
         """

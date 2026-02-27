@@ -96,11 +96,7 @@ class GitHubAPI:
         image_slug: Optional[str] = None,
     ) -> str:
         """
-        Commit a blog post (MDX file + optional hero image) to goslated.com repo.
-
-        Creates/updates files at:
-        - content/blog/{slug}.mdx
-        - public/assets/blog/{image_slug}.jpg (if hero image provided)
+        Commit a single blog post. Delegates to commit_multiple_posts().
 
         Args:
             slug: Blog post slug for the MDX file name.
@@ -108,7 +104,6 @@ class GitHubAPI:
             hero_image_path: Local path to the hero image file.
             commit_message: Custom commit message. Auto-generated if None.
             image_slug: Slug for the deployed image path. Defaults to slug.
-                         Use when the frontmatter slug differs from the file slug.
 
         Returns:
             str: The commit SHA.
@@ -116,24 +111,15 @@ class GitHubAPI:
         Raises:
             GitHubAPIError: If the commit fails.
         """
-        img_slug = image_slug or slug
-        files = [{"path": f"content/blog/{slug}.mdx", "content": mdx_content}]
-
-        if hero_image_path and Path(hero_image_path).exists():
-            with open(hero_image_path, "rb") as f:
-                image_data = f.read()
-
-            extension = Path(hero_image_path).suffix or ".jpg"
-            files.append({
-                "path": f"public/assets/blog/{img_slug}{extension}",
-                "content": image_data,
-                "is_binary": True,
-            })
-
-        if not commit_message:
-            commit_message = f"Add blog post: {slug}"
-
-        return self._commit_files(files, commit_message)
+        return self.commit_multiple_posts(
+            posts=[{
+                "slug": slug,
+                "mdx_content": mdx_content,
+                "hero_image_path": hero_image_path,
+                "image_slug": image_slug or slug,
+            }],
+            commit_message=commit_message or f"Add blog post: {slug}",
+        )
 
     def commit_multiple_posts(
         self,

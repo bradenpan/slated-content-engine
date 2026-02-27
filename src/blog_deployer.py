@@ -64,6 +64,51 @@ class BlogDeployer:
         self.sheets = sheets or SheetsAPI()
         self.slack = slack or SlackNotify()
 
+    def _read_approved_content(self, caller: str) -> tuple[list[dict], list[dict]]:
+        """
+        Read content approvals from Google Sheets and filter to approved items.
+
+        Args:
+            caller: Name of the calling method (for error messages / Slack).
+
+        Returns:
+            tuple: (approved_blogs, approved_pins)
+
+        Raises:
+            Exception: If reading approvals fails (after sending Slack notification).
+        """
+        try:
+            approvals = self.sheets.read_content_approvals()
+        except Exception as e:
+            logger.error("Failed to read content approvals: %s", e)
+            try:
+                self.slack.notify_failure(
+                    caller,
+                    f"Cannot read content approvals from Google Sheets: {e}. "
+                    f"Deployment halted. Please retry when Sheets is accessible.",
+                )
+            except Exception:
+                pass
+            raise
+
+        approved_blogs = [
+            item for item in approvals
+            if item.get("type") == "blog"
+            and item.get("status") in ("approved", "use_ai_image")
+        ]
+        approved_pins = [
+            item for item in approvals
+            if item.get("type") == "pin"
+            and item.get("status") in ("approved", "use_ai_image")
+        ]
+
+        logger.info(
+            "Approved content: %d blog posts, %d pins",
+            len(approved_blogs), len(approved_pins),
+        )
+
+        return approved_blogs, approved_pins
+
     def deploy_to_preview(self) -> dict:
         """
         Deploy approved content to the develop branch for preview review.
@@ -85,36 +130,7 @@ class BlogDeployer:
             "pins_saved": 0,
         }
 
-        # Read content approvals from Google Sheets
-        try:
-            approvals = self.sheets.read_content_approvals()
-        except Exception as e:
-            logger.error("Failed to read content approvals: %s", e)
-            try:
-                self.slack.notify_failure(
-                    "deploy_to_preview",
-                    f"Cannot read content approvals from Google Sheets: {e}. "
-                    f"Preview deployment halted. Please retry when Sheets is accessible.",
-                )
-            except Exception:
-                pass
-            raise
-
-        approved_blogs = [
-            item for item in approvals
-            if item.get("type") == "blog"
-            and item.get("status") in ("approved", "use_ai_image")
-        ]
-        approved_pins = [
-            item for item in approvals
-            if item.get("type") == "pin"
-            and item.get("status") in ("approved", "use_ai_image")
-        ]
-
-        logger.info(
-            "Approved content: %d blog posts, %d pins",
-            len(approved_blogs), len(approved_pins),
-        )
+        approved_blogs, approved_pins = self._read_approved_content("deploy_to_preview")
 
         # Deploy blog posts to develop branch
         if approved_blogs:
@@ -202,30 +218,7 @@ class BlogDeployer:
             raise
 
         # Step 2: Read approvals to get blog slugs and pin data
-        try:
-            approvals = self.sheets.read_content_approvals()
-        except Exception as e:
-            logger.error("Failed to read content approvals: %s", e)
-            try:
-                self.slack.notify_failure(
-                    "promote_to_production",
-                    f"Cannot read content approvals from Google Sheets: {e}. "
-                    f"Production promotion halted. Please retry when Sheets is accessible.",
-                )
-            except Exception:
-                pass
-            raise
-
-        approved_blogs = [
-            item for item in approvals
-            if item.get("type") == "blog"
-            and item.get("status") in ("approved", "use_ai_image")
-        ]
-        approved_pins = [
-            item for item in approvals
-            if item.get("type") == "pin"
-            and item.get("status") in ("approved", "use_ai_image")
-        ]
+        approved_blogs, approved_pins = self._read_approved_content("promote_to_production")
 
         # Step 3: Verify blog post URLs on production
         deployed_slugs = [

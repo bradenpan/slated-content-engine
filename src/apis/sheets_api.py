@@ -42,8 +42,9 @@ TAB_CONTENT_QUEUE = "Content Queue"
 TAB_POST_LOG = "Post Log"
 TAB_DASHBOARD = "Dashboard"
 
-# Column indices (0-based) for the Content Queue tab
-# These must match the column structure the Apps Script expects
+# === Column Schema: Content Queue Tab ===
+# 0-based column indices. Must match the column structure the Apps Script expects.
+# Header row: ID | Type | Title | Description | Board | Blog URL | Schedule | Pillar | Thumbnail | Status | Notes | Feedback
 CQ_COL_ID = 0           # A: Internal ID (e.g., "W12-01" or "B12-01")
 CQ_COL_TYPE = 1         # B: Type (pin / blog)
 CQ_COL_TITLE = 2        # C: Title
@@ -119,6 +120,8 @@ class SheetsAPI:
             ) from e
         except Exception as e:
             raise SheetsAPIError(f"Failed to initialize Google Sheets API: {e}") from e
+
+    # === Weekly Review Operations ===
 
     def write_weekly_review(
         self,
@@ -265,6 +268,8 @@ class SheetsAPI:
         except Exception as e:
             logger.error("Failed to read deploy status: %s", e)
             raise SheetsAPIError(f"Failed to read deploy status: {e}") from e
+
+    # === Content Queue Operations ===
 
     def write_content_queue(
         self,
@@ -640,6 +645,8 @@ class SheetsAPI:
         except Exception as e:
             raise SheetsAPIError(f"Failed to reset plan regen trigger: {e}") from e
 
+    # === Post Log Operations ===
+
     def append_post_log(self, pin_data: dict) -> None:
         """
         Append a posted pin record to the "Post Log" tab.
@@ -700,6 +707,8 @@ class SheetsAPI:
             "error": error_message or "",
         })
 
+    # === Dashboard Operations ===
+
     def update_dashboard(self, metrics: dict) -> None:
         """
         Update the "Dashboard" tab with latest metrics.
@@ -722,6 +731,8 @@ class SheetsAPI:
 
         self._clear_and_write(TAB_DASHBOARD, rows)
         logger.info("Dashboard updated.")
+
+    # === Internal Helpers ===
 
     def _clear_and_write(
         self,

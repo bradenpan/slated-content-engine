@@ -33,12 +33,13 @@ from pathlib import Path
 from src.apis.claude_api import ClaudeAPI
 from src.apis.sheets_api import SheetsAPI
 from src.apis.slack_notify import SlackNotify
-from src.generate_weekly_plan import (
+from src.generate_weekly_plan import load_content_memory
+from src.utils.plan_utils import (
+    find_latest_plan,
+    load_plan,
     identify_replaceable_posts,
     splice_replacements,
-    load_content_memory,
 )
-from src.utils.plan_utils import find_latest_plan, load_plan
 
 logger = logging.getLogger(__name__)
 
