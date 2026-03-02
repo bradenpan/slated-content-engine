@@ -8,8 +8,9 @@ Uses the same service account credentials as the Sheets API (just needs
 the storage scope). Objects are stored in a single bucket with public
 read access (allUsers objectViewer), so =IMAGE() formulas can render them.
 
-Storage: A single bucket (default "slated-pipeline-pins"). Previous week's
-pin images are deleted before uploading new ones.
+Storage: A single bucket (default "slated-pipeline-pins"). Pin images from
+2+ weeks ago are deleted before uploading new ones (keeps current and
+previous week alive to avoid breaking scheduled pins still pending).
 
 Environment variables required:
 - GOOGLE_SHEETS_CREDENTIALS_JSON (base64-encoded service account JSON)
@@ -20,6 +21,7 @@ import os
 import json
 import base64
 import logging
+import re
 from pathlib import Path
 from typing import Optional
 
@@ -210,15 +212,39 @@ class GcsAPI:
         if not pin_results:
             return {}
 
-        # Clear previous pin images (files matching W*-*.png pattern)
-        self.delete_old_images(prefix="W")
+        # Parse current week number from pin_ids (e.g., "W10-01" → 10).
+        # Only delete images from 2+ weeks ago (keeps current and previous week).
+        # Validate that all pins share the same week to avoid misscoped cleanup.
+        week_re = re.compile(r'^W(\d+)-')
+        weeks_seen: set[int] = set()
+        for pin in pin_results:
+            pid = pin.get("pin_id") or ""
+            m = week_re.match(pid)
+            if m:
+                weeks_seen.add(int(m.group(1)))
+
+        if len(weeks_seen) == 1:
+            current_week = weeks_seen.pop()
+            self.delete_old_week_images(current_week)
+        elif len(weeks_seen) > 1:
+            # Mixed-week batch — use the highest week to avoid deleting too aggressively
+            current_week = max(weeks_seen)
+            logger.warning(
+                "Mixed week batch detected (weeks: %s), using W%d for cleanup",
+                sorted(weeks_seen), current_week,
+            )
+            self.delete_old_week_images(current_week)
+        else:
+            logger.warning(
+                "Could not parse week number from any pin_id, skipping GCS cleanup",
+            )
 
         url_map: dict[str, str] = {}
         uploaded = 0
         failed = 0
 
         for pin in pin_results:
-            pin_id = pin.get("pin_id", "")
+            pin_id = pin.get("pin_id") or ""
             if not pin_id:
                 continue
 
@@ -302,36 +328,67 @@ class GcsAPI:
 
         return urls
 
-    def delete_old_images(self, prefix: Optional[str] = None) -> int:
-        """
-        Delete objects in the bucket, optionally filtered by prefix.
+    def delete_old_week_images(self, current_week: int) -> int:
+        """Delete pin images from 2+ weeks before current_week.
+
+        Keeps W(current) and W(current-1) alive. Deletes W(current-2) and earlier.
+        Example: uploading W10 pins deletes W8, W7, ... but keeps W9, W10.
+
+        Also cleans up ai-heroes/ objects following the same week logic.
 
         Args:
-            prefix: If provided, only delete objects whose names start with
-                    this prefix.
+            current_week: The week number currently being uploaded (e.g., 10).
 
         Returns:
             int: Number of objects deleted.
         """
         if not self.client:
-            logger.warning("GCS client not configured — skipping delete_old_images")
+            logger.warning("GCS client not configured — skipping delete_old_week_images")
             return 0
+
+        # Regex to extract week number from blob names like "W9-01.png" or "ai-heroes/W9-24-ai-hero.png"
+        week_pattern = re.compile(r'W(\d+)-')
+
+        # Note: week numbers are compared without year context. This is safe
+        # given weekly pipeline cadence (old-year blobs are deleted long before
+        # the same week number recurs). If the pipeline ever skips 50+ weeks,
+        # same-numbered blobs from a prior year could be incorrectly matched.
+        def should_keep(blob_week: int) -> bool:
+            """Return True if blob_week should be kept (current or previous week)."""
+            if blob_week == current_week or blob_week == current_week - 1:
+                return True
+            # Year boundary: when current is W1, current_week - 1 = 0 (no real week).
+            # The actual previous week is W52 or W53 (ISO years vary).
+            if current_week == 1 and blob_week in (52, 53):
+                return True
+            return False
 
         deleted = 0
         try:
-            blobs = self.client.list_blobs(self.bucket_name, prefix=prefix)
-            for blob in blobs:
-                try:
-                    blob.delete()
-                    deleted += 1
-                except Exception as e:
-                    logger.warning("Failed to delete GCS object %s: %s", blob.name, e)
+            for blob_prefix in ("W", "ai-heroes/W"):
+                blobs = self.client.list_blobs(self.bucket_name, prefix=blob_prefix)
+                for blob in blobs:
+                    match = week_pattern.search(blob.name)
+                    if not match:
+                        continue
+                    blob_week = int(match.group(1))
+                    if should_keep(blob_week):
+                        continue
+                    try:
+                        blob.delete()
+                        deleted += 1
+                    except Exception as e:
+                        logger.warning("Failed to delete GCS object %s: %s", blob.name, e)
 
             if deleted:
-                logger.info("Deleted %d objects from GCS (prefix=%s)", deleted, prefix)
+                prev_week = current_week - 1 if current_week > 1 else "52/53"
+                logger.info(
+                    "Deleted %d old week images from GCS (current_week=W%d, keeping W%d and W%s)",
+                    deleted, current_week, current_week, prev_week,
+                )
 
         except Exception as e:
-            logger.warning("Error listing/deleting GCS objects: %s", e)
+            logger.warning("Error listing/deleting old week images: %s", e)
 
         return deleted
 

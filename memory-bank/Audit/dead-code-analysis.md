@@ -87,8 +87,8 @@ No dead code found. All public methods have callers:
 - `upload_blog_hero_images()` -- called from `publish_content_queue.py:134`
 - `download_image()` -- called from `regen_content.py:548`
 - `extract_object_name()` -- called from `regen_content.py:545`, `regen_content.py:615`
-- `delete_old_images()` -- called internally from `upload_pin_images()` (line 203)
-- `get_public_url()` -- called internally from `upload_image()` (line 147)
+- `delete_old_week_images()` -- called internally from `upload_pin_images()`
+- `get_public_url()` -- called internally from `upload_image()`
 
 ---
 

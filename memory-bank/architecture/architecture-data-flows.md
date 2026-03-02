@@ -545,6 +545,9 @@ Note: `use_ai_image` is kept as a backwards-compatible alias that maps to `appro
 
 ```
 1. gcs.upload_pin_images(generated_pins, PIN_OUTPUT_DIR)
+   -> Cleans up old images: delete_old_week_images(current_week)
+      keeps W(current) and W(current-1), deletes W(current-2) and earlier
+      also cleans ai-heroes/W* objects with same week logic
    -> Uploads rendered pins: {pin_id}.png
    -> Returns: {pin_id: gcs_public_url}
    -> Stored as pin["_drive_image_url"] and pin["_drive_download_url"]

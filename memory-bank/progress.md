@@ -1914,3 +1914,52 @@ Only internal dict lookups where we control the data (e.g., looking up keys in d
 ### Status
 
 Complete. 206 tests pass. Codebase fully hardened against `.get(key, default)` None-safety bug on all external JSON data paths.
+
+## Phase 18 — GCS Week-Scoped Cleanup Fix + W9 Pin Recovery (2026-03-02)
+
+### Problem
+
+W9-21 pin posting failed with `Pinterest API error 400: Sorry we could not fetch the image` because the GCS image no longer existed. Root cause: when W10 content generation ran `publish_content_queue.py`, it called `gcs_api.py:upload_pin_images()` which called `self.delete_old_images(prefix="W")` — a blanket delete of ALL `W*` objects from GCS, including W9 images still needed for posting (W9-21 through W9-28 were scheduled for Mar 2-3).
+
+### Fix: Week-Scoped GCS Cleanup
+
+**File:** `src/apis/gcs_api.py`
+
+Replaced `delete_old_images(prefix="W")` with `delete_old_week_images(current_week)`:
+
+- Parses week number from pin_ids (e.g., `W10-01` → week 10)
+- Validates all pins in the batch share the same week (handles mixed-batch by using max week)
+- Deletes only objects from W(current-2) and earlier — keeps W(current) and W(current-1) alive
+- Also cleans `ai-heroes/W*` objects with the same week logic
+- Year-boundary handling: W1 keeps W52/W53 from the prior year
+- Removed `delete_old_images()` entirely (no external callers)
+
+### Recovery Script
+
+**File:** `src/recover_w9_pins.py` (one-time, delete after Mar 4, 2026)
+
+Re-renders and re-uploads 8 W9 pins (W9-21 through W9-28) whose GCS images were deleted:
+
+1. Extracts original W9 pin data from git history (commit `10b5ba6`)
+2. Downloads hero images from original sources (Unsplash API for 5 pins, Pexels for 1, AI re-gen for 1, template-only for 1)
+3. Re-renders all pins using `PinAssembler.assemble_pin()` with `build_template_context()`
+4. Uploads individually to GCS (avoids `upload_pin_images()` bulk delete)
+5. Updates `pin-schedule.json` with new GCS URLs (atomic write)
+
+Features: Unsplash API resolution (not CDN guessing), Pexels API with CDN fallback, `safe_get()` on all external JSON, atomic file writes, dependency validation, date expiry warning.
+
+### Documentation Updates
+
+- `memory-bank/architecture/architecture-data-flows.md` — Updated GCS Upload Flow section to document week-scoped cleanup
+- `memory-bank/Audit/audit.md` — Marked `delete_old_images` hardcoded prefix issue as fixed
+- `memory-bank/Audit/dead-code-analysis.md` — Updated GCS method list
+
+### Verification
+
+- 3 rounds of code review agents (narrowing → holistic scope)
+- No critical issues remaining
+- W9-24 will get a new AI image (original lost, unavoidable)
+
+### Status
+
+GCS fix complete and committed. Recovery script ready to run.

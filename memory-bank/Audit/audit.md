@@ -47,7 +47,7 @@
 #### `src/apis/gcs_api.py` (~353 lines, was ~427)
 - **Purpose:** Uploads pin/blog hero images to GCS for Sheets `=IMAGE()` previews.
 - **Changes:** -74 lines. Cleanup from simplification.
-- **Issues:** Hardcoded bucket name, duplicated MIME detection, silent `None` returns on error, hardcoded prefix "W" in `delete_old_images()`.
+- **Issues:** Hardcoded bucket name, duplicated MIME detection, silent `None` returns on error. ~~hardcoded prefix "W" in `delete_old_images()`~~ (fixed: replaced with week-scoped `delete_old_week_images()`).
 
 #### `src/apis/github_api.py` (~543 lines, unchanged)
 - **Purpose:** Commits blog posts to goslated.com repo, triggering Vercel deploy.
