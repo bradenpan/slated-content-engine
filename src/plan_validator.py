@@ -36,8 +36,9 @@ MAX_FRESH_TREATMENTS_PER_URL_PER_WEEK = 2
 TOPIC_REPETITION_WINDOW_WEEKS = 10
 MAX_TREATMENTS_PER_URL_60_DAYS = 5
 
-# Days in the posting week: Tuesday through Monday
-POSTING_DAYS = ["tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "monday"]
+# Days in the posting week: Wednesday through Tuesday (7 days).
+# Only len() is used — the validator checks for 7 unique scheduled_date values.
+POSTING_DAYS = ["wednesday", "thursday", "friday", "saturday", "sunday", "monday", "tuesday"]
 
 # Time slots per day
 TIME_SLOTS = ["morning", "afternoon", "evening-1", "evening-2"]
@@ -218,7 +219,7 @@ def validate_plan(
                 })
                 break
 
-    # --- Check 7: 4 pins per day, spread across Tue-Mon ---
+    # --- Check 7: 4 pins per day, spread across Wed-Tue ---
     day_counts = Counter(
         safe_get(pin, "scheduled_date", "").lower() for pin in pins
     )

@@ -30,7 +30,7 @@ from src.apis.sheets_api import SheetsAPI
 from src.apis.slack_notify import SlackNotify
 from src.paths import DATA_DIR, BLOG_OUTPUT_DIR, PIN_OUTPUT_DIR
 from src.config import BLOG_BASE_URL, DEPLOY_VERIFY_TIMEOUT
-from src.utils.content_log import load_content_log, append_content_log_entry
+from src.utils.content_log import load_content_log, append_content_log_entry, is_pin_posted
 from src.utils.plan_utils import save_pin_schedule
 from src.utils.safe_get import safe_get
 
@@ -307,11 +307,16 @@ class BlogDeployer:
         # Step 8: Slack notification
         try:
             verified_count = sum(1 for ok in results["verification_results"].values() if ok)
+            new_pin_count = len(approved_pins)
+            total_scheduled = results['pins_scheduled']
+            carried = total_scheduled - new_pin_count
+            schedule_msg = f"{new_pin_count} new pins scheduled"
+            if carried > 0:
+                schedule_msg += f" ({carried} carried over from last week)"
             self.slack.notify(
                 f"Content is live on goslated.com! "
                 f"{verified_count} blog posts verified, "
-                f"{results['pins_scheduled']} pins scheduled for this week. "
-                f"First pins post tomorrow.",
+                f"{schedule_msg}.",
                 level="success",
             )
         except Exception as e:
@@ -530,10 +535,52 @@ class BlogDeployer:
             }
             schedule.append(schedule_entry)
 
-        # Write the schedule file atomically
-        save_pin_schedule(schedule)
+        # Preserve unposted pins from existing schedule so a new week's
+        # promote doesn't erase pins from the previous week that haven't
+        # posted yet (e.g., W9 evening pins still due when W10 promotes).
+        #
+        # NOTE: promote (pinterest-pipeline) and daily-post (pinterest-posting)
+        # use different concurrency groups and can run simultaneously. If a
+        # daily-post is mid-flight, its content-log.jsonl updates aren't
+        # committed yet, so is_pin_posted may return False for just-posted
+        # pins. This is safe: those pins will appear in `kept` but won't
+        # double-post (post_pins.py rechecks is_pin_posted at runtime).
+        # They self-clean on the next promote.
+        schedule_path = DATA_DIR / "pin-schedule.json"
+        kept = []
+        if schedule_path.exists():
+            try:
+                existing = json.loads(
+                    schedule_path.read_text(encoding="utf-8")
+                )
+            except (json.JSONDecodeError, OSError) as e:
+                logger.warning("Could not load existing pin schedule: %s", e)
+                existing = []
 
-        return len(schedule)
+            new_pin_ids = {
+                safe_get(entry, "pin_id") for entry in schedule
+            }
+            for entry in existing:
+                pid = safe_get(entry, "pin_id", "")
+                if pid in new_pin_ids:
+                    continue
+                if is_pin_posted(pid):
+                    continue
+                kept.append(entry)
+
+        if kept:
+            logger.info(
+                "Preserved %d unposted pins from prior week. "
+                "New pins use dates from weekly plan (no rescheduling).",
+                len(kept),
+            )
+
+        combined = kept + schedule
+
+        # Write the schedule file atomically
+        save_pin_schedule(combined)
+
+        return len(combined)
 
     def _append_to_content_log(
         self,

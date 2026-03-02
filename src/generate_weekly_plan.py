@@ -127,6 +127,7 @@ def generate_plan(
         seasonal_context=seasonal_context,
         keyword_data=keyword_data,
         negative_keywords=negative_keywords,
+        week_start_date=start_date,
     )
 
     _validate_plan_structure(plan)
@@ -161,6 +162,7 @@ def generate_plan(
                 seasonal_context=seasonal_context,
                 keyword_data=keyword_data,
                 negative_keywords=negative_keywords,
+                week_start_date=start_date,
             )
         else:
             # Only targeted violations -- attempt surgical replacement
@@ -180,6 +182,7 @@ def generate_plan(
                     seasonal_context=seasonal_context,
                     keyword_data=keyword_data,
                     negative_keywords=negative_keywords,
+                    week_start_date=start_date,
                 )
             elif len(replaceable) > len(plan.get("blog_posts", [])) * 0.5:
                 # Too many posts need replacement -- surgical fix is pointless
@@ -194,6 +197,7 @@ def generate_plan(
                     seasonal_context=seasonal_context,
                     keyword_data=keyword_data,
                     negative_keywords=negative_keywords,
+                    week_start_date=start_date,
                 )
             else:
                 # Surgical replacement of specific posts

@@ -1,6 +1,6 @@
 {
   "week_number": 10,
-  "date_range": "2026-03-03 to 2026-03-09",
+  "date_range": "2026-03-04 to 2026-03-10",
   "planning_notes": "Week 10 plan corrects the pillar imbalance from Week 9 (P1 was 50% vs 32-36% target; P2, P3, P4, P5 all under). P1 reduced to 9 pins (32%), P2 increased to 8 pins (29%), P3 to 6 pins (21%), P4 to 2 pins (7%), P5 to 3 pins (11% — one under range due to treatment limits on existing P5 URLs, acceptable per +/-1 deviation rule). Spring seasonal window is active: 3 seasonal concepts injected across P1, P3, and P5 within existing allocations. All existing URLs at treatment limit (shrimp-avocado-tacos, beef-broccoli-stir-fry, meals-for-picky-families-agreement-strategy) are excluded from fresh treatments. Remaining existing URLs (hidden-veggie-mac-and-cheese, lemon-herb-chicken, teriyaki-salmon-bowls, creamy-tuscan-chicken-pasta, hellofresh-alternative, air-fryer-honey-garlic-chicken, high-protein-turkey-meatball-bowls) each receive at most 1 fresh treatment this week. Priority untargeted keywords introduced this week: meal planning, dinner ideas for picky eaters, gluten free dinner ideas, slow cooker family meals, weekly dinner plan, meal planning for beginners, toddler dinner ideas, vegetarian family meals. Template variety enforced: no more than 3 consecutive recipe-pins at any point in the schedule. Board distribution verified: no board exceeds 5 pins. Funnel: 16 discovery (57%), 8 consideration (29%), 4 conversion (14%).",
   "pillar_allocation": {
     "P1": {
@@ -207,7 +207,7 @@
       "target_board": "Weekly Meal Plans & Meal Planning Tips",
       "treatment_number": 1,
       "funnel_layer": "consideration",
-      "scheduled_date": "2026-03-03",
+      "scheduled_date": "2026-03-04",
       "scheduled_slot": "morning"
     },
     {
@@ -226,7 +226,7 @@
       "target_board": "Family Meal Planning Strategies",
       "treatment_number": 1,
       "funnel_layer": "conversion",
-      "scheduled_date": "2026-03-03",
+      "scheduled_date": "2026-03-04",
       "scheduled_slot": "afternoon"
     },
     {
@@ -245,7 +245,7 @@
       "target_board": "Quick Weeknight Dinner Recipes",
       "treatment_number": 1,
       "funnel_layer": "discovery",
-      "scheduled_date": "2026-03-03",
+      "scheduled_date": "2026-03-04",
       "scheduled_slot": "evening-1"
     },
     {
@@ -264,7 +264,7 @@
       "target_board": "Family Dinner Ideas Even Picky Eaters Love",
       "treatment_number": 1,
       "funnel_layer": "discovery",
-      "scheduled_date": "2026-03-03",
+      "scheduled_date": "2026-03-04",
       "scheduled_slot": "evening-2"
     },
     {
@@ -283,7 +283,7 @@
       "target_board": "Weekly Meal Plans & Meal Planning Tips",
       "treatment_number": 1,
       "funnel_layer": "consideration",
-      "scheduled_date": "2026-03-04",
+      "scheduled_date": "2026-03-05",
       "scheduled_slot": "morning"
     },
     {
@@ -302,7 +302,7 @@
       "target_board": "Gluten-Free Dinner Ideas",
       "treatment_number": 1,
       "funnel_layer": "discovery",
-      "scheduled_date": "2026-03-04",
+      "scheduled_date": "2026-03-05",
       "scheduled_slot": "afternoon"
     },
     {
@@ -321,7 +321,7 @@
       "target_board": "Easy Dinner Ideas for Families",
       "treatment_number": 1,
       "funnel_layer": "discovery",
-      "scheduled_date": "2026-03-04",
+      "scheduled_date": "2026-03-05",
       "scheduled_slot": "evening-1"
     },
     {
@@ -340,7 +340,7 @@
       "target_board": "Family Dinner Ideas Even Picky Eaters Love",
       "treatment_number": 1,
       "funnel_layer": "discovery",
-      "scheduled_date": "2026-03-04",
+      "scheduled_date": "2026-03-05",
       "scheduled_slot": "evening-2"
     },
     {
@@ -359,7 +359,7 @@
       "target_board": "Quick Weeknight Dinner Recipes",
       "treatment_number": 1,
       "funnel_layer": "discovery",
-      "scheduled_date": "2026-03-05",
+      "scheduled_date": "2026-03-06",
       "scheduled_slot": "morning"
     },
     {
@@ -378,7 +378,7 @@
       "target_board": "Better Than a Meal Kit",
       "treatment_number": 1,
       "funnel_layer": "conversion",
-      "scheduled_date": "2026-03-05",
+      "scheduled_date": "2026-03-06",
       "scheduled_slot": "afternoon"
     },
     {
@@ -397,7 +397,7 @@
       "target_board": "Easy Dinner Ideas for Families",
       "treatment_number": 1,
       "funnel_layer": "discovery",
-      "scheduled_date": "2026-03-05",
+      "scheduled_date": "2026-03-06",
       "scheduled_slot": "evening-1"
     },
     {
@@ -416,7 +416,7 @@
       "target_board": "Quick Weeknight Dinner Recipes",
       "treatment_number": 1,
       "funnel_layer": "discovery",
-      "scheduled_date": "2026-03-05",
+      "scheduled_date": "2026-03-06",
       "scheduled_slot": "evening-2"
     },
     {
@@ -435,7 +435,7 @@
       "target_board": "Family Meal Planning Strategies",
       "treatment_number": 2,
       "funnel_layer": "conversion",
-      "scheduled_date": "2026-03-06",
+      "scheduled_date": "2026-03-07",
       "scheduled_slot": "morning"
     },
     {
@@ -454,7 +454,7 @@
       "target_board": "Easy Dinner Ideas for Families",
       "treatment_number": 1,
       "funnel_layer": "discovery",
-      "scheduled_date": "2026-03-06",
+      "scheduled_date": "2026-03-07",
       "scheduled_slot": "afternoon"
     },
     {
@@ -473,7 +473,7 @@
       "target_board": "Easy Dinner Ideas for Families",
       "treatment_number": 1,
       "funnel_layer": "discovery",
-      "scheduled_date": "2026-03-06",
+      "scheduled_date": "2026-03-07",
       "scheduled_slot": "evening-1"
     },
     {
@@ -492,7 +492,7 @@
       "target_board": "Family Dinner Ideas Even Picky Eaters Love",
       "treatment_number": 5,
       "funnel_layer": "discovery",
-      "scheduled_date": "2026-03-06",
+      "scheduled_date": "2026-03-07",
       "scheduled_slot": "evening-2"
     },
     {
@@ -511,7 +511,7 @@
       "target_board": "Meal Planning & Grocery Tips",
       "treatment_number": 1,
       "funnel_layer": "discovery",
-      "scheduled_date": "2026-03-07",
+      "scheduled_date": "2026-03-08",
       "scheduled_slot": "morning"
     },
     {
@@ -530,7 +530,7 @@
       "target_board": "Better Than a Meal Kit",
       "treatment_number": 4,
       "funnel_layer": "conversion",
-      "scheduled_date": "2026-03-07",
+      "scheduled_date": "2026-03-08",
       "scheduled_slot": "afternoon"
     },
     {
@@ -549,7 +549,7 @@
       "target_board": "Quick Weeknight Dinner Recipes",
       "treatment_number": 1,
       "funnel_layer": "discovery",
-      "scheduled_date": "2026-03-07",
+      "scheduled_date": "2026-03-08",
       "scheduled_slot": "evening-1"
     },
     {
@@ -568,7 +568,7 @@
       "target_board": "Family Dinner Ideas Even Picky Eaters Love",
       "treatment_number": 2,
       "funnel_layer": "discovery",
-      "scheduled_date": "2026-03-07",
+      "scheduled_date": "2026-03-08",
       "scheduled_slot": "evening-2"
     },
     {
@@ -587,7 +587,7 @@
       "target_board": "Healthy Family Dinner Recipes",
       "treatment_number": 2,
       "funnel_layer": "discovery",
-      "scheduled_date": "2026-03-08",
+      "scheduled_date": "2026-03-09",
       "scheduled_slot": "morning"
     },
     {
@@ -606,7 +606,7 @@
       "target_board": "Family Meal Planning Strategies",
       "treatment_number": 2,
       "funnel_layer": "consideration",
-      "scheduled_date": "2026-03-08",
+      "scheduled_date": "2026-03-09",
       "scheduled_slot": "afternoon"
     },
     {
@@ -625,7 +625,7 @@
       "target_board": "Quick Weeknight Dinner Recipes",
       "treatment_number": 4,
       "funnel_layer": "discovery",
-      "scheduled_date": "2026-03-08",
+      "scheduled_date": "2026-03-09",
       "scheduled_slot": "evening-1"
     },
     {
@@ -644,7 +644,7 @@
       "target_board": "Easy Dinner Ideas for Families",
       "treatment_number": 1,
       "funnel_layer": "discovery",
-      "scheduled_date": "2026-03-08",
+      "scheduled_date": "2026-03-09",
       "scheduled_slot": "evening-2"
     },
     {
@@ -663,7 +663,7 @@
       "target_board": "Meal Planning & Grocery Tips",
       "treatment_number": 2,
       "funnel_layer": "consideration",
-      "scheduled_date": "2026-03-09",
+      "scheduled_date": "2026-03-10",
       "scheduled_slot": "morning"
     },
     {
@@ -682,7 +682,7 @@
       "target_board": "Quick Weeknight Dinner Recipes",
       "treatment_number": 4,
       "funnel_layer": "discovery",
-      "scheduled_date": "2026-03-09",
+      "scheduled_date": "2026-03-10",
       "scheduled_slot": "afternoon"
     },
     {
@@ -701,7 +701,7 @@
       "target_board": "Healthy Family Dinner Recipes",
       "treatment_number": 2,
       "funnel_layer": "consideration",
-      "scheduled_date": "2026-03-09",
+      "scheduled_date": "2026-03-10",
       "scheduled_slot": "evening-1"
     },
     {
@@ -720,7 +720,7 @@
       "target_board": "Family Meal Planning Strategies",
       "treatment_number": 3,
       "funnel_layer": "consideration",
-      "scheduled_date": "2026-03-09",
+      "scheduled_date": "2026-03-10",
       "scheduled_slot": "evening-2"
     }
   ]

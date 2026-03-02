@@ -130,6 +130,7 @@ class ClaudeAPI:
         seasonal_context: str,
         keyword_data: dict,
         negative_keywords: list[str],
+        week_start_date=None,
     ) -> dict:
         """
         Generate a weekly content plan using Claude Sonnet.
@@ -146,14 +147,25 @@ class ClaudeAPI:
             seasonal_context: Current seasonal window description.
             keyword_data: Keyword lists with performance data.
             negative_keywords: List of keywords/topics to avoid.
+            week_start_date: The Monday that anchors this week (date object).
+                             Pin dates are computed as Monday + 2 (Wednesday)
+                             through Monday + 8 (Tuesday). Defaults to today.
 
         Returns:
             dict: Structured weekly plan with blog_posts and pins arrays.
         """
-        from datetime import date as _date
+        from datetime import date as _date, timedelta as _td
         template = self.load_prompt_template("weekly_plan.md")
 
-        today = _date.today()
+        today = week_start_date or _date.today()
+
+        # Compute exact pin posting dates: Wed (Monday+2) through Tue (Monday+8)
+        pin_start = today + _td(days=2)
+        pin_posting_dates = "\n".join(
+            f"- {(pin_start + _td(days=i)).isoformat()} ({(pin_start + _td(days=i)).strftime('%A')})"
+            for i in range(7)
+        )
+
         context = {
             "current_date": today.isoformat(),
             "week_number": str(today.isocalendar()[1]),
@@ -163,6 +175,7 @@ class ClaudeAPI:
             "seasonal_window": seasonal_context,
             "keyword_performance": keyword_data,
             "negative_keywords": "\n".join(f"- {kw}" for kw in negative_keywords) if negative_keywords else "See NEGATIVE KEYWORD CONSTRAINTS above.",
+            "pin_posting_dates": pin_posting_dates,
         }
 
         prompt = self._render_template(template, context)

@@ -315,7 +315,8 @@ Return valid JSON with exactly this structure. No markdown code fences around th
 ---
 ## SCHEDULING RULES
 
-- The posting week runs Tuesday through next Monday.
+- Use EXACTLY these 7 posting dates (do NOT calculate your own):
+{{pin_posting_dates}}
 - 4 pins per day: 1 morning (~10 AM ET), 1 afternoon (~3 PM ET), 2 evening (~8 PM ET).
 - Evening slots are labeled "evening-1" and "evening-2".
 - Front-load the highest-quality and most conversion-oriented pins to Friday-Monday (peak Pinterest engagement).

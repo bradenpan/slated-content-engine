@@ -2092,3 +2092,57 @@ Summary step originally referenced wrong path `data/generated/blog/blog-generati
 ### Status
 
 Ready to push. Workflow not yet run.
+
+---
+
+## Phase 19: Pin Scheduling Simplification (2026-03-02)
+
+### Problem
+
+Three separate places manipulated pin scheduling dates, creating confusion and overlap risk:
+1. Claude assigned dates during plan generation (prompt said "Tue→Mon")
+2. `_create_pin_schedule()` in blog_deployer.py rewrote ALL dates during promote-to-production
+3. `redate_schedule.py` manual utility
+
+Additionally, W10 pins had a start date of Tue Mar 3 — overlapping with W9 pins that run through Tue Mar 3 evening.
+
+### Root Cause
+
+Claude was given a vague text rule ("posting week runs Tuesday through next Monday") and expected to do date math. Claude got the dates wrong, and the rescheduling logic in promote added unnecessary complexity.
+
+### Fix
+
+**Single source of truth:** Pin dates are now computed by Python and injected into the Claude prompt. No date arithmetic by Claude, no date rewriting during promote.
+
+1. **`src/apis/claude_api.py`** — `generate_weekly_plan()` now accepts `week_start_date` (the Monday), computes `pin_start = Monday + 2` (Wednesday), generates 7 exact ISO dates with day names, injects as `{{pin_posting_dates}}`
+2. **`src/generate_weekly_plan.py`** — all 4 callsites pass `week_start_date=start_date`
+3. **`prompts/weekly_plan.md`** — replaced vague "Tuesday through next Monday" rule with explicit `{{pin_posting_dates}}` injection ("Use EXACTLY these 7 posting dates")
+4. **`src/blog_deployer.py`** — removed date rescheduling block from `_create_pin_schedule()`. Carry-over logic (preserving unposted prior-week pins) kept intact. Cleaned up unused imports.
+5. **`src/plan_validator.py`** — updated comments and POSTING_DAYS to reflect Wed→Tue cycle
+6. **`data/weekly-plan-2026-03-02.json`** — shifted all 28 W10 pin dates +1 day (Tue-Mon → Wed-Tue)
+7. **`data/pin-generation-results.json`** — shifted all 28 W10 pin dates +1 day to match
+
+### New Posting Cadence
+
+- **Wednesday → Tuesday** (was Tuesday → Monday)
+- Plan generates Monday. Content generates Mon-Tue. First pins post Wednesday.
+- 28 pins / 4 per day / 7 days. Clean weekly boundaries with no overlap.
+
+### Verification
+
+- W9 pins in pin-schedule.json: Feb 25 → Mar 3 (untouched)
+- W10 pins in pin-generation-results.json: Mar 4 → Mar 10 (no overlap)
+- Carry-over logic preserves unposted W9 pins during promote
+- `save_pin_schedule()` writes combined array (kept W9 + new W10)
+- No code path exists that rewrites or discards W9 pins
+
+### Files Modified
+
+- `src/apis/claude_api.py` — week_start_date param + pin date injection
+- `src/generate_weekly_plan.py` — pass start_date to all Claude calls
+- `prompts/weekly_plan.md` — explicit date injection replaces text rule
+- `src/blog_deployer.py` — removed date rescheduling, kept carry-over
+- `src/plan_validator.py` — cosmetic: comments updated to Wed-Tue
+- `data/weekly-plan-2026-03-02.json` — W10 dates shifted +1 day
+- `data/pin-generation-results.json` — W10 dates shifted +1 day
+- `architecture/multi-channel-restructure/pin-scheduling-simplification-plan.md` — plan doc
