@@ -230,14 +230,26 @@ class SlackNotify:
             color=COLOR_ERROR,
         )
 
-    def notify_monthly_review_ready(self, summary: str) -> None:
+    def notify_monthly_review_ready(self, summary: str, review_path: str = "") -> None:
         """
         Send "Monthly review ready" notification.
 
         Args:
             summary: Brief summary of the monthly review.
+            review_path: Local file path to the review markdown (e.g. "analysis/monthly/2026-03-review.md").
         """
         sheet_link = f"<{self.sheet_url}|Open Google Sheet>" if self.sheet_url else "(Sheet URL not configured)"
+
+        # Build a direct GitHub link to the review file if possible
+        repo_url = os.environ.get("GITHUB_REPO_URL", "")
+        if repo_url and review_path:
+            review_link = f"<{repo_url}/blob/main/{review_path}|Read full review on GitHub>"
+        elif review_path:
+            review_link = f"`{review_path}` (run `git pull` to read locally)"
+        else:
+            review_link = ""
+
+        review_line = f":page_facing_up: {review_link}\n" if review_link else ""
 
         blocks = [
             {
@@ -251,7 +263,8 @@ class SlackNotify:
                     "text": (
                         f"Your 30-day deep analysis and strategy recommendations are ready.\n\n"
                         f"*Summary:*\n{summary}\n\n"
-                        f":point_right: {sheet_link}"
+                        f"{review_line}"
+                        f":bar_chart: {sheet_link}"
                     ),
                 },
             },

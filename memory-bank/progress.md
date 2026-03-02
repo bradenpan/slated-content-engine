@@ -1756,3 +1756,53 @@ Automated review agent verified all 7 checks PASS:
 ### Status
 
 Complete. All changes applied and verified.
+
+## Phase 15: Monthly Review Slack Link + Pin Metadata Pipeline Fix
+
+### Problem
+
+Three issues identified during the first monthly strategy review (March 2026):
+
+1. **Slack notification linked to Google Sheet, not the review file.** The monthly review markdown (`analysis/monthly/YYYY-MM-review.md`) was committed to the repo, but the Slack message only contained the Google Sheet link — making the review unfindable.
+
+2. **All pins classified as "unknown" pillar and "unknown" content type.** The weekly plan prompt specified `pillar` and `content_type` for blog posts but not pins. When `generate_pin_content.py` tried `pin_spec.get("pillar")`, it got `None`. Downstream aggregation converted `None` → `"unknown"`, breaking all pillar/content_type analytics in weekly and monthly reviews. This is internal tracking only — does not affect Pinterest or how pins appear to users.
+
+3. **48 existing content-log entries had null pillar/content_type** and needed backfilling.
+
+### Fix 1: Slack Notification — GitHub Link
+
+- Added `GITHUB_REPO_URL` env var to `monthly-review.yml` (from `github.server_url`/`github.repository`)
+- `monthly_review.py` now passes the repo-relative review path to the Slack notifier
+- `slack_notify.py` constructs a direct GitHub link: `https://github.com/.../blob/main/analysis/monthly/YYYY-MM-review.md`
+- Falls back to local file path hint if `GITHUB_REPO_URL` is not set
+
+### Fix 2: Pin Metadata — Prompt + Code Fallback
+
+**Prompt fix** (`prompts/weekly_plan.md`): Added `pillar` and `content_type` to the pin JSON output spec and all few-shot pin examples (3, 4, 5), with instruction that pins inherit these from their parent blog post.
+
+**Code fallback** (`src/generate_pin_content.py`): After pin_data is built, if `pillar` or `content_type` is still `None`, looks up the parent blog post via `source_post_id` — first from `blog-generation-results.json`, then from the plan's `blog_posts` array as secondary fallback.
+
+### Fix 3: Content Log Backfill
+
+Backfilled all 48 entries in `data/content-log.jsonl` using the `source_post_id` → blog post mapping from `data/weekly-plan-2026-02-23.json`. Zero null pillar entries remain.
+
+### Files Changed
+
+- `.github/workflows/monthly-review.yml` — added `GITHUB_REPO_URL` env var
+- `src/monthly_review.py` — pass repo-relative review path to Slack notifier
+- `src/apis/slack_notify.py` — construct GitHub link in monthly review notification
+- `prompts/weekly_plan.md` — add `pillar`/`content_type` to pin spec + few-shot examples
+- `src/generate_pin_content.py` — add pillar/content_type inheritance fallback from parent blog post
+- `data/content-log.jsonl` — backfill null pillar/content_type on all 48 entries
+
+### Code Review
+
+Automated review agent found 4 issues (1 MEDIUM, 3 LOW), all addressed before commit:
+1. (MEDIUM) Brittle path-stripping in Slack link — fixed by passing repo-relative path from caller
+2. (LOW) `content_type` overwritten unconditionally — fixed with independent guard
+3. (LOW) Dangling emoji line when review_link empty — fixed with conditional
+4. (LOW) Few-shot pin examples missing new fields — fixed
+
+### Status
+
+Complete. 206 tests pass.

@@ -140,7 +140,9 @@ def run_monthly_review(month: Optional[int] = None, year: Optional[int] = None, 
         slack = slack or SlackNotify()
         summary_lines = review_md.split("\n")[:10]
         brief_summary = "\n".join(summary_lines)
-        slack.notify_monthly_review_ready(brief_summary)
+        # Pass the repo-relative path (not absolute) for clean GitHub link construction
+        repo_relative_path = f"analysis/monthly/{output_path.name}"
+        slack.notify_monthly_review_ready(brief_summary, review_path=repo_relative_path)
     except Exception as e:
         logger.warning("Failed to send Slack notification: %s", e)
 

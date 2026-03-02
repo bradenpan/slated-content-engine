@@ -187,6 +187,8 @@ Return valid JSON with exactly this structure. No markdown code fences around th
     {
       "pin_id": "W{{week_number}}-01",
       "source_post_id": "W{{week_number}}-P01",
+      "pillar": 1,
+      "content_type": "weekly-plan",
       "pin_type": "primary",
       "pin_template": "tip-pin",
       "pin_topic": "The specific angle this pin takes from the blog post",
@@ -201,6 +203,8 @@ Return valid JSON with exactly this structure. No markdown code fences around th
   ]
 }
 ```
+
+**Important:** Each pin inherits `pillar` and `content_type` from its parent blog post (matched via `source_post_id`).
 
 **Enumerated values:**
 - `content_type`: "weekly-plan" | "recipe" | "guide" | "listicle"
@@ -251,6 +255,8 @@ Return valid JSON with exactly this structure. No markdown code fences around th
 {
   "pin_id": "W12-01",
   "source_post_id": "W12-P01",
+  "pillar": 1,
+  "content_type": "weekly-plan",
   "pin_type": "primary",
   "pin_template": "tip-pin",
   "pin_topic": "Complete spring dinner plan — 5 light, easy meals with one grocery list",
@@ -270,6 +276,8 @@ Return valid JSON with exactly this structure. No markdown code fences around th
 {
   "pin_id": "W12-02",
   "source_post_id": "W12-P01",
+  "pillar": 1,
+  "content_type": "weekly-plan",
   "pin_type": "recipe-pull",
   "pin_template": "recipe-pin",
   "pin_topic": "Lemon herb chicken — individual recipe from the weekly plan",
@@ -289,6 +297,8 @@ Return valid JSON with exactly this structure. No markdown code fences around th
 {
   "pin_id": "W12-22",
   "source_post_id": "existing:weekly-plan-5-easy-meals-under-30-minutes",
+  "pillar": 1,
+  "content_type": "weekly-plan",
   "pin_type": "fresh-treatment",
   "pin_template": "listicle-pin",
   "pin_topic": "5 easy weeknight dinners from a complete meal plan — different visual angle",

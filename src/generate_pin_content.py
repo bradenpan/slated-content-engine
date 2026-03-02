@@ -105,6 +105,16 @@ def generate_pin_content(
         keyword_targets=keyword_targets,
     )
 
+    # Build plan-level metadata lookup for pillar/content_type fallback
+    plan_post_meta = {}
+    for post in plan.get("blog_posts", []):
+        pid = post.get("post_id", "")
+        if pid:
+            plan_post_meta[pid] = {
+                "pillar": post.get("pillar"),
+                "content_type": post.get("content_type"),
+            }
+
     # Step 2: Source images and assemble pins
     generated_pins = []
     failures = []
@@ -212,6 +222,15 @@ def generate_pin_content(
                 "funnel_layer": pin_spec.get("funnel_layer", "discovery"),
                 "image_retries": quality_meta.get("image_retries", 0),
             }
+
+            # Inherit pillar/content_type from parent blog post if missing
+            if pin_data["pillar"] is None or pin_data["content_type"] is None:
+                source_id = pin_spec.get("source_post_id", "")
+                parent = blog_posts.get(source_id) or plan_post_meta.get(source_id) or {}
+                if pin_data["pillar"] is None:
+                    pin_data["pillar"] = parent.get("pillar")
+                if pin_data["content_type"] is None:
+                    pin_data["content_type"] = parent.get("content_type")
 
             generated_pins.append(pin_data)
             logger.info("Generated pin %s: %s", pin_id, pin_copy.get("title", "")[:60])
