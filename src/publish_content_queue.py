@@ -52,7 +52,7 @@ def publish() -> None:
         except (json.JSONDecodeError, OSError) as e:
             logger.error("Failed to load pin generation results: %s", e)
 
-    generated_pins = pin_data.get("generated", [])
+    generated_pins = safe_get(pin_data, "generated", [])
 
     # Upload pin images for Sheet preview (GCS primary, Drive fallback)
     pin_image_urls: dict[str, str] = {}
@@ -104,7 +104,7 @@ def publish() -> None:
     # workflow can download hero images on a fresh runner
     if pin_image_urls:
         for pin in generated_pins:
-            pid = pin.get("pin_id", "")
+            pid = safe_get(pin, "pin_id", "")
             if pid in pin_image_urls:
                 url = pin_image_urls[pid]
                 if upload_backend == "gcs":
@@ -153,9 +153,9 @@ def publish() -> None:
     # Extract blog content previews from MDX frontmatter
     blog_previews: dict[str, str] = {}
     for post_id, post_data in blog_results.items():
-        if post_data.get("status") != "success":
+        if safe_get(post_data, "status") != "success":
             continue
-        slug = post_data.get("slug", "")
+        slug = safe_get(post_data, "slug", "")
         if not slug:
             continue
         mdx_path = GENERATED_BLOG_DIR / f"{slug}.mdx"
@@ -174,7 +174,7 @@ def publish() -> None:
             "content_type": safe_get(pdata, "content_type", ""),
         }
         for post_id, pdata in blog_results.items()
-        if pdata.get("status") == "success"
+        if safe_get(pdata, "status") == "success"
     ]
 
     # Build per-pin quality notes from quality gate metadata

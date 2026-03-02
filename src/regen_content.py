@@ -408,7 +408,7 @@ def regen(
 
                 changed = 0
                 for entry in schedule:
-                    pid = entry.get("pin_id", "")
+                    pid = safe_get(entry, "pin_id", "")
                     if pid in updated_pins:
                         src = updated_pins[pid]
                         entry["title"] = safe_get(src, "title") or safe_get(entry, "title", "")
@@ -536,7 +536,7 @@ def _regen_item(
 
         PIN_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-        pin_template = pin_spec.get("pin_template", "")
+        pin_template = safe_get(pin_spec, "pin_template", "")
         if pin_template == "infographic-pin":
             image_path, image_source, image_id, quality_meta = None, "template", "", {}
         else:
@@ -548,18 +548,18 @@ def _regen_item(
             new_pin_data["hero_image_path"] = str(image_path)
             new_pin_data["image_source"] = image_source
             new_pin_data["image_id"] = image_id
-            new_pin_data["image_retries"] = quality_meta.get("image_retries", 0)
+            new_pin_data["image_retries"] = safe_get(quality_meta, "image_retries", 0)
 
             if image_id:
                 used_image_ids.append(f"{image_source}:{image_id}")
 
     # --- Resolve hero image (download from GCS/Drive if not on disk) ---
-    hero_path_str = new_pin_data.get("hero_image_path")
+    hero_path_str = safe_get(new_pin_data, "hero_image_path")
     hero_path = Path(hero_path_str) if hero_path_str else None
 
     if hero_path and not hero_path.exists():
         # Hero image not on disk (fresh runner). Try downloading.
-        image_url = pin_data.get("_drive_image_url", "")
+        image_url = safe_get(pin_data, "_drive_image_url", "")
         PIN_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
         downloaded = False
 
@@ -597,21 +597,21 @@ def _regen_item(
 
     # --- Re-render the pin ---
     if hero_path and hero_path.exists():
-        template_type = new_pin_data.get("template", "recipe-pin")
-        text_overlay = new_pin_data.get("text_overlay", "")
+        template_type = safe_get(new_pin_data, "template", "recipe-pin")
+        text_overlay = safe_get(new_pin_data, "text_overlay", "")
 
         # Extract headline/subtitle from text_overlay (may be dict or str)
         if isinstance(text_overlay, dict):
-            headline = text_overlay.get("headline", "")
-            subtitle = text_overlay.get("sub_text", "")
+            headline = safe_get(text_overlay, "headline", "")
+            subtitle = safe_get(text_overlay, "sub_text", "")
         else:
             headline = str(text_overlay) if text_overlay else ""
-            subtitle = new_pin_data.get("subtitle", "")
+            subtitle = safe_get(new_pin_data, "subtitle", "")
 
         # Build template-specific context for non-recipe templates
         pin_copy_like = {
-            "title": new_pin_data.get("title", ""),
-            "description": new_pin_data.get("description", ""),
+            "title": safe_get(new_pin_data, "title", ""),
+            "description": safe_get(new_pin_data, "description", ""),
             "text_overlay": text_overlay,
         }
         extra_context = build_template_context(
@@ -624,14 +624,14 @@ def _regen_item(
                 hero_image_path=hero_path,
                 headline=headline,
                 subtitle=subtitle,
-                variant=new_pin_data.get("template_variant", 1),
+                variant=safe_get(new_pin_data, "template_variant", 1),
                 output_path=PIN_OUTPUT_DIR / f"{pin_id}.png",
                 extra_context=extra_context,
             )
             new_pin_data["image_path"] = str(rendered_pin_path)
 
             # Upload new rendered pin (GCS first, Drive fallback)
-            old_image_url = pin_data.get("_drive_image_url", "")
+            old_image_url = safe_get(pin_data, "_drive_image_url", "")
 
             if gcs.client:
                 # Delete old GCS object if it was stored there
@@ -707,8 +707,8 @@ def _regen_blog_image(
         dict with "image_url" (GCS public URL), "quality_score", "image_source",
         "image_id".  image_url is None if upload failed.
     """
-    slug = blog_data.get("slug", "")
-    title = blog_data.get("title", "")
+    slug = safe_get(blog_data, "slug", "")
+    title = safe_get(blog_data, "title", "")
 
     if not slug:
         raise ValueError(f"Blog {post_id} has no slug in blog-generation-results.json")
@@ -719,8 +719,8 @@ def _regen_blog_image(
     pin_spec = {
         "pin_id": post_id,
         "pin_topic": title,
-        "content_type": blog_data.get("content_type", ""),
-        "pillar": blog_data.get("pillar"),
+        "content_type": safe_get(blog_data, "content_type", ""),
+        "pillar": safe_get(blog_data, "pillar"),
         "primary_keyword": title,  # Use title as primary keyword for blog heroes
         "pin_template": "recipe-pin",  # Default template context for image generation
     }

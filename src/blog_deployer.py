@@ -483,7 +483,7 @@ class BlogDeployer:
         if pin_results_path.exists():
             try:
                 pin_results = json.loads(pin_results_path.read_text(encoding="utf-8"))
-                for pin in pin_results.get("generated", []):
+                for pin in safe_get(pin_results, "generated", []):
                     full_pin_data[pin["pin_id"]] = pin
             except (json.JSONDecodeError, KeyError) as e:
                 logger.warning("Could not load pin generation results: %s", e)
@@ -491,7 +491,7 @@ class BlogDeployer:
         # Build the schedule
         schedule = []
         for pin_item in approved_pins:
-            pin_id = pin_item.get("id") or pin_item.get("pin_id", "")
+            pin_id = safe_get(pin_item, "id") or safe_get(pin_item, "pin_id", "")
             full_data = full_pin_data.get(pin_id, {})
 
             schedule_entry = {
@@ -551,7 +551,7 @@ class BlogDeployer:
         existing_ids = set()
         for existing_entry in load_content_log():
             for key in ("schedule_id", "source_post_id"):
-                val = existing_entry.get(key, "")
+                val = safe_get(existing_entry, key, "")
                 if val:
                     existing_ids.add(val)
 
@@ -561,7 +561,7 @@ class BlogDeployer:
         if pin_results_path.exists():
             try:
                 pin_results = json.loads(pin_results_path.read_text(encoding="utf-8"))
-                for pin in pin_results.get("generated", []):
+                for pin in safe_get(pin_results, "generated", []):
                     full_pin_data[pin["pin_id"]] = pin
             except (json.JSONDecodeError, KeyError):
                 pass
@@ -570,11 +570,11 @@ class BlogDeployer:
         skipped_dupes = 0
 
         for pin_item in pin_data:
-            pin_id = pin_item.get("id") or pin_item.get("pin_id", "")
+            pin_id = safe_get(pin_item, "id") or safe_get(pin_item, "pin_id", "")
             full = full_pin_data.get(pin_id, {})
 
             # Skip if already logged (dedup for reruns)
-            source_post = full.get("source_post_id", "")
+            source_post = safe_get(full, "source_post_id", "")
             if (pin_id and pin_id in existing_ids) or (source_post and source_post in existing_ids):
                 skipped_dupes += 1
                 continue

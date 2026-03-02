@@ -72,7 +72,7 @@ def generate_pin_content(
         logger.error("No plan found for pin content generation")
         return []
 
-    pins_specs = plan.get("pins", [])
+    pins_specs = safe_get(plan, "pins", [])
     if not pins_specs:
         logger.warning("No pins in the plan")
         return []
@@ -108,12 +108,12 @@ def generate_pin_content(
 
     # Build plan-level metadata lookup for pillar/content_type fallback
     plan_post_meta = {}
-    for post in plan.get("blog_posts", []):
-        pid = post.get("post_id", "")
+    for post in safe_get(plan, "blog_posts", []):
+        pid = safe_get(post, "post_id", "")
         if pid:
             plan_post_meta[pid] = {
-                "pillar": post.get("pillar"),
-                "content_type": post.get("content_type"),
+                "pillar": safe_get(post, "pillar"),
+                "content_type": safe_get(post, "content_type"),
             }
 
     # Step 2: Source images and assemble pins
@@ -121,7 +121,7 @@ def generate_pin_content(
     failures = []
 
     for i, pin_spec in enumerate(pins_specs):
-        pin_id = pin_spec.get("pin_id", f"pin-{i}")
+        pin_id = safe_get(pin_spec, "pin_id", f"pin-{i}")
 
         try:
             # Get the copy for this pin
@@ -132,14 +132,14 @@ def generate_pin_content(
                 continue
 
             # Add alt_text visual description for image sourcing
-            alt_text = pin_copy.get("alt_text", "")
+            alt_text = safe_get(pin_copy, "alt_text", "")
             if alt_text:
                 # First sentence is the visual description; second is SEO keywords
                 visual_desc = alt_text.split(".")[0].strip()
                 pin_spec["_image_subject_hint"] = visual_desc
 
             # Source the image
-            pin_template = pin_spec.get("pin_template", "")
+            pin_template = safe_get(pin_spec, "pin_template", "")
             if pin_template == "infographic-pin":
                 # Infographic template is text-only, no image needed
                 image_path, image_source, image_id, quality_meta = None, "template", "", {}
@@ -154,8 +154,8 @@ def generate_pin_content(
                 used_image_ids.append(f"{image_source}:{image_id}")
 
             # Assemble the final pin image
-            template_type = pin_spec.get("pin_template", "recipe-pin")
-            text_overlay = pin_copy.get("text_overlay", {})
+            template_type = safe_get(pin_spec, "pin_template", "recipe-pin")
+            text_overlay = safe_get(pin_copy, "text_overlay", {})
 
             # Extract headline/subtitle from text_overlay (may be dict or str)
             if isinstance(text_overlay, dict):

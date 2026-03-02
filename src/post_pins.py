@@ -376,8 +376,8 @@ def load_scheduled_pins(date_str: str, time_slot: str) -> list[dict]:
 
     matching_pins = [
         pin for pin in pins
-        if pin.get("scheduled_date") == date_str
-        and pin.get("scheduled_slot") in slot_matches
+        if safe_get(pin, "scheduled_date") == date_str
+        and safe_get(pin, "scheduled_slot") in slot_matches
     ]
 
     expected_count = SLOT_PIN_COUNTS.get(time_slot, 1)
