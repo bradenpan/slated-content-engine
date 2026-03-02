@@ -1850,3 +1850,67 @@ Changed all vulnerable `.get(key, default)` patterns to `.get(key) or default` a
 ### Status
 
 Complete. 206 tests pass.
+
+---
+
+## Phase 17 — safe_get Utility + Codebase-Wide None-Safety Hardening (2026-03-02)
+
+### Problem
+
+During live content generation on GitHub Actions, two bugs appeared on every pin:
+1. `Generating AI image prompt for: unknown` — wrong field name (`topic` vs `pin_topic`) + `.get(key, default)` returning None
+2. `AI image prompt for W10-04: '```json` — markdown fence leak in image prompt fallback paths
+
+A codebase-wide sweep then revealed **~100+ additional `.get(key, default)` sites** across 6 files where the same None-safety bug could manifest.
+
+### Root Cause
+
+Same as Phase 16: Python's `dict.get(key, default)` returns `None` (not the default) when the key exists with a `None` value. External JSON data (weekly plan, pin results, blog results, Sheet data, API responses) frequently has explicit `null` values.
+
+Additionally, `claude_api.py` used `pin_spec.get("topic", "unknown")` but pins use the field name `pin_topic`. And `generate_pin_content.py` fence-stripping fallback paths used `image_prompt_raw` (unstripped) instead of `cleaned` (stripped).
+
+### Fix
+
+**Created `src/utils/safe_get.py`** — central utility function:
+```python
+def safe_get(d: dict, key: str, default=None):
+    value = d.get(key)
+    return value if value is not None else default
+```
+
+**Converted all `.get()` calls on external JSON data to `safe_get()` across 6 files** in 4 commits:
+
+| File | Sites Converted | Key Areas |
+|------|----------------|-----------|
+| `generate_pin_content.py` | ~50 | `build_template_context` (text_overlay, pin_copy, pin_spec), `source_ai_image`, `_resolve_blog_slug`, `_generate_all_copy`, `load_used_image_ids` |
+| `claude_api.py` | ~30 | `generate_image_prompt` context, `generate_blog_post` context, `analyze_weekly_performance` context (13 fields), `run_monthly_review` context (5 fields), `generate_replacement_posts` |
+| `blog_deployer.py` | ~25 | `_create_pin_schedule` (22 fields), `_append_to_content_log` (14 fields), `_read_approved_content`, `_deploy_blog_posts` |
+| `post_pins.py` | ~25 | Content log entry (13 fields), pre-posting access, `build_board_map`, `_create_pin_with_retry`, `load_scheduled_pins`, `_record_failure` |
+| `regen_content.py` | ~25 | `_regen_item` pin_spec (10 fields), copy regen, schedule patching, `_regen_blog_image`, `_update_pin_results`, `_build_regen_quality_note` |
+| `publish_content_queue.py` | ~15 | Blog entries, `_upload_blog_hero_images`, `_find_hero_image`, `_build_quality_note`, `_compute_quality_stats`, frontmatter parsing |
+
+**Also fixed:**
+- `claude_api.py` log message: `pin_spec.get("topic")` → `safe_get(pin_spec, "pin_topic") or safe_get(pin_spec, "topic", "unknown")`
+- `generate_pin_content.py` fence-stripping: both `else` and `except` fallback paths now use `cleaned` instead of `image_prompt_raw`
+
+### Commits
+
+1. `282df0e` — Image prompt None-safety + fence-stripping fallback fix
+2. `baa56a0` — safe_get utility + 14 initial None-safety bugs across 4 files
+3. `cae277d` — Complete safe_get conversion across all external JSON access sites
+4. `917e721` — Convert all remaining .get() on external JSON to safe_get (secondary paths)
+5. `82ff184` — Final sweep: ~70 remaining .get() calls across all 6 files
+
+### What Remains as Raw `.get()`
+
+Only internal dict lookups where we control the data (e.g., looking up keys in dicts we build ourselves, internal results tracking, config constant lookups). These are safe by definition.
+
+### Verification
+
+- All 206 tests pass after every round of changes
+- Code review agents verified each commit
+- QA agent confirmed safe_get handles edge cases correctly (0, "", False, [] all preserved as non-None values)
+
+### Status
+
+Complete. 206 tests pass. Codebase fully hardened against `.get(key, default)` None-safety bug on all external JSON data paths.
