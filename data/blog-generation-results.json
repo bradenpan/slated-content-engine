@@ -10,12 +10,12 @@
     "error": null
   },
   "W10-P02": {
-    "slug": "weekly-plan-family-dinners-busy-weeknights",
+    "slug": "weekly-plan-5-easy-weeknight-meals-one-grocery-list",
     "title": "This Week's Family Dinner Plan — 5 Easy Weeknight Meals, One Grocery List",
-    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/weekly-plan-family-dinners-busy-weeknights.mdx",
+    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/weekly-plan-5-easy-weeknight-meals-one-grocery-list.mdx",
     "pillar": 1,
     "content_type": "weekly-plan",
-    "hero_image": "/assets/blog/weekly-plan-family-dinners-busy-weeknights.jpg",
+    "hero_image": "/assets/blog/weekly-plan-5-easy-weeknight-meals-one-grocery-list.png",
     "status": "success",
     "error": null
   },
@@ -40,12 +40,12 @@
     "error": null
   },
   "W10-P05": {
-    "slug": "dinner-ideas-for-picky-eaters-family-planning-system",
+    "slug": "dinner-ideas-picky-eaters-family-meal-planning-system",
     "title": "Dinner Ideas for Picky Eaters: A Family Planning System That Gives Everyone a Vote",
-    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/dinner-ideas-for-picky-eaters-family-planning-system.mdx",
+    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/dinner-ideas-picky-eaters-family-meal-planning-system.mdx",
     "pillar": 2,
     "content_type": "guide",
-    "hero_image": "/assets/blog/dinner-ideas-for-picky-eaters-family-planning-system.jpg",
+    "hero_image": "/assets/blog/dinner-ideas-picky-eaters-family-meal-planning-system.png",
     "status": "success",
     "error": null
   },
