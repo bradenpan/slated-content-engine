@@ -31,9 +31,8 @@ data/token-store.json
 Thumbs.db
 desktop.ini
 
-# Generated content (large files, don't commit rendered PNGs)
-data/generated/blog/
-data/generated/pins/
+# Rendered pin PNGs are large (~2-5MB) and uploaded to GCS — don't commit them.
+# Blog MDX files and hero images MUST be committed (deploy-to-preview reads them from git).
 *.png
 !data/generated/pins/*-hero.png
 !data/generated/blog/*.png

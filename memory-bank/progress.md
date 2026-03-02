@@ -2042,3 +2042,53 @@ Found 1 critical + 4 warnings:
 ### Status
 
 Complete. Deploy-to-preview should now succeed.
+
+## Phase 19 — .gitignore Fix + W10 Blog Recovery (2026-03-02)
+
+### Problem
+
+`deploy-to-preview` failed with 0 blog posts because the 10 W10 MDX files were never committed to git.
+
+**Root cause:** In commit `862c05a` (Feb 27, paths.py refactor), `.gitignore` was changed from `data/generated_posts/` (wrong path that matched nothing) to `data/generated/blog/` (correct path that now blocks everything). The original gitignore paths were wrong since day one — code always wrote to `data/generated/blog/`, but gitignore said `data/generated_posts/`. MDX files were only ever committed by accident because the gitignore wasn't matching the actual directories. When the stale paths were "fixed", it started actually blocking the files that `deploy-to-preview` reads from git.
+
+**Key insight:** When git sees `dir/` (trailing slash), it ignores the entire directory and won't traverse into it — making all `!` exception rules below it dead code.
+
+### Fix: .gitignore
+
+Removed `data/generated/blog/` and `data/generated/pins/` directory-level rules. The global `*.png` rule with `!` exceptions now works correctly:
+- Blog MDX files (`data/generated/blog/*.mdx`) — **not ignored** (deploy-to-preview needs them)
+- Rendered pin PNGs (`data/generated/pins/*.png`) — **ignored** (uploaded to GCS)
+- Hero PNGs (`data/generated/pins/*-hero.png`) — **not ignored** (excepted)
+- Brand element PNGs (`templates/pins/shared/brand-elements/*.png`) — **not ignored** (excepted)
+- JSON results files (`data/blog-generation-results.json`) — **not ignored** (no rule matches)
+
+### Fix: Regen Blogs Only Workflow
+
+Created `.github/workflows/regen-blogs-only.yml` — a one-off `workflow_dispatch` workflow that:
+1. Checks out repo (gets gitignore fix)
+2. Sets up Python + deps via `setup-pipeline` action
+3. Runs `python -m src.generate_blog_posts` (picks latest plan via `find_latest_plan()`)
+4. Prints MDX count + results JSON to `$GITHUB_STEP_SUMMARY`
+5. Commits MDX files via `commit-data` action
+
+Blog generator runs standalone — no pin generation, Node.js, or Puppeteer needed. Only secret required is `ANTHROPIC_API_KEY`.
+
+### Code Review Catch
+
+Summary step originally referenced wrong path `data/generated/blog/blog-generation-results.json` — actual path is `data/blog-generation-results.json` (written to `DATA_DIR`, not `BLOG_OUTPUT_DIR`). Fixed before commit.
+
+### Files Modified
+
+- `.gitignore` — removed `data/generated/blog/` and `data/generated/pins/` directory rules
+- `.github/workflows/regen-blogs-only.yml` — new one-off workflow (delete after W10 deploys)
+
+### Recovery Plan
+
+1. Push gitignore fix + workflow
+2. Run `regen-blogs-only` via GitHub Actions (regenerates W10 MDX files)
+3. Rerun `deploy-to-preview` (blogs deploy, possibly without hero images)
+4. Hero images committed when next full `generate-content` runs for W11
+
+### Status
+
+Ready to push. Workflow not yet run.
