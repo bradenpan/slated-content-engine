@@ -126,9 +126,9 @@ def generate_content_memory_summary(
             if slug and slug not in seen_slugs:
                 seen_slugs.add(slug)
                 section_lines.append(
-                    f"- [{get_entry_date(entry)}] P{entry.get('pillar', '?')}: "
+                    f"- [{get_entry_date(entry)}] P{entry.get('pillar') or '?'}: "
                     f"{entry.get('blog_title', slug)} "
-                    f"({entry.get('content_type', 'unknown')})"
+                    f"({entry.get('content_type') or 'unknown'})"
                 )
     else:
         section_lines.append(
@@ -144,8 +144,8 @@ def generate_content_memory_summary(
         slug = entry.get("blog_slug", "")
         if slug and slug not in seen_slugs:
             seen_slugs.add(slug)
-            ctype = entry.get("content_type", "unknown")
-            pillar = entry.get("pillar", 0)
+            ctype = entry.get("content_type") or "unknown"
+            pillar = entry.get("pillar") or 0
             posts_by_type[ctype][pillar].append({
                 "slug": slug,
                 "title": entry.get("blog_title", slug),
@@ -166,10 +166,10 @@ def generate_content_memory_summary(
     section_lines = ["## 3. PILLAR MIX\n"]
 
     recent_pillar_counts = Counter(
-        e.get("pillar", 0) for e in recent_entries
+        e.get("pillar") or 0 for e in recent_entries
     )
     all_time_pillar_counts = Counter(
-        e.get("pillar", 0) for e in content_log
+        e.get("pillar") or 0 for e in content_log
     )
 
     section_lines.append(f"### Last {topic_window_weeks} Weeks")
@@ -187,21 +187,21 @@ def generate_content_memory_summary(
         section_lines.append(f"  P{p}: {count} pins ({pct:.0f}%)")
 
     recent_type_counts = Counter(
-        e.get("content_type", "unknown") for e in recent_entries
+        e.get("content_type") or "unknown" for e in recent_entries
     )
     section_lines.append(f"\n### Content Type (Last {topic_window_weeks} Weeks)")
     for ctype, count in recent_type_counts.most_common():
         section_lines.append(f"  {ctype}: {count}")
 
     recent_board_counts = Counter(
-        e.get("board", "unknown") for e in recent_entries
+        e.get("board") or "unknown" for e in recent_entries
     )
     section_lines.append(f"\n### Board Distribution (Last {topic_window_weeks} Weeks)")
     for board, count in recent_board_counts.most_common():
         section_lines.append(f"  {board}: {count}")
 
     recent_funnel_counts = Counter(
-        e.get("funnel_layer", "unknown") for e in recent_entries
+        e.get("funnel_layer") or "unknown" for e in recent_entries
     )
     section_lines.append(f"\n### Funnel Layer (Last {topic_window_weeks} Weeks)")
     for layer, count in recent_funnel_counts.most_common():
@@ -294,7 +294,7 @@ def generate_content_memory_summary(
         if slug not in slug_data:
             slug_data[slug] = {
                 "title": entry.get("blog_title", slug),
-                "pillar": entry.get("pillar", 0),
+                "pillar": entry.get("pillar") or 0,
                 "last_pin_date": entry_date,
                 "total_impressions": 0,
                 "total_saves": 0,
