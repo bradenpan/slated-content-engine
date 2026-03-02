@@ -43,10 +43,10 @@ def _make_pin_data(pin_id: str = "W1-01", with_drive_url: bool = True) -> dict:
 class TestDriveNullGuard:
     """drive=None must not cause AttributeError during image download."""
 
-    @patch("src.regen_content.source_ai_image")
-    @patch("src.regen_content.build_template_context", return_value={})
-    @patch("src.regen_content.generate_copy_batch")
-    @patch("src.regen_content.extract_drive_file_id", return_value="abc123")
+    @patch("src.pinterest.regen_content.source_ai_image")
+    @patch("src.pinterest.regen_content.build_template_context", return_value={})
+    @patch("src.pinterest.regen_content.generate_copy_batch")
+    @patch("src.pinterest.regen_content.extract_drive_file_id", return_value="abc123")
     def test_regen_image_with_drive_none_no_attribute_error(
         self, mock_extract, mock_copy_batch, mock_build_ctx, mock_source_ai
     ):
@@ -80,10 +80,10 @@ class TestDriveNullGuard:
         assert "pin_data" in result
         assert result["pin_data"]["pin_id"] == "W1-01"
 
-    @patch("src.regen_content.source_ai_image")
-    @patch("src.regen_content.build_template_context", return_value={})
-    @patch("src.regen_content.generate_copy_batch")
-    @patch("src.regen_content.extract_drive_file_id", return_value="abc123")
+    @patch("src.pinterest.regen_content.source_ai_image")
+    @patch("src.pinterest.regen_content.build_template_context", return_value={})
+    @patch("src.pinterest.regen_content.generate_copy_batch")
+    @patch("src.pinterest.regen_content.extract_drive_file_id", return_value="abc123")
     def test_regen_copy_with_drive_none_skips_rerender(
         self, mock_extract, mock_copy_batch, mock_build_ctx, mock_source_ai
     ):
@@ -121,9 +121,9 @@ class TestDriveNullGuard:
         # Copy was updated but pin could not be re-rendered (no hero image)
         assert result["pin_data"].get("_copy_regen_no_rerender") is True
 
-    @patch("src.regen_content.source_ai_image")
-    @patch("src.regen_content.build_template_context", return_value={})
-    @patch("src.regen_content.extract_drive_file_id", return_value=None)
+    @patch("src.pinterest.regen_content.source_ai_image")
+    @patch("src.pinterest.regen_content.build_template_context", return_value={})
+    @patch("src.pinterest.regen_content.extract_drive_file_id", return_value=None)
     def test_regen_with_no_image_url_and_no_drive(
         self, mock_extract, mock_build_ctx, mock_source_ai
     ):

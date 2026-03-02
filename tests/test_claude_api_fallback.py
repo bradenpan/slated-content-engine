@@ -48,7 +48,7 @@ FALLBACK_RESPONSE = '[{"pin_id": "W1-01", "title": "Fallback Title", "descriptio
 class TestFallbackOnCaughtExceptions:
     """OpenAIChatAPIError and ValueError should trigger Sonnet fallback."""
 
-    @patch("src.apis.claude_api.call_gpt5_mini")
+    @patch("src.shared.apis.claude_api.call_gpt5_mini")
     def test_openai_error_falls_back_to_sonnet(self, mock_gpt5, claude_api):
         mock_gpt5.side_effect = OpenAIChatAPIError("API error")
         claude_api._call_api = MagicMock(return_value=FALLBACK_RESPONSE)
@@ -62,7 +62,7 @@ class TestFallbackOnCaughtExceptions:
         assert len(results) == 1
         assert results[0]["pin_id"] == "W1-01"
 
-    @patch("src.apis.claude_api.call_gpt5_mini")
+    @patch("src.shared.apis.claude_api.call_gpt5_mini")
     def test_value_error_falls_back_to_sonnet(self, mock_gpt5, claude_api):
         mock_gpt5.side_effect = ValueError("bad value")
         claude_api._call_api = MagicMock(return_value=FALLBACK_RESPONSE)
@@ -74,7 +74,7 @@ class TestFallbackOnCaughtExceptions:
         claude_api._call_api.assert_called_once()
         assert len(results) == 1
 
-    @patch("src.apis.claude_api.call_gpt5_mini")
+    @patch("src.shared.apis.claude_api.call_gpt5_mini")
     def test_http_error_falls_back_to_sonnet(self, mock_gpt5, claude_api):
         mock_gpt5.side_effect = requests.HTTPError("500 Server Error")
         claude_api._call_api = MagicMock(return_value=FALLBACK_RESPONSE)
@@ -90,7 +90,7 @@ class TestFallbackOnCaughtExceptions:
 class TestPropagationOfUncaughtExceptions:
     """TypeError and KeyError (programming bugs) must NOT be caught."""
 
-    @patch("src.apis.claude_api.call_gpt5_mini")
+    @patch("src.shared.apis.claude_api.call_gpt5_mini")
     def test_type_error_propagates(self, mock_gpt5, claude_api):
         mock_gpt5.side_effect = TypeError("unexpected type")
         claude_api._call_api = MagicMock(return_value=FALLBACK_RESPONSE)
@@ -105,7 +105,7 @@ class TestPropagationOfUncaughtExceptions:
         # Sonnet fallback should NOT have been called
         claude_api._call_api.assert_not_called()
 
-    @patch("src.apis.claude_api.call_gpt5_mini")
+    @patch("src.shared.apis.claude_api.call_gpt5_mini")
     def test_key_error_propagates(self, mock_gpt5, claude_api):
         mock_gpt5.side_effect = KeyError("missing_key")
         claude_api._call_api = MagicMock(return_value=FALLBACK_RESPONSE)

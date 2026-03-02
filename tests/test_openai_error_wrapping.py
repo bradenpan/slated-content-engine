@@ -48,21 +48,21 @@ class TestHTTPErrorWrapping:
     """HTTP errors from requests must be wrapped as OpenAIChatAPIError."""
 
     @patch.dict("os.environ", ENV_PATCH)
-    @patch("src.apis.openai_chat_api.requests.post")
+    @patch("src.shared.apis.openai_chat_api.requests.post")
     def test_http_500_raises_openai_error(self, mock_post):
         mock_post.return_value = _mock_response(500)
         with pytest.raises(OpenAIChatAPIError):
             call_gpt5_mini(prompt="test", system="test")
 
     @patch.dict("os.environ", ENV_PATCH)
-    @patch("src.apis.openai_chat_api.requests.post")
+    @patch("src.shared.apis.openai_chat_api.requests.post")
     def test_http_400_raises_openai_error(self, mock_post):
         mock_post.return_value = _mock_response(400)
         with pytest.raises(OpenAIChatAPIError):
             call_gpt5_mini(prompt="test", system="test")
 
     @patch.dict("os.environ", ENV_PATCH)
-    @patch("src.apis.openai_chat_api.requests.post")
+    @patch("src.shared.apis.openai_chat_api.requests.post")
     def test_http_500_does_not_raise_raw_http_error(self, mock_post):
         mock_post.return_value = _mock_response(500)
         with pytest.raises(OpenAIChatAPIError) as exc_info:
@@ -71,7 +71,7 @@ class TestHTTPErrorWrapping:
         assert not isinstance(exc_info.value, requests.HTTPError)
 
     @patch.dict("os.environ", ENV_PATCH)
-    @patch("src.apis.openai_chat_api.requests.post")
+    @patch("src.shared.apis.openai_chat_api.requests.post")
     def test_cause_is_original_http_error(self, mock_post):
         mock_post.return_value = _mock_response(500)
         with pytest.raises(OpenAIChatAPIError) as exc_info:
@@ -84,7 +84,7 @@ class TestSuccessfulResponse:
     """Successful API calls should return content without error."""
 
     @patch.dict("os.environ", ENV_PATCH)
-    @patch("src.apis.openai_chat_api.requests.post")
+    @patch("src.shared.apis.openai_chat_api.requests.post")
     def test_successful_response_returns_content(self, mock_post):
         mock_post.return_value = _mock_response(200, VALID_RESPONSE_BODY)
         result = call_gpt5_mini(prompt="test", system="test")

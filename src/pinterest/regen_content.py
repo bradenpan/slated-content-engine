@@ -1,0 +1,832 @@
+"""
+Content Regeneration Script
+
+Reads regen requests from the Content Queue (rows where status starts with
+'regen'), regenerates the flagged images and/or copy, updates the Sheet
+rows in-place, and sends a Slack notification.
+
+Regen types:
+- regen_image: Re-source image + re-render pin with existing text overlay.
+- regen_copy:  Re-generate copy + re-render pin with existing hero image.
+- regen:       Both — new image + new copy + full re-render.
+
+Blog rows support regen_image only (re-source hero photo, upload to GCS).
+Blog copy regen is not supported — blog text lives in MDX files.
+
+User feedback from column L is incorporated into the regeneration prompts
+so the new output addresses the reviewer's specific concerns.
+"""
+
+import json
+import logging
+import time
+from datetime import datetime
+from pathlib import Path
+from typing import Optional
+
+from src.shared.apis.claude_api import ClaudeAPI
+from src.shared.apis.drive_api import DriveAPI
+from src.shared.apis.gcs_api import GcsAPI
+from src.shared.apis.image_gen import ImageGenAPI
+from src.shared.apis.sheets_api import SheetsAPI
+from src.shared.apis.slack_notify import SlackNotify
+from src.pinterest.generate_pin_content import (
+    generate_copy_batch,
+    load_used_image_ids,
+    source_ai_image,
+    load_keyword_targets,
+    build_template_context,
+)
+from src.shared.utils.strategy_utils import load_brand_voice
+from src.pinterest.pin_assembler import PinAssembler
+from src.shared.paths import DATA_DIR, PIN_OUTPUT_DIR
+from src.shared.utils.plan_utils import save_pin_schedule
+from src.shared.utils.image_utils import extract_drive_file_id
+from src.shared.utils.safe_get import safe_get
+
+logger = logging.getLogger(__name__)
+
+
+def regen(
+    sheets: SheetsAPI | None = None,
+    claude: ClaudeAPI | None = None,
+    image_gen_api: ImageGenAPI | None = None,
+    assembler: PinAssembler | None = None,
+    gcs: GcsAPI | None = None,
+    drive: DriveAPI | None = None,
+    slack: SlackNotify | None = None,
+) -> None:
+    """
+    Main entry point for the regeneration workflow.
+
+    1. Read regen requests from the Content Queue.
+    2. Load pin-generation-results.json for canonical pin data.
+    3. Regenerate image, copy, or both for each flagged item.
+    4. Update the Sheet row in-place with new content.
+    5. Update pin-generation-results.json.
+    6. Reset the regen trigger and send Slack notification.
+    """
+    # Initialize API clients
+    sheets = sheets or SheetsAPI()
+    claude = claude or ClaudeAPI()
+    image_gen_api = image_gen_api or ImageGenAPI()
+    assembler = assembler or PinAssembler()
+    gcs = gcs or GcsAPI()
+    slack = slack or SlackNotify()
+    # Lazy-init Drive: only needed when GCS is unavailable and image
+    # re-upload falls back to Drive.  Avoids crashing at startup when
+    # Drive credentials are missing but GCS is the active backend.
+    _drive_initialized = drive is not None
+
+    used_image_ids = load_used_image_ids()
+    brand_voice = load_brand_voice()
+    keyword_targets = load_keyword_targets()
+
+    # Step 1: Read regen requests
+    requests = sheets.read_regen_requests()
+    if not requests:
+        logger.info("No regen requests found. Nothing to do.")
+        sheets.reset_regen_trigger()
+        return
+
+    logger.info("Processing %d regen requests", len(requests))
+
+    # Step 2: Load canonical pin data
+    pin_results_path = DATA_DIR / "pin-generation-results.json"
+    pin_results: dict = {}
+    if pin_results_path.exists():
+        try:
+            pin_results = json.loads(pin_results_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError) as e:
+            logger.error("Failed to load pin generation results: %s", e)
+
+    generated_pins = safe_get(pin_results, "generated", [])
+    pin_index = {p["pin_id"]: p for p in generated_pins if "pin_id" in p}
+
+    # Load blog generation results (for blog image regen)
+    blog_results_path = DATA_DIR / "blog-generation-results.json"
+    blog_results: dict = {}
+    blog_results_dirty = False
+    if blog_results_path.exists():
+        try:
+            blog_results = json.loads(blog_results_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError) as e:
+            logger.error("Failed to load blog generation results: %s", e)
+
+    # Step 3: Process each regen request
+    regen_results: list[dict] = []
+
+    for req in requests:
+        item_id = req["id"]
+        regen_type = req["status"]  # regen_image, regen_copy, or regen
+        feedback = safe_get(req, "feedback", "")
+        item_type = safe_get(req, "type", "pin")
+        row_index = req["row_index"]
+
+        logger.info(
+            "Regenerating %s for %s (type=%s, feedback='%s')",
+            regen_type, item_id, item_type, feedback[:80],
+        )
+
+        # --- Blog image regen ---
+        if item_type == "blog":
+            # Blog copy regen is not supported (blog text is MDX)
+            if regen_type == "regen_copy":
+                logger.warning("Blog copy regen not supported for %s", item_id)
+                try:
+                    sheets.update_content_row(
+                        row_index=row_index,
+                        status="pending_review",
+                        notes="Blog copy regen not supported — only image regen available",
+                        feedback="",
+                    )
+                except Exception as e:
+                    logger.error("Failed to update blog row %s: %s", item_id, e)
+                regen_results.append({
+                    "pin_id": item_id,
+                    "type": item_type,
+                    "regen_type": regen_type,
+                    "old_score": None,
+                    "new_score": None,
+                    "error": "Blog copy regen not supported",
+                })
+                continue
+
+            # For "regen" (both), treat as regen_image with a note
+            effective_regen_type = "regen_image"
+
+            blog_data = blog_results.get(item_id)
+            if not blog_data:
+                logger.warning("Blog data not found for %s in blog-generation-results.json", item_id)
+                try:
+                    sheets.update_content_row(
+                        row_index=row_index,
+                        status="pending_review",
+                        notes="Regen failed — blog data not found in results JSON",
+                        feedback="",
+                    )
+                except Exception as e:
+                    logger.warning("Failed to update Sheet for %s: %s", item_id, e)
+                regen_results.append({
+                    "pin_id": item_id,
+                    "type": item_type,
+                    "regen_type": regen_type,
+                    "old_score": None,
+                    "new_score": None,
+                    "error": "Blog data not found",
+                })
+                continue
+
+            try:
+                blog_result = _regen_blog_image(
+                    blog_data=blog_data,
+                    post_id=item_id,
+                    feedback=feedback,
+                    claude=claude,
+                    image_gen_api=image_gen_api,
+                    gcs=gcs,
+                    used_image_ids=used_image_ids,
+                )
+            except Exception as e:
+                logger.error("Failed to regenerate blog image for %s: %s", item_id, e)
+                try:
+                    sheets.update_content_row(
+                        row_index=row_index,
+                        status="pending_review",
+                        notes=f"Blog regen failed — {str(e)[:100]}",
+                        feedback="",
+                    )
+                except Exception as e2:
+                    logger.warning("Failed to update Sheet for %s: %s", item_id, e2)
+                regen_results.append({
+                    "pin_id": item_id,
+                    "type": item_type,
+                    "regen_type": effective_regen_type,
+                    "old_score": None,
+                    "new_score": None,
+                    "error": str(e)[:200],
+                })
+                continue
+
+            new_image_url = safe_get(blog_result, "image_url")
+            new_score = safe_get(blog_result, "quality_score")
+
+            # Update blog_results in-place for later save
+            if safe_get(blog_result, "image_source"):
+                blog_data["_hero_image_source"] = blog_result["image_source"]
+                blog_data["_hero_image_id"] = safe_get(blog_result, "image_id", "")
+                blog_data["_hero_quality_score"] = new_score
+                blog_data["_hero_regen_feedback"] = feedback
+                blog_data["_hero_regen_timestamp"] = datetime.now().isoformat()
+                if new_image_url:
+                    blog_data["_hero_gcs_url"] = new_image_url
+                blog_results_dirty = True
+
+            # Update Content Queue row
+            update_kwargs: dict = {
+                "row_index": row_index,
+                "status": "pending_review",
+                "feedback": "",
+            }
+            if new_score is not None:
+                update_kwargs["notes"] = f"Blog regen {new_score:.1f}"
+            else:
+                update_kwargs["notes"] = "Blog regen"
+            if regen_type == "regen":
+                update_kwargs["notes"] += " (image only — blog copy regen N/A)"
+
+            if new_image_url:
+                update_kwargs["thumbnail"] = f'=IMAGE("{new_image_url}")'
+
+            try:
+                sheets.update_content_row(**update_kwargs)
+            except Exception as e:
+                logger.error("Failed to update Sheet row for blog %s: %s", item_id, e)
+
+            regen_results.append({
+                "pin_id": item_id,
+                "type": item_type,
+                "regen_type": effective_regen_type,
+                "old_score": None,
+                "new_score": new_score,
+            })
+            continue
+
+        # --- Pin regen ---
+        pin_data = pin_index.get(item_id)
+        if not pin_data:
+            logger.warning(
+                "Pin data not found for %s in pin-generation-results.json, skipping",
+                item_id,
+            )
+            try:
+                sheets.update_content_row(
+                    row_index=row_index,
+                    status="pending_review",
+                    notes="Regen failed — pin data not found in results JSON",
+                    feedback="",
+                )
+            except Exception as e:
+                logger.warning("Failed to update Sheet for %s: %s", item_id, e)
+            regen_results.append({
+                "pin_id": item_id,
+                "type": item_type,
+                "regen_type": regen_type,
+                "old_score": None,
+                "new_score": None,
+                "error": "Pin data not found",
+            })
+            continue
+
+        old_score = None
+
+        # Lazy-init DriveAPI on first actual use
+        if not _drive_initialized:
+            try:
+                drive = DriveAPI()
+            except Exception as e:
+                logger.warning("DriveAPI not available (will skip Drive fallback): %s", e)
+                drive = None
+            _drive_initialized = True
+
+        try:
+            result = _regen_item(
+                pin_data=pin_data,
+                regen_type=regen_type,
+                feedback=feedback,
+                claude=claude,
+                image_gen_api=image_gen_api,
+                assembler=assembler,
+                gcs=gcs,
+                drive=drive,
+                used_image_ids=used_image_ids,
+                brand_voice=brand_voice,
+                keyword_targets=keyword_targets,
+            )
+        except Exception as e:
+            logger.error("Failed to regenerate %s: %s", item_id, e)
+            try:
+                sheets.update_content_row(
+                    row_index=row_index,
+                    status="pending_review",
+                    notes=f"Regen failed — {str(e)[:100]}",
+                    feedback="",
+                )
+            except Exception as e2:
+                logger.warning("Failed to update Sheet for %s: %s", item_id, e2)
+            regen_results.append({
+                "pin_id": item_id,
+                "type": item_type,
+                "regen_type": regen_type,
+                "old_score": old_score,
+                "new_score": None,
+                "error": str(e)[:200],
+            })
+            continue
+
+        new_pin_data = result["pin_data"]
+        new_image_url = safe_get(result, "image_url")
+        new_score = None
+
+        # Step 4: Update pin-generation-results.json in-place
+        _update_pin_results(pin_data, new_pin_data, regen_type, feedback)
+
+        # Step 5: Update Content Queue row
+        update_kwargs: dict = {
+            "row_index": row_index,
+            "status": "pending_review",
+            "feedback": "",  # Clear feedback after regen
+        }
+
+        # Build quality note for the Notes column
+        quality_note = _build_regen_quality_note(new_pin_data)
+        if safe_get(new_pin_data, "_copy_regen_no_rerender"):
+            quality_note += " | WARNING: copy updated but pin image not re-rendered (hero unavailable)"
+        if safe_get(new_pin_data, "_copy_regen_failed"):
+            quality_note += " | WARNING: copy regen failed, original copy retained"
+            update_kwargs["feedback"] = feedback  # preserve feedback for retry
+        update_kwargs["notes"] = quality_note
+
+        if regen_type in ("regen_image", "regen") and new_image_url:
+            update_kwargs["thumbnail"] = f'=IMAGE("{new_image_url}")'
+
+        if regen_type in ("regen_copy", "regen"):
+            update_kwargs["title"] = safe_get(new_pin_data, "title") or safe_get(pin_data, "title", "")
+            desc = safe_get(new_pin_data, "description") or safe_get(pin_data, "description", "")
+            alt_text = safe_get(new_pin_data, "alt_text", "")
+            if alt_text:
+                desc = f"{desc}\n\nAlt: {alt_text}"
+            update_kwargs["description"] = desc
+
+        try:
+            sheets.update_content_row(**update_kwargs)
+        except Exception as e:
+            logger.error("Failed to update Sheet row for %s: %s", item_id, e)
+
+        warning = None
+        if safe_get(new_pin_data, "_copy_regen_no_rerender"):
+            warning = "Copy updated but pin image not re-rendered (hero unavailable)"
+        if safe_get(new_pin_data, "_copy_regen_failed"):
+            warning = "Copy regen failed, original copy retained"
+        regen_results.append({
+            "pin_id": item_id,
+            "type": item_type,
+            "regen_type": regen_type,
+            "old_score": old_score,
+            "new_score": new_score,
+            "warning": warning,
+        })
+
+    # Step 6: Save updated pin results (atomic write via temp+rename)
+    try:
+        tmp = pin_results_path.with_suffix(".tmp")
+        tmp.write_text(
+            json.dumps(pin_results, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        tmp.replace(pin_results_path)
+        logger.info("Saved updated pin generation results")
+    except OSError as e:
+        logger.error("Failed to save pin generation results: %s", e)
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            pass
+
+    # Step 6b: Update pin-schedule.json with regenerated data
+    regen_pin_ids = {r["pin_id"] for r in regen_results if r["type"] == "pin" and not r.get("error")}
+    if regen_pin_ids:
+        schedule_path = DATA_DIR / "pin-schedule.json"
+        if schedule_path.exists():
+            try:
+                schedule = json.loads(schedule_path.read_text(encoding="utf-8"))
+                # Build lookup from updated pin results
+                updated_pins = {}
+                for pin in safe_get(pin_results, "generated", []):
+                    if pin["pin_id"] in regen_pin_ids:
+                        updated_pins[pin["pin_id"]] = pin
+
+                changed = 0
+                for entry in schedule:
+                    pid = safe_get(entry, "pin_id", "")
+                    if pid in updated_pins:
+                        src = updated_pins[pid]
+                        entry["title"] = safe_get(src, "title") or safe_get(entry, "title", "")
+                        entry["description"] = safe_get(src, "description") or safe_get(entry, "description", "")
+                        entry["alt_text"] = safe_get(src, "alt_text") or safe_get(entry, "alt_text", "")
+                        entry["image_path"] = safe_get(src, "image_path") or safe_get(entry, "image_path", "")
+                        entry["image_url"] = safe_get(src, "_drive_download_url") or safe_get(entry, "image_url", "")
+                        entry["image_source"] = safe_get(src, "image_source") or safe_get(entry, "image_source", "")
+                        entry["image_id"] = safe_get(src, "image_id") or safe_get(entry, "image_id", "")
+                        changed += 1
+
+                if changed:
+                    save_pin_schedule(schedule)
+                    logger.info("Updated pin-schedule.json for %d regenerated pins", changed)
+            except (json.JSONDecodeError, OSError, KeyError) as e:
+                logger.error("Failed to update pin-schedule.json: %s", e)
+
+    # Save updated blog results (if any blog regens ran)
+    if blog_results_dirty:
+        try:
+            blog_results_path.write_text(
+                json.dumps(blog_results, indent=2, ensure_ascii=False),
+                encoding="utf-8",
+            )
+            logger.info("Saved updated blog generation results")
+        except OSError as e:
+            logger.error("Failed to save blog generation results: %s", e)
+
+    # Step 7: Reset trigger and notify
+    try:
+        sheets.reset_regen_trigger()
+    except Exception as e:
+        logger.warning("Failed to reset regen trigger: %s", e)
+
+    if regen_results:
+        try:
+            slack.notify_regen_complete(regen_results)
+        except Exception as e:
+            logger.warning("Failed to send Slack notification: %s", e)
+
+    succeeded = sum(1 for r in regen_results if not r.get("error"))
+    failed = sum(1 for r in regen_results if r.get("error"))
+    logger.info(
+        "Regen complete: %d succeeded, %d failed out of %d requests",
+        succeeded, failed, len(requests),
+    )
+
+
+def _regen_item(
+    pin_data: dict,
+    regen_type: str,
+    feedback: str,
+    claude: ClaudeAPI,
+    image_gen_api: ImageGenAPI,
+    assembler: PinAssembler,
+    gcs: GcsAPI,
+    drive: Optional[DriveAPI],
+    used_image_ids: list[str],
+    brand_voice: str,
+    keyword_targets: dict,
+) -> dict:
+    """
+    Regenerate a single content item (image, copy, or both).
+
+    Returns:
+        dict with "pin_data" (updated pin dict) and optional "image_url"
+        (new public URL for the thumbnail, from GCS or Drive).
+    """
+    pin_id = pin_data["pin_id"]
+    new_pin_data = dict(pin_data)
+    new_image_url: Optional[str] = None
+
+    # Build a pin_spec-like dict for the generation functions
+    pin_spec = {
+        "pin_id": pin_id,
+        "pin_topic": safe_get(pin_data, "title", ""),
+        "target_board": safe_get(pin_data, "board_name", ""),
+        "pillar": safe_get(pin_data, "pillar"),
+        "primary_keyword": safe_get(pin_data, "primary_keyword", ""),
+        "secondary_keywords": safe_get(pin_data, "secondary_keywords", []),
+        "pin_template": safe_get(pin_data, "template", "recipe-pin"),
+        "template_variant": safe_get(pin_data, "template_variant", 1),
+        "content_type": safe_get(pin_data, "content_type"),
+        "funnel_layer": safe_get(pin_data, "funnel_layer", "discovery"),
+    }
+
+    if feedback:
+        pin_spec["_regen_feedback"] = feedback
+
+    # Determine what to regenerate
+    do_image = regen_type in ("regen_image", "regen")
+    do_copy = regen_type in ("regen_copy", "regen")
+
+    # --- Regenerate copy ---
+    if do_copy:
+        logger.info("Regenerating copy for %s", pin_id)
+
+        # Add feedback as copy guidance
+        copy_spec = dict(pin_spec)
+        if feedback:
+            copy_spec["_copy_feedback"] = feedback
+
+        try:
+            copy_results = generate_copy_batch(
+                claude=claude,
+                pin_specs=[copy_spec],
+                blog_context={},
+                brand_voice=brand_voice,
+                keyword_targets=keyword_targets,
+            )
+            if copy_results:
+                new_copy = copy_results[0]
+                new_pin_data["title"] = safe_get(new_copy, "title") or safe_get(new_pin_data, "title", "")
+                new_pin_data["description"] = safe_get(new_copy, "description") or safe_get(new_pin_data, "description", "")
+                new_pin_data["alt_text"] = safe_get(new_copy, "alt_text") or safe_get(new_pin_data, "alt_text", "")
+                new_pin_data["text_overlay"] = safe_get(new_copy, "text_overlay") or safe_get(new_pin_data, "text_overlay", "")
+                logger.info("Copy regenerated for %s: '%s'", pin_id, new_pin_data["title"][:60])
+        except Exception as e:
+            logger.error("Copy regeneration failed for %s: %s", pin_id, e)
+            new_pin_data["_copy_regen_failed"] = True
+
+    # --- Regenerate image ---
+    if do_image:
+        logger.info("Regenerating image for %s", pin_id)
+
+        PIN_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+        pin_template = safe_get(pin_spec, "pin_template", "")
+        if pin_template == "infographic-pin":
+            image_path, image_source, image_id, quality_meta = None, "template", "", {}
+        else:
+            image_path, image_source, image_id, quality_meta = source_ai_image(
+                pin_spec, claude, image_gen_api, PIN_OUTPUT_DIR
+            )
+
+        if image_path:
+            new_pin_data["hero_image_path"] = str(image_path)
+            new_pin_data["image_source"] = image_source
+            new_pin_data["image_id"] = image_id
+            new_pin_data["image_retries"] = safe_get(quality_meta, "image_retries", 0)
+
+            if image_id:
+                used_image_ids.append(f"{image_source}:{image_id}")
+
+    # --- Resolve hero image (download from GCS/Drive if not on disk) ---
+    hero_path_str = safe_get(new_pin_data, "hero_image_path")
+    hero_path = Path(hero_path_str) if hero_path_str else None
+
+    if hero_path and not hero_path.exists():
+        # Hero image not on disk (fresh runner). Try downloading.
+        image_url = safe_get(pin_data, "_drive_image_url", "")
+        PIN_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+        downloaded = False
+
+        # Try GCS download first (URL starts with storage.googleapis.com)
+        if image_url and gcs.client and "storage.googleapis.com" in image_url:
+            object_name = gcs.extract_object_name(image_url)
+            if object_name:
+                hero_path = PIN_OUTPUT_DIR / f"{pin_id}-hero-downloaded.png"
+                result = gcs.download_image(object_name, hero_path)
+                if result:
+                    new_pin_data["hero_image_path"] = str(hero_path)
+                    logger.info("Downloaded hero image from GCS for %s", pin_id)
+                    downloaded = True
+                else:
+                    hero_path = None
+
+        # Fall back to Drive download
+        if not downloaded and image_url:
+            drive_file_id = extract_drive_file_id(image_url)
+            if drive_file_id and drive is not None:
+                try:
+                    hero_path = PIN_OUTPUT_DIR / f"{pin_id}-hero-downloaded.png"
+                    drive.download_image(drive_file_id, hero_path)
+                    new_pin_data["hero_image_path"] = str(hero_path)
+                    logger.info("Downloaded hero image from Drive for %s", pin_id)
+                    downloaded = True
+                except Exception as e:
+                    logger.warning("Failed to download hero from Drive for %s: %s", pin_id, e)
+                    hero_path = None
+
+        if not downloaded:
+            if not image_url:
+                logger.warning("No image URL stored for %s, cannot re-render", pin_id)
+            hero_path = None
+
+    # --- Re-render the pin ---
+    if hero_path and hero_path.exists():
+        template_type = safe_get(new_pin_data, "template", "recipe-pin")
+        text_overlay = safe_get(new_pin_data, "text_overlay", "")
+
+        # Extract headline/subtitle from text_overlay (may be dict or str)
+        if isinstance(text_overlay, dict):
+            headline = safe_get(text_overlay, "headline", "")
+            subtitle = safe_get(text_overlay, "sub_text", "")
+        else:
+            headline = str(text_overlay) if text_overlay else ""
+            subtitle = safe_get(new_pin_data, "subtitle", "")
+
+        # Build template-specific context for non-recipe templates
+        pin_copy_like = {
+            "title": safe_get(new_pin_data, "title", ""),
+            "description": safe_get(new_pin_data, "description", ""),
+            "text_overlay": text_overlay,
+        }
+        extra_context = build_template_context(
+            template_type, pin_copy_like, pin_spec, hero_path,
+        )
+
+        try:
+            rendered_pin_path = assembler.assemble_pin(
+                template_type=template_type,
+                hero_image_path=hero_path,
+                headline=headline,
+                subtitle=subtitle,
+                variant=safe_get(new_pin_data, "template_variant", 1),
+                output_path=PIN_OUTPUT_DIR / f"{pin_id}.png",
+                extra_context=extra_context,
+            )
+            new_pin_data["image_path"] = str(rendered_pin_path)
+
+            # Upload new rendered pin (GCS first, Drive fallback)
+            old_image_url = safe_get(pin_data, "_drive_image_url", "")
+
+            if gcs.client:
+                # Delete old GCS object if it was stored there
+                old_object_name = gcs.extract_object_name(old_image_url)
+                if old_object_name:
+                    try:
+                        gcs.bucket.blob(old_object_name).delete()
+                        logger.debug("Deleted old GCS object %s for %s", old_object_name, pin_id)
+                    except Exception as e:
+                        logger.warning("Failed to delete old GCS object for %s: %s", pin_id, e)
+
+                new_image_url = gcs.upload_image(rendered_pin_path)
+                if new_image_url:
+                    # GCS URLs work for both preview and download
+                    new_pin_data["_drive_image_url"] = new_image_url
+                    new_pin_data["_drive_download_url"] = new_image_url
+                    logger.info("Uploaded regen pin %s to GCS: %s", pin_id, new_image_url)
+
+            if not new_image_url and drive is not None:
+                # Fall back to Drive upload
+                old_drive_file_id = extract_drive_file_id(old_image_url)
+                try:
+                    new_image_url = drive.upload_image(rendered_pin_path)
+                except Exception as e:
+                    logger.warning("Drive upload also failed for %s: %s", pin_id, e)
+
+                if old_drive_file_id:
+                    try:
+                        drive.drive.files().delete(fileId=old_drive_file_id).execute()
+                        logger.debug("Deleted old Drive image %s for %s", old_drive_file_id, pin_id)
+                    except Exception as e:
+                        logger.warning("Failed to delete old Drive image for %s: %s", pin_id, e)
+
+                _fid = extract_drive_file_id(new_image_url) if new_image_url else None
+                if _fid:
+                    new_pin_data["_drive_image_url"] = (
+                        f"https://drive.google.com/thumbnail?id={_fid}&sz=w400"
+                    )
+                    new_pin_data["_drive_download_url"] = (
+                        f"https://drive.google.com/uc?id={_fid}&export=download"
+                    )
+                elif new_image_url:
+                    new_pin_data["_drive_image_url"] = new_image_url
+                if new_image_url:
+                    logger.info("Uploaded regen pin %s to Drive: %s", pin_id, new_image_url)
+        except Exception as e:
+            logger.error("Pin assembly/upload failed for %s: %s", pin_id, e)
+    else:
+        logger.warning("No hero image available for %s, skipping re-render", pin_id)
+        if do_copy:
+            new_pin_data["_copy_regen_no_rerender"] = True
+
+    return {"pin_data": new_pin_data, "image_url": new_image_url}
+
+
+def _regen_blog_image(
+    blog_data: dict,
+    post_id: str,
+    feedback: str,
+    claude: ClaudeAPI,
+    image_gen_api: ImageGenAPI,
+    gcs: GcsAPI,
+    used_image_ids: list[str],
+) -> dict:
+    """
+    Regenerate the hero image for a blog post.
+
+    Blog images are raw AI photos (not rendered through pin templates).
+    The hero is saved with a slug-based filename so blog_deployer.py can
+    find it at deploy time.
+
+    Returns:
+        dict with "image_url" (GCS public URL), "quality_score", "image_source",
+        "image_id".  image_url is None if upload failed.
+    """
+    slug = safe_get(blog_data, "slug", "")
+    title = safe_get(blog_data, "title", "")
+
+    if not slug:
+        raise ValueError(f"Blog {post_id} has no slug in blog-generation-results.json")
+
+    logger.info("Regenerating blog hero image for %s (slug=%s)", post_id, slug)
+
+    # Build a pin_spec-like dict for source_ai_image()
+    pin_spec = {
+        "pin_id": post_id,
+        "pin_topic": title,
+        "content_type": safe_get(blog_data, "content_type", ""),
+        "pillar": safe_get(blog_data, "pillar"),
+        "primary_keyword": title,  # Use title as primary keyword for blog heroes
+        "pin_template": "recipe-pin",  # Default template context for image generation
+    }
+
+    if feedback:
+        pin_spec["_regen_feedback"] = feedback
+
+    PIN_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+    image_path, image_source, image_id, quality_meta = source_ai_image(
+        pin_spec, claude, image_gen_api, PIN_OUTPUT_DIR
+    )
+
+    result: dict = {
+        "image_url": None,
+        "quality_score": None,
+        "image_source": image_source,
+        "image_id": image_id,
+    }
+
+    if not image_path:
+        logger.error("Image sourcing failed for blog %s — no image returned", post_id)
+        return result
+
+    # Save hero with slug name so blog_deployer.py can find it
+    slug_hero = PIN_OUTPUT_DIR / f"{slug}-hero{Path(image_path).suffix}"
+    if str(image_path) != str(slug_hero):
+        import shutil
+        shutil.copy2(image_path, slug_hero)
+        logger.info("Saved blog hero as %s", slug_hero.name)
+
+    # Clean up stale hero images with different extensions
+    for old in slug_hero.parent.glob(f"{slug}-hero.*"):
+        if old.suffix != slug_hero.suffix:
+            old.unlink()
+            logger.info("Removed stale hero %s (replaced by %s)", old.name, slug_hero.name)
+
+    if image_id:
+        used_image_ids.append(f"{image_source}:{image_id}")
+
+    # Upload the raw hero image to GCS (not a rendered pin)
+    # Use a timestamped name to bust Google Sheets =IMAGE() cache
+    if gcs.client:
+        ts = int(time.time())
+        remote_name = f"{post_id}-hero-{ts}{Path(image_path).suffix}"
+        image_url = gcs.upload_image(image_path, remote_name=remote_name)
+        if image_url:
+            result["image_url"] = image_url
+            logger.info("Uploaded blog hero %s to GCS: %s", post_id, image_url)
+        else:
+            logger.error("GCS upload failed for blog hero %s", post_id)
+    else:
+        logger.warning("GCS client not available, cannot upload blog hero for %s", post_id)
+
+    return result
+
+
+def _update_pin_results(
+    pin_data: dict,
+    new_pin_data: dict,
+    regen_type: str,
+    feedback: str,
+) -> None:
+    """
+    Update the pin_data dict in-place with new values and regen history.
+
+    Modifies pin_data directly (which is a reference into the
+    pin-generation-results.json 'generated' list).
+    """
+    # Record history entry before overwriting
+    history_entry = {
+        "regen_type": regen_type,
+        "feedback": feedback,
+        "timestamp": datetime.now().isoformat(),
+        "previous_image_source": safe_get(pin_data, "image_source"),
+        "previous_title": safe_get(pin_data, "title"),
+    }
+
+    regen_history = safe_get(pin_data, "_regen_history", [])
+    regen_history.append(history_entry)
+
+    # Copy new values over
+    keys_to_update = [
+        "title", "description", "alt_text", "text_overlay",
+        "image_path", "hero_image_path", "image_source", "image_id",
+        "image_retries", "_drive_image_url", "_drive_download_url",
+    ]
+    for key in keys_to_update:
+        if key in new_pin_data:
+            pin_data[key] = new_pin_data[key]
+
+    pin_data["_regen_history"] = regen_history
+
+
+def _build_regen_quality_note(pin_data: dict) -> str:
+    """Build a quality note for a regenerated pin's Notes column."""
+    note = "Regen | AI generated"
+    retries = safe_get(pin_data, "image_retries", 0)
+    if retries > 0:
+        note += f" (retry {retries})"
+    return note
+
+
+if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
+    regen()

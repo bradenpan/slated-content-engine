@@ -2146,3 +2146,81 @@ Claude was given a vague text rule ("posting week runs Tuesday through next Mond
 - `data/weekly-plan-2026-03-02.json` — W10 dates shifted +1 day
 - `data/pin-generation-results.json` — W10 dates shifted +1 day
 - `architecture/multi-channel-restructure/pin-scheduling-simplification-plan.md` — plan doc
+
+---
+
+## Phase 19 — Multi-Channel Restructure: Phase 1 (Directory Scaffold + File Moves)
+**Date:** 2026-03-02
+
+### What Changed
+Executed Phase 1 of the multi-channel mono-repo restructure. Split `src/` into `src/shared/` (cross-channel code) and `src/pinterest/` (Pinterest-specific code), with backward-compat shims at all original paths so the live pipeline continues working unchanged.
+
+### New Directory Structure
+```
+src/
+├── shared/              # Cross-channel code (new)
+│   ├── apis/            # claude_api, openai_chat_api, sheets_api, gcs_api,
+│   │                      drive_api, github_api, slack_notify, image_gen
+│   ├── utils/           # safe_get, strategy_utils, image_utils, content_log, plan_utils
+│   ├── paths.py         # PROJECT_ROOT (3 levels up from src/shared/)
+│   ├── config.py        # Environment config
+│   ├── blog_generator.py
+│   ├── blog_deployer.py
+│   ├── generate_blog_posts.py
+│   └── image_cleaner.py
+├── pinterest/           # Pinterest-specific code (new)
+│   ├── apis/            # pinterest_api
+│   ├── generate_pin_content.py
+│   ├── pin_assembler.py
+│   ├── post_pins.py
+│   ├── pull_analytics.py
+│   ├── setup_boards.py
+│   ├── regen_content.py
+│   ├── plan_validator.py
+│   ├── redate_schedule.py
+│   └── token_manager.py
+├── [29 backward-compat shims at original paths]
+├── generate_weekly_plan.py  (unmoved — Phase 3)
+├── weekly_analysis.py       (unmoved — Phase 2)
+├── monthly_review.py        (unmoved — Phase 2)
+└── utils/content_memory.py  (unmoved — Phase 2)
+```
+
+### Key Decisions
+- **Sequential phase execution**: Each phase gets implementation + review agent pair, pytest verification, and user sign-off before proceeding. No multi-phase swarming.
+- **Shim pattern**: Every moved file gets a backward-compat shim at its original path (`from src.shared.X import *`) so GitHub Actions workflows and unmoved files keep working
+- **Private re-exports**: `import *` skips `_`-prefixed names. Shims for `image_cleaner.py` and `regen_content.py` have explicit imports for `_add_gaussian_noise` and `_regen_item`
+- **PROJECT_ROOT**: `src/shared/paths.py` uses `Path(__file__).parent.parent.parent` (3 levels) vs original 2 levels
+
+### Issues Found & Fixed
+1. **`import *` doesn't export private names** — Tests importing `_add_gaussian_noise` and `_regen_item` failed. Fixed with explicit private imports in shims.
+2. **`@patch` targeting shim namespaces** — 22 `@patch` decorators across 3 test files targeted old module paths. Mocks didn't reach the real code. Updated to canonical `src.shared.*` / `src.pinterest.*` paths.
+3. **Lazy imports using old paths** — 4 runtime imports in moved files still used old paths (e.g., `from src.utils.image_utils import ...`). Updated to `src.shared.utils.*`.
+
+### Verification
+- 207 tests passed, 0 failed after all fixes
+- Review agent checked: PROJECT_ROOT calc, import completeness, shim completeness, private re-exports, unmoved files, `__init__.py` presence, test patch paths — 0 CRITICAL, 0 WARNING
+- All shims verified to re-export correctly
+
+### Files Created (35 new files)
+- 5 `__init__.py` files: `src/shared/`, `src/shared/apis/`, `src/shared/utils/`, `src/pinterest/`, `src/pinterest/apis/`
+- `src/shared/paths.py`, `src/shared/config.py`
+- 8 shared API files, 5 shared util files, 4 shared pipeline scripts
+- 9 Pinterest pipeline scripts, 1 Pinterest API file
+- 29 backward-compat shims at all original locations
+
+### Files Modified (3 test files)
+- `tests/test_claude_api_fallback.py` — `@patch` targets → `src.shared.apis.*`
+- `tests/test_regen_drive_guard.py` — `@patch` targets → `src.pinterest.*`
+- `tests/test_openai_error_wrapping.py` — `@patch` targets → `src.shared.apis.*`
+
+### Documentation Updated
+- `ARCHITECTURE.md` — Directory structure section rewritten for new layout
+- `architecture/multi-channel-restructure/execution-strategy.md` — Created: full Phase 1-6 execution strategy, agent patterns, failure-mode checklist
+
+### Next Steps
+- Phase 2: Extract content memory + analytics utilities, move weekly_analysis.py, monthly_review.py, publish_content_queue.py
+- Phase 3: Split generate_weekly_plan.py (highest risk — affects live posting)
+- Phase 4: Move prompts into subdirectories
+- Phase 5: Update GitHub Actions workflows
+- Phase 6: Remove shims + 1-week burn-in

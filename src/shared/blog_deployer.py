@@ -1,0 +1,723 @@
+"""
+Blog Post Deployer
+
+Commits approved blog post MDX files and hero images to the goslated.com
+GitHub repository, triggering Vercel auto-deployment (~60 seconds).
+
+Workflow:
+1. Reads approved blog posts from Google Sheets content queue
+2. Commits MDX files to content/blog/ in the goslated.com repo
+3. Commits hero images to public/assets/blog/ in the goslated.com repo
+4. Verifies each blog post URL is live after deployment
+5. Updates the Google Sheet with confirmed live URLs
+6. Loads approved pins into the posting schedule
+7. Appends new entries to data/content-log.jsonl
+8. Sends Slack notification on completion/failure
+
+Blog posts must be live before any pins linking to them are posted.
+Content generation runs Monday; daily posting starts Tuesday.
+"""
+
+import json
+import logging
+import re
+from datetime import date
+from pathlib import Path
+from typing import Optional
+
+from src.shared.apis.github_api import GitHubAPI
+from src.shared.apis.sheets_api import SheetsAPI
+from src.shared.apis.slack_notify import SlackNotify
+from src.shared.paths import DATA_DIR, BLOG_OUTPUT_DIR, PIN_OUTPUT_DIR
+from src.shared.config import BLOG_BASE_URL, DEPLOY_VERIFY_TIMEOUT
+from src.shared.utils.content_log import load_content_log, append_content_log_entry, is_pin_posted
+from src.shared.utils.plan_utils import save_pin_schedule
+from src.shared.utils.safe_get import safe_get
+
+logger = logging.getLogger(__name__)
+
+GENERATED_BLOG_DIR = BLOG_OUTPUT_DIR
+GENERATED_PINS_DIR = PIN_OUTPUT_DIR
+
+
+class BlogDeployerError(Exception):
+    """Raised when blog deployment fails."""
+    pass
+
+
+class BlogDeployer:
+    """Deploys approved blog posts to goslated.com via GitHub."""
+
+    def __init__(
+        self,
+        github: Optional[GitHubAPI] = None,
+        sheets: Optional[SheetsAPI] = None,
+        slack: Optional[SlackNotify] = None,
+    ):
+        """
+        Initialize the blog deployer.
+
+        Args:
+            github: GitHubAPI instance. Creates one if not provided.
+            sheets: SheetsAPI instance. Creates one if not provided.
+            slack: SlackNotify instance. Creates one if not provided.
+        """
+        self.github = github or GitHubAPI()
+        self.sheets = sheets or SheetsAPI()
+        self.slack = slack or SlackNotify()
+
+    def _read_approved_content(self, caller: str) -> tuple[list[dict], list[dict]]:
+        """
+        Read content approvals from Google Sheets and filter to approved items.
+
+        Args:
+            caller: Name of the calling method (for error messages / Slack).
+
+        Returns:
+            tuple: (approved_blogs, approved_pins)
+
+        Raises:
+            Exception: If reading approvals fails (after sending Slack notification).
+        """
+        try:
+            approvals = self.sheets.read_content_approvals()
+        except Exception as e:
+            logger.error("Failed to read content approvals: %s", e)
+            try:
+                self.slack.notify_failure(
+                    caller,
+                    f"Cannot read content approvals from Google Sheets: {e}. "
+                    f"Deployment halted. Please retry when Sheets is accessible.",
+                )
+            except Exception:
+                pass
+            raise
+
+        approved_blogs = [
+            item for item in approvals
+            if safe_get(item, "type") == "blog"
+            and safe_get(item, "status") in ("approved", "use_ai_image")
+        ]
+        approved_pins = [
+            item for item in approvals
+            if safe_get(item, "type") == "pin"
+            and safe_get(item, "status") in ("approved", "use_ai_image")
+        ]
+
+        logger.info(
+            "Approved content: %d blog posts, %d pins",
+            len(approved_blogs), len(approved_pins),
+        )
+
+        return approved_blogs, approved_pins
+
+    def deploy_to_preview(self) -> dict:
+        """
+        Deploy approved content to the develop branch for preview review.
+
+        This is Phase 1 of the two-phase deployment:
+        1. Commits blog posts to develop branch (Vercel preview deploy)
+        2. Saves approved pin data for later scheduling
+        3. Writes PRODUCTION status to Sheet for promotion approval
+        4. Sends Slack notification with review instructions
+
+        Returns:
+            dict: Deployment results.
+        """
+        logger.info("Starting preview deployment to develop branch")
+
+        results = {
+            "blog_deployed": [],
+            "blog_failed": [],
+            "pins_saved": 0,
+        }
+
+        approved_blogs, approved_pins = self._read_approved_content("deploy_to_preview")
+
+        # Deploy blog posts to develop branch
+        if approved_blogs:
+            deploy_result = self._deploy_blog_posts(approved_blogs)
+            results["blog_deployed"] = deploy_result["deployed"]
+            results["blog_failed"] = deploy_result["failed"]
+        else:
+            logger.info("No approved blog posts to deploy")
+
+        # Save approved pin count for reference
+        results["pins_saved"] = len(approved_pins)
+
+        # Write PRODUCTION status to Sheet for promotion approval
+        try:
+            self.sheets.write_deploy_status(
+                status="pending_review",
+                preview_url="Check Vercel dashboard for preview URL",
+            )
+        except Exception as e:
+            logger.error("Failed to write deploy status to Sheet: %s", e)
+
+        # Send Slack notification
+        try:
+            deployed_count = len(results["blog_deployed"])
+            failed_count = len(results["blog_failed"])
+            self.slack.notify(
+                f"Preview deploy complete: {deployed_count} blog posts on develop branch, "
+                f"{results['pins_saved']} pins ready to schedule.\n"
+                f"Review the blog posts on your Vercel preview deployment.\n"
+                f"When ready, go to the Google Sheet > Weekly Review tab > "
+                f"change cell B4 from 'pending_review' to 'approved' to push to production.",
+                level="success" if failed_count == 0 else "warning",
+            )
+        except Exception as e:
+            logger.error("Failed to send Slack notification: %s", e)
+
+        logger.info(
+            "Preview deploy complete: %d blogs deployed, %d failed, %d pins saved",
+            len(results["blog_deployed"]),
+            len(results["blog_failed"]),
+            results["pins_saved"],
+        )
+
+        return results
+
+    def promote_to_production(self) -> dict:
+        """
+        Merge develop to main, verify URLs, and schedule pins.
+
+        This is Phase 2 of the two-phase deployment:
+        1. Merges develop into main (triggers Vercel production deploy)
+        2. Verifies blog post URLs are live on production
+        3. Creates pin posting schedule
+        4. Appends entries to content-log.jsonl
+        5. Updates Sheet and sends Slack notification
+
+        Returns:
+            dict: Promotion results.
+        """
+        logger.info("Starting production promotion: merging develop -> main")
+
+        results = {
+            "merge_sha": "",
+            "verification_results": {},
+            "pins_scheduled": 0,
+            "content_log_entries": 0,
+        }
+
+        # Step 1: Merge develop into main
+        try:
+            merge_sha = self.github.merge_develop_to_main(
+                commit_message=f"Deploy blog posts to production ({date.today().isoformat()})"
+            )
+            results["merge_sha"] = merge_sha
+            logger.info("Merged develop -> main: %s", merge_sha[:8] if merge_sha else "already in sync")
+        except Exception as e:
+            logger.error("Failed to merge develop into main: %s", e)
+            try:
+                self.slack.notify_failure(
+                    "promote_to_production",
+                    f"Merge develop -> main failed: {e}",
+                )
+            except Exception:
+                pass
+            raise
+
+        # Step 2: Read approvals to get blog slugs and pin data
+        approved_blogs, approved_pins = self._read_approved_content("promote_to_production")
+
+        # Step 3: Verify blog post URLs on production
+        deployed_slugs = [
+            safe_get(b, "slug") or safe_get(b, "id", "") for b in approved_blogs
+        ]
+        if deployed_slugs:
+            results["verification_results"] = self.verify_urls(
+                deployed_slugs, max_wait=DEPLOY_VERIFY_TIMEOUT
+            )
+
+            failed_verifications = [
+                slug for slug, ok in results["verification_results"].items()
+                if not ok
+            ]
+            if failed_verifications:
+                logger.warning("URLs failed verification: %s", failed_verifications)
+                retry_results = self.verify_urls(failed_verifications, max_wait=60)
+                results["verification_results"].update(retry_results)
+
+                still_failed = [s for s, ok in retry_results.items() if not ok]
+                if still_failed:
+                    logger.error("URLs still failing after retry: %s", still_failed)
+                    try:
+                        self.slack.notify_failure(
+                            "promote_to_production",
+                            f"Blog post URLs failed to resolve: {still_failed}",
+                        )
+                    except Exception:
+                        pass
+
+        # Step 4: Update Sheet with live URLs
+        try:
+            for slug in deployed_slugs:
+                if results["verification_results"].get(slug, False):
+                    live_url = f"{BLOG_BASE_URL}/{slug}"
+                    self.sheets.update_pin_status(
+                        pin_id=slug,
+                        status="deployed",
+                        pinterest_pin_id=live_url,
+                    )
+        except Exception as e:
+            logger.error("Failed to update Sheet with live URLs: %s", e)
+
+        # Step 5: Create pin schedule (exclude pins for blogs that failed verification)
+        failed_slugs = {
+            slug for slug, ok in results["verification_results"].items()
+            if not ok
+        }
+        if failed_slugs:
+            original_count = len(approved_pins)
+            filtered_pins = []
+            for pin in approved_pins:
+                pin_slug = safe_get(pin, "blog_slug") or ""
+                if not pin_slug:
+                    # slug field from Sheet contains full URL — extract bare slug
+                    raw = safe_get(pin, "slug", "")
+                    pin_slug = raw.rstrip("/").rsplit("/", 1)[-1] if "/" in raw else raw
+                if pin_slug not in failed_slugs:
+                    filtered_pins.append(pin)
+            approved_pins = filtered_pins
+            filtered_count = original_count - len(approved_pins)
+            if filtered_count:
+                logger.warning(
+                    "Excluded %d pins linked to blogs that failed URL verification: %s",
+                    filtered_count, failed_slugs,
+                )
+        if approved_pins:
+            results["pins_scheduled"] = self._create_pin_schedule(
+                approved_pins, plan_path=None
+            )
+
+        # Step 6: Append to content log
+        results["content_log_entries"] = self._append_to_content_log(
+            blog_results=[{"slug": s} for s in deployed_slugs],
+            pin_data=approved_pins,
+        )
+
+        # Step 7: Update deploy status
+        try:
+            self.sheets.write_deploy_status(status="deployed")
+        except Exception as e:
+            logger.error("Failed to update deploy status: %s", e)
+
+        # Step 8: Slack notification
+        try:
+            verified_count = sum(1 for ok in results["verification_results"].values() if ok)
+            new_pin_count = len(approved_pins)
+            total_scheduled = results['pins_scheduled']
+            carried = total_scheduled - new_pin_count
+            schedule_msg = f"{new_pin_count} new pins scheduled"
+            if carried > 0:
+                schedule_msg += f" ({carried} carried over from last week)"
+            self.slack.notify(
+                f"Content is live on goslated.com! "
+                f"{verified_count} blog posts verified, "
+                f"{schedule_msg}.",
+                level="success",
+            )
+        except Exception as e:
+            logger.error("Failed to send Slack notification: %s", e)
+
+        logger.info(
+            "Production promotion complete: merge=%s, %d pins scheduled",
+            results["merge_sha"][:8] if results["merge_sha"] else "n/a",
+            results["pins_scheduled"],
+        )
+
+        return results
+
+    def verify_urls(self, slugs: list[str], max_wait: int = 180) -> dict:
+        """
+        Verify that blog post URLs are live after deployment.
+
+        Calls github_api.verify_deployment() for each slug.
+
+        Args:
+            slugs: List of blog post slugs to verify.
+            max_wait: Max seconds to wait per URL.
+
+        Returns:
+            dict: slug -> bool (True if live, False if not).
+        """
+        results = {}
+        for slug in slugs:
+            try:
+                is_live = self.github.verify_deployment(
+                    slug,
+                    max_wait_seconds=max_wait,
+                )
+                results[slug] = is_live
+                if is_live:
+                    logger.info("Verified: %s/%s is live", BLOG_BASE_URL, slug)
+                else:
+                    logger.warning("Not live: %s/%s", BLOG_BASE_URL, slug)
+            except Exception as e:
+                logger.error("Verification error for %s: %s", slug, e)
+                results[slug] = False
+
+        return results
+
+    def _deploy_blog_posts(self, approved_blogs: list[dict]) -> dict:
+        """
+        Commit approved blog posts to the goslated.com repository.
+
+        Args:
+            approved_blogs: List of approved blog post items from Sheets.
+
+        Returns:
+            dict: {"deployed": [...], "failed": [...]}
+        """
+        deployed = []
+        failed = []
+
+        # Build the list of posts for batch commit
+        posts_for_commit = []
+        for blog_item in approved_blogs:
+            slug = safe_get(blog_item, "slug") or safe_get(blog_item, "id", "")
+
+            # Read the generated MDX file
+            mdx_path = GENERATED_BLOG_DIR / f"{slug}.mdx"
+            if not mdx_path.exists():
+                logger.error("Generated MDX file not found: %s", mdx_path)
+                failed.append({"slug": slug, "error": "MDX file not found"})
+                continue
+
+            mdx_content = mdx_path.read_text(encoding="utf-8")
+
+            # Extract frontmatter slug (may differ from file slug for weekly plans)
+            fm_slug_match = re.search(r'^slug:\s*"(.+?)"', mdx_content, re.MULTILINE)
+            fm_slug = fm_slug_match.group(1) if fm_slug_match else slug
+
+            # Check for hero image on disk first
+            hero_image_path = None
+            for ext in [".jpg", ".jpeg", ".png", ".webp"]:
+                candidate_paths = [
+                    GENERATED_BLOG_DIR / f"{slug}{ext}",
+                    GENERATED_PINS_DIR / f"{slug}-hero{ext}",
+                ]
+                for candidate in candidate_paths:
+                    if candidate.exists():
+                        hero_image_path = candidate
+                        break
+                if hero_image_path:
+                    break
+
+            if not hero_image_path:
+                logger.warning("No hero image found for blog %s", slug)
+
+            if hero_image_path:
+                from src.shared.image_cleaner import clean_image
+                clean_image(hero_image_path)
+
+            # Update heroImage frontmatter to match actual image extension
+            if hero_image_path:
+                actual_ext = Path(hero_image_path).suffix
+                mdx_content = re.sub(
+                    r'(heroImage:\s*"/assets/blog/' + re.escape(fm_slug) + r')\.[a-z]+"',
+                    rf'\1{actual_ext}"',
+                    mdx_content,
+                )
+
+            posts_for_commit.append({
+                "slug": slug,
+                "image_slug": fm_slug,
+                "mdx_content": mdx_content,
+                "hero_image_path": hero_image_path,
+            })
+
+        if not posts_for_commit:
+            logger.warning("No valid blog posts to commit")
+            return {"deployed": deployed, "failed": failed}
+
+        # Try batch commit first
+        try:
+            commit_sha = self.github.commit_multiple_posts(
+                posts=posts_for_commit,
+                commit_message=(
+                    f"Add {len(posts_for_commit)} blog posts "
+                    f"({date.today().isoformat()})"
+                ),
+            )
+            logger.info(
+                "Batch committed %d blog posts (SHA: %s)",
+                len(posts_for_commit), commit_sha,
+            )
+            deployed = [{"slug": p["slug"], "commit_sha": commit_sha} for p in posts_for_commit]
+
+        except Exception as batch_error:
+            logger.warning(
+                "Batch commit failed (%s), falling back to individual commits",
+                batch_error,
+            )
+            # Fall back to individual commits
+            for post in posts_for_commit:
+                try:
+                    commit_sha = self.github.commit_blog_post(
+                        slug=post["slug"],
+                        image_slug=post.get("image_slug"),
+                        mdx_content=post["mdx_content"],
+                        hero_image_path=post.get("hero_image_path"),
+                    )
+                    deployed.append({"slug": post["slug"], "commit_sha": commit_sha})
+                    logger.info("Committed %s (SHA: %s)", post["slug"], commit_sha)
+                except Exception as e:
+                    logger.error("Failed to commit %s: %s", post["slug"], e)
+                    failed.append({"slug": post["slug"], "error": str(e)})
+
+        return {"deployed": deployed, "failed": failed}
+
+    def _create_pin_schedule(
+        self,
+        approved_pins: list[dict],
+        plan_path: Optional[str] = None,
+    ) -> int:
+        """
+        Create the pin posting schedule from approved pins.
+
+        Writes a JSON file that post_pins.py reads to know what to post
+        and when.
+
+        Args:
+            approved_pins: Approved pin items from Sheets.
+            plan_path: Optional path to load full pin data.
+
+        Returns:
+            int: Number of pins scheduled.
+        """
+        # Load full pin generation results for complete data
+        pin_results_path = DATA_DIR / "pin-generation-results.json"
+        full_pin_data = {}
+        if pin_results_path.exists():
+            try:
+                pin_results = json.loads(pin_results_path.read_text(encoding="utf-8"))
+                for pin in safe_get(pin_results, "generated", []):
+                    pin_id = safe_get(pin, "pin_id", "")
+                    if pin_id:
+                        full_pin_data[pin_id] = pin
+            except (json.JSONDecodeError, KeyError) as e:
+                logger.warning("Could not load pin generation results: %s", e)
+
+        # Build the schedule
+        schedule = []
+        for pin_item in approved_pins:
+            pin_id = safe_get(pin_item, "id") or safe_get(pin_item, "pin_id", "")
+            full_data = full_pin_data.get(pin_id, {})
+
+            schedule_entry = {
+                "pin_id": pin_id,
+                "title": safe_get(full_data, "title") or safe_get(pin_item, "title", ""),
+                "description": safe_get(full_data, "description", ""),
+                "alt_text": safe_get(full_data, "alt_text", ""),
+                "board_id": safe_get(full_data, "board_id", ""),
+                "board_name": safe_get(full_data, "board_name", ""),
+                "link": safe_get(full_data, "link", ""),
+                "image_path": safe_get(full_data, "image_path", ""),
+                "image_url": safe_get(full_data, "_drive_download_url", ""),
+                "scheduled_date": safe_get(full_data, "scheduled_date", ""),
+                "scheduled_slot": safe_get(full_data, "scheduled_slot", ""),
+                "pillar": safe_get(full_data, "pillar"),
+                "pin_type": safe_get(full_data, "pin_type", "primary"),
+                "primary_keyword": safe_get(full_data, "primary_keyword", ""),
+                "secondary_keywords": safe_get(full_data, "secondary_keywords", []),
+                "blog_slug": safe_get(full_data, "blog_slug", ""),
+                "content_type": safe_get(full_data, "content_type", ""),
+                "funnel_layer": safe_get(full_data, "funnel_layer", "discovery"),
+                "template": safe_get(full_data, "template", ""),
+                "treatment_number": safe_get(full_data, "treatment_number", 1),
+                "source_post_id": safe_get(full_data, "source_post_id", ""),
+                "image_source": safe_get(full_data, "image_source", ""),
+                "image_id": safe_get(full_data, "image_id", ""),
+                "status": "scheduled",
+            }
+            schedule.append(schedule_entry)
+
+        # Preserve unposted pins from existing schedule so a new week's
+        # promote doesn't erase pins from the previous week that haven't
+        # posted yet (e.g., W9 evening pins still due when W10 promotes).
+        #
+        # NOTE: promote (pinterest-pipeline) and daily-post (pinterest-posting)
+        # use different concurrency groups and can run simultaneously. If a
+        # daily-post is mid-flight, its content-log.jsonl updates aren't
+        # committed yet, so is_pin_posted may return False for just-posted
+        # pins. This is safe: those pins will appear in `kept` but won't
+        # double-post (post_pins.py rechecks is_pin_posted at runtime).
+        # They self-clean on the next promote.
+        schedule_path = DATA_DIR / "pin-schedule.json"
+        kept = []
+        if schedule_path.exists():
+            try:
+                existing = json.loads(
+                    schedule_path.read_text(encoding="utf-8")
+                )
+            except (json.JSONDecodeError, OSError) as e:
+                logger.warning("Could not load existing pin schedule: %s", e)
+                existing = []
+
+            new_pin_ids = {
+                safe_get(entry, "pin_id") for entry in schedule
+            }
+            for entry in existing:
+                pid = safe_get(entry, "pin_id", "")
+                if pid in new_pin_ids:
+                    continue
+                if is_pin_posted(pid):
+                    continue
+                kept.append(entry)
+
+        if kept:
+            logger.info(
+                "Preserved %d unposted pins from prior week. "
+                "New pins use dates from weekly plan (no rescheduling).",
+                len(kept),
+            )
+
+        combined = kept + schedule
+
+        # Write the schedule file atomically
+        save_pin_schedule(combined)
+
+        return len(combined)
+
+    def _append_to_content_log(
+        self,
+        blog_results: list[dict],
+        pin_data: list[dict],
+    ) -> int:
+        """
+        Append new entries to data/content-log.jsonl.
+
+        Creates content log entries with initial performance metrics = 0.
+
+        Args:
+            blog_results: Deployed blog post data.
+            pin_data: Approved pin data.
+
+        Returns:
+            int: Number of entries appended.
+        """
+        today_str = date.today().isoformat()
+
+        # Load existing entry IDs to avoid duplicates on rerun
+        # Collect both schedule_id (per-pin, new entries) and source_post_id (old entries)
+        existing_ids = set()
+        for existing_entry in load_content_log():
+            for key in ("schedule_id", "source_post_id"):
+                val = safe_get(existing_entry, key, "")
+                if val:
+                    existing_ids.add(val)
+
+        # Load full pin generation results for complete data
+        pin_results_path = DATA_DIR / "pin-generation-results.json"
+        full_pin_data = {}
+        if pin_results_path.exists():
+            try:
+                pin_results = json.loads(pin_results_path.read_text(encoding="utf-8"))
+                for pin in safe_get(pin_results, "generated", []):
+                    pin_id = safe_get(pin, "pin_id", "")
+                    if pin_id:
+                        full_pin_data[pin_id] = pin
+            except (json.JSONDecodeError, KeyError):
+                pass
+
+        entries_written = 0
+        skipped_dupes = 0
+
+        for pin_item in pin_data:
+            pin_id = safe_get(pin_item, "id") or safe_get(pin_item, "pin_id", "")
+            full = full_pin_data.get(pin_id, {})
+
+            # Skip if already logged (dedup for reruns)
+            source_post = safe_get(full, "source_post_id", "")
+            if (pin_id and pin_id in existing_ids) or (source_post and source_post in existing_ids):
+                skipped_dupes += 1
+                continue
+
+            entry = {
+                "date": today_str,
+                "posted_date": today_str,  # weekly_analysis.py filters on this field
+                "schedule_id": pin_id,  # Per-pin unique ID (e.g., "W9-01") for dedup
+                "pin_id": None,  # Set when actually posted to Pinterest
+                "blog_slug": safe_get(full, "blog_slug", ""),
+                "blog_title": safe_get(full, "title") or safe_get(pin_item, "title", ""),
+                "topic_summary": _build_topic_summary(full),
+                "pillar": safe_get(full, "pillar") or safe_get(pin_item, "pillar"),
+                "content_type": safe_get(full, "content_type", ""),
+                "funnel_layer": safe_get(full, "funnel_layer", "discovery"),
+                "template": safe_get(full, "template", ""),
+                "board": safe_get(full, "board_name", ""),
+                "primary_keyword": safe_get(full, "primary_keyword", ""),
+                "secondary_keywords": safe_get(full, "secondary_keywords", []),
+                "image_source": safe_get(full, "image_source", ""),
+                "image_id": safe_get(full, "image_id", ""),
+                "pin_type": safe_get(full, "pin_type", "primary"),
+                "treatment_number": safe_get(full, "treatment_number", 1),
+                "source_post_id": safe_get(full, "source_post_id", ""),
+                "impressions": 0,
+                "saves": 0,
+                "outbound_clicks": 0,
+            }
+
+            append_content_log_entry(entry)
+            entries_written += 1
+
+        if skipped_dupes:
+            logger.info("Skipped %d duplicate entries in content-log.jsonl", skipped_dupes)
+        logger.info("Appended %d entries to content-log.jsonl", entries_written)
+        return entries_written
+
+
+def _build_topic_summary(pin_data: dict) -> str:
+    """
+    Build a topic summary string from pin data for the content log.
+
+    Args:
+        pin_data: Full pin data dict.
+
+    Returns:
+        str: Brief topic summary.
+    """
+    parts = []
+
+    title = safe_get(pin_data, "title", "")
+    if title:
+        parts.append(title)
+
+    primary_kw = safe_get(pin_data, "primary_keyword", "")
+    if primary_kw and primary_kw.lower() not in title.lower():
+        parts.append(primary_kw)
+
+    return ", ".join(parts)[:200] if parts else ""
+
+
+if __name__ == "__main__":
+    import sys
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
+
+    mode = sys.argv[1] if len(sys.argv) > 1 else "preview"
+    deployer = BlogDeployer()
+
+    if mode == "preview":
+        print("Deploying approved content to preview (develop branch)...")
+        results = deployer.deploy_to_preview()
+        print(
+            f"Preview deploy: {len(results.get('blog_deployed', []))} blog posts to develop, "
+            f"{results.get('pins_saved', 0)} pins saved for scheduling"
+        )
+    elif mode == "promote":
+        print("Promoting content to production (main branch)...")
+        results = deployer.promote_to_production()
+        print(
+            f"Production: merged develop -> main, "
+            f"{results.get('pins_scheduled', 0)} pins scheduled"
+        )
+    else:
+        print(f"Unknown mode: {mode}. Use 'preview' or 'promote'.")
+        sys.exit(1)
