@@ -174,7 +174,7 @@ def generate_pin_content(
                 hero_image_path=image_path,
                 headline=headline,
                 subtitle=subtitle,
-                variant=pin_spec.get("template_variant", 1),
+                variant=pin_spec.get("template_variant") or 1,
                 output_path=PIN_OUTPUT_DIR / f"{pin_id}.png",
                 extra_context=extra_context,
             )
@@ -217,10 +217,10 @@ def generate_pin_content(
                 "content_type": pin_spec.get("content_type"),
                 "primary_keyword": pin_spec.get("primary_keyword", ""),
                 "secondary_keywords": pin_spec.get("secondary_keywords", []),
-                "treatment_number": pin_spec.get("treatment_number", 1),
+                "treatment_number": pin_spec.get("treatment_number") or 1,
                 "source_post_id": pin_spec.get("source_post_id", ""),
                 "funnel_layer": pin_spec.get("funnel_layer", "discovery"),
-                "image_retries": quality_meta.get("image_retries", 0),
+                "image_retries": quality_meta.get("image_retries") or 0,
             }
 
             # Inherit pillar/content_type from parent blog post if missing
@@ -724,9 +724,9 @@ def source_ai_image(
         if isinstance(parsed, dict) and "image_prompt" in parsed:
             image_prompt = parsed["image_prompt"]
         else:
-            image_prompt = image_prompt_raw
+            image_prompt = cleaned
     except (json.JSONDecodeError, KeyError):
-        image_prompt = image_prompt_raw
+        image_prompt = cleaned
 
     # If reviewer feedback exists, append it as critical guidance
     if regen_feedback:

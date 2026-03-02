@@ -312,7 +312,7 @@ class ClaudeAPI:
             "topic": post_spec.get("topic", ""),
             "plan_theme": post_spec.get("topic", ""),  # alias for weekly-plan template
             "primary_keyword": post_spec.get("primary_keyword", ""),
-            "secondary_keywords": post_spec.get("secondary_keywords", []),
+            "secondary_keywords": post_spec.get("secondary_keywords") or [],
             "recipes": post_spec.get("recipes", "See topic description"),
             "include_recipes": str(post_spec.get("include_recipes", False)),
             "pillar": str(post_spec.get("pillar", "")),
@@ -373,11 +373,11 @@ class ClaudeAPI:
         template = self.load_prompt_template("image_prompt.md")
 
         context = {
-            "pin_topic": pin_spec.get("pin_topic", pin_spec.get("topic", "")),
-            "content_type": pin_spec.get("content_type", ""),
-            "primary_keyword": pin_spec.get("primary_keyword", ""),
-            "pin_template": pin_spec.get("pin_template", ""),
-            "pillar": str(pin_spec.get("pillar", "")),
+            "pin_topic": pin_spec.get("pin_topic") or pin_spec.get("topic") or "",
+            "content_type": pin_spec.get("content_type") or "",
+            "primary_keyword": pin_spec.get("primary_keyword") or "",
+            "pin_template": pin_spec.get("pin_template") or "",
+            "pillar": str(pin_spec.get("pillar") or ""),
         }
 
         prompt = self._render_template(template, context)
@@ -402,7 +402,7 @@ class ClaudeAPI:
                 f"addresses this feedback."
             )
 
-        logger.info("Generating AI image prompt for: %s", pin_spec.get("topic", "unknown")[:50])
+        logger.info("Generating AI image prompt for: %s", (pin_spec.get("pin_topic") or pin_spec.get("topic") or "unknown")[:50])
         try:
             return call_gpt5_mini(prompt=prompt, system=system_msg, max_tokens=500, temperature=0.8)
         except Exception as e:
