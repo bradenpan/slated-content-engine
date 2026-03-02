@@ -10,12 +10,12 @@
     "error": null
   },
   "W10-P02": {
-    "slug": "weekly-plan-5-easy-weeknight-meals-one-grocery-list",
+    "slug": "weekly-plan-family-dinners-busy-weeknights",
     "title": "This Week's Family Dinner Plan — 5 Easy Weeknight Meals, One Grocery List",
-    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/weekly-plan-5-easy-weeknight-meals-one-grocery-list.mdx",
+    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/weekly-plan-family-dinners-busy-weeknights.mdx",
     "pillar": 1,
     "content_type": "weekly-plan",
-    "hero_image": "/assets/blog/weekly-plan-5-easy-weeknight-meals-one-grocery-list.jpg",
+    "hero_image": "/assets/blog/weekly-plan-family-dinners-busy-weeknights.jpg",
     "status": "success",
     "error": null
   },
@@ -40,12 +40,12 @@
     "error": null
   },
   "W10-P05": {
-    "slug": "dinner-ideas-picky-eaters-family-meal-planning-system",
-    "title": "Dinner Ideas for Picky Eaters: A Family Meal Planning System That Gives Everyone a Vote",
-    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/dinner-ideas-picky-eaters-family-meal-planning-system.mdx",
+    "slug": "dinner-ideas-for-picky-eaters-family-planning-system",
+    "title": "Dinner Ideas for Picky Eaters: A Family Planning System That Gives Everyone a Vote",
+    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/dinner-ideas-for-picky-eaters-family-planning-system.mdx",
     "pillar": 2,
     "content_type": "guide",
-    "hero_image": "/assets/blog/dinner-ideas-picky-eaters-family-meal-planning-system.jpg",
+    "hero_image": "/assets/blog/dinner-ideas-for-picky-eaters-family-planning-system.jpg",
     "status": "success",
     "error": null
   },
@@ -61,7 +61,7 @@
   },
   "W10-P07": {
     "slug": "one-pan-honey-mustard-pork-tenderloin",
-    "title": "One-Pan Honey Mustard Pork Tenderloin — Simple Dinner Recipes for Busy Nights",
+    "title": "One-Pan Honey Mustard Pork Tenderloin — A Simple Dinner Recipe for Busy Nights",
     "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/one-pan-honey-mustard-pork-tenderloin.mdx",
     "pillar": 3,
     "content_type": "recipe",
@@ -91,7 +91,7 @@
   },
   "W10-P10": {
     "slug": "slow-cooker-white-bean-kale-soup",
-    "title": "Slow Cooker White Bean and Kale Soup — Easy Gluten Free Family Dinner",
+    "title": "Slow Cooker White Bean and Kale Soup — A Gluten Free Family Dinner That Makes Itself",
     "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/slow-cooker-white-bean-kale-soup.mdx",
     "pillar": 5,
     "content_type": "recipe",
