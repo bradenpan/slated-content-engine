@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-03-02T09:35:54.275493",
+  "generated_at": "2026-03-02T14:45:43.703855",
   "date_range": {
-    "start": "2026-01-31",
+    "start": "2026-02-23",
     "end": "2026-03-02"
   },
   "pins_tracked": 20,
@@ -231,248 +231,18 @@
     "all": {
       "summary_metrics": {
         "SAVE": 0,
-        "IMPRESSION": 12,
         "PIN_CLICK": 0,
+        "IMPRESSION": 12,
         "OUTBOUND_CLICK": 0
       },
       "daily_metrics": [
-        {
-          "date": "2026-01-31",
-          "data_status": "BEFORE_BUSINESS_CREATED",
-          "metrics": {
-            "IMPRESSION": 0.0,
-            "SAVE": 0.0,
-            "PIN_CLICK": 0.0,
-            "OUTBOUND_CLICK": 0.0
-          }
-        },
-        {
-          "date": "2026-02-01",
-          "data_status": "BEFORE_BUSINESS_CREATED",
-          "metrics": {
-            "IMPRESSION": 0.0,
-            "SAVE": 0.0,
-            "PIN_CLICK": 0.0,
-            "OUTBOUND_CLICK": 0.0
-          }
-        },
-        {
-          "date": "2026-02-02",
-          "data_status": "BEFORE_BUSINESS_CREATED",
-          "metrics": {
-            "IMPRESSION": 0.0,
-            "SAVE": 0.0,
-            "PIN_CLICK": 0.0,
-            "OUTBOUND_CLICK": 0.0
-          }
-        },
-        {
-          "date": "2026-02-03",
-          "data_status": "BEFORE_BUSINESS_CREATED",
-          "metrics": {
-            "IMPRESSION": 0.0,
-            "SAVE": 0.0,
-            "PIN_CLICK": 0.0,
-            "OUTBOUND_CLICK": 0.0
-          }
-        },
-        {
-          "date": "2026-02-04",
-          "data_status": "BEFORE_BUSINESS_CREATED",
-          "metrics": {
-            "IMPRESSION": 0.0,
-            "SAVE": 0.0,
-            "PIN_CLICK": 0.0,
-            "OUTBOUND_CLICK": 0.0
-          }
-        },
-        {
-          "date": "2026-02-05",
-          "data_status": "BEFORE_BUSINESS_CREATED",
-          "metrics": {
-            "IMPRESSION": 0.0,
-            "SAVE": 0.0,
-            "PIN_CLICK": 0.0,
-            "OUTBOUND_CLICK": 0.0
-          }
-        },
-        {
-          "date": "2026-02-06",
-          "data_status": "BEFORE_BUSINESS_CREATED",
-          "metrics": {
-            "IMPRESSION": 0.0,
-            "SAVE": 0.0,
-            "PIN_CLICK": 0.0,
-            "OUTBOUND_CLICK": 0.0
-          }
-        },
-        {
-          "date": "2026-02-07",
-          "data_status": "BEFORE_BUSINESS_CREATED",
-          "metrics": {
-            "IMPRESSION": 0.0,
-            "SAVE": 0.0,
-            "PIN_CLICK": 0.0,
-            "OUTBOUND_CLICK": 0.0
-          }
-        },
-        {
-          "date": "2026-02-08",
-          "data_status": "BEFORE_BUSINESS_CREATED",
-          "metrics": {
-            "IMPRESSION": 0.0,
-            "SAVE": 0.0,
-            "PIN_CLICK": 0.0,
-            "OUTBOUND_CLICK": 0.0
-          }
-        },
-        {
-          "date": "2026-02-09",
-          "data_status": "BEFORE_BUSINESS_CREATED",
-          "metrics": {
-            "IMPRESSION": 0.0,
-            "SAVE": 0.0,
-            "PIN_CLICK": 0.0,
-            "OUTBOUND_CLICK": 0.0
-          }
-        },
-        {
-          "date": "2026-02-10",
-          "data_status": "BEFORE_BUSINESS_CREATED",
-          "metrics": {
-            "IMPRESSION": 0.0,
-            "SAVE": 0.0,
-            "PIN_CLICK": 0.0,
-            "OUTBOUND_CLICK": 0.0
-          }
-        },
-        {
-          "date": "2026-02-11",
-          "data_status": "BEFORE_BUSINESS_CREATED",
-          "metrics": {
-            "IMPRESSION": 0.0,
-            "SAVE": 0.0,
-            "PIN_CLICK": 0.0,
-            "OUTBOUND_CLICK": 0.0
-          }
-        },
-        {
-          "date": "2026-02-12",
-          "data_status": "BEFORE_BUSINESS_CREATED",
-          "metrics": {
-            "IMPRESSION": 0.0,
-            "SAVE": 0.0,
-            "PIN_CLICK": 0.0,
-            "OUTBOUND_CLICK": 0.0
-          }
-        },
-        {
-          "date": "2026-02-13",
-          "data_status": "BEFORE_BUSINESS_CREATED",
-          "metrics": {
-            "IMPRESSION": 0.0,
-            "SAVE": 0.0,
-            "PIN_CLICK": 0.0,
-            "OUTBOUND_CLICK": 0.0
-          }
-        },
-        {
-          "date": "2026-02-14",
-          "data_status": "BEFORE_BUSINESS_CREATED",
-          "metrics": {
-            "IMPRESSION": 0.0,
-            "SAVE": 0.0,
-            "PIN_CLICK": 0.0,
-            "OUTBOUND_CLICK": 0.0
-          }
-        },
-        {
-          "date": "2026-02-15",
-          "data_status": "BEFORE_BUSINESS_CREATED",
-          "metrics": {
-            "IMPRESSION": 0.0,
-            "SAVE": 0.0,
-            "PIN_CLICK": 0.0,
-            "OUTBOUND_CLICK": 0.0
-          }
-        },
-        {
-          "date": "2026-02-16",
-          "data_status": "BEFORE_BUSINESS_CREATED",
-          "metrics": {
-            "IMPRESSION": 0.0,
-            "SAVE": 0.0,
-            "PIN_CLICK": 0.0,
-            "OUTBOUND_CLICK": 0.0
-          }
-        },
-        {
-          "date": "2026-02-17",
-          "data_status": "BEFORE_BUSINESS_CREATED",
-          "metrics": {
-            "IMPRESSION": 0.0,
-            "SAVE": 0.0,
-            "PIN_CLICK": 0.0,
-            "OUTBOUND_CLICK": 0.0
-          }
-        },
-        {
-          "date": "2026-02-18",
-          "data_status": "BEFORE_BUSINESS_CREATED",
-          "metrics": {
-            "IMPRESSION": 0.0,
-            "SAVE": 0.0,
-            "PIN_CLICK": 0.0,
-            "OUTBOUND_CLICK": 0.0
-          }
-        },
-        {
-          "date": "2026-02-19",
-          "data_status": "BEFORE_BUSINESS_CREATED",
-          "metrics": {
-            "IMPRESSION": 0.0,
-            "SAVE": 0.0,
-            "PIN_CLICK": 0.0,
-            "OUTBOUND_CLICK": 0.0
-          }
-        },
-        {
-          "date": "2026-02-20",
-          "data_status": "BEFORE_BUSINESS_CREATED",
-          "metrics": {
-            "IMPRESSION": 0.0,
-            "SAVE": 0.0,
-            "PIN_CLICK": 0.0,
-            "OUTBOUND_CLICK": 0.0
-          }
-        },
-        {
-          "date": "2026-02-21",
-          "data_status": "READY",
-          "metrics": {
-            "SAVE": 0,
-            "IMPRESSION": 0,
-            "PIN_CLICK": 0,
-            "OUTBOUND_CLICK": 0
-          }
-        },
-        {
-          "date": "2026-02-22",
-          "data_status": "READY",
-          "metrics": {
-            "SAVE": 0,
-            "IMPRESSION": 0,
-            "PIN_CLICK": 0,
-            "OUTBOUND_CLICK": 0
-          }
-        },
         {
           "date": "2026-02-23",
           "data_status": "READY",
           "metrics": {
             "SAVE": 0,
-            "IMPRESSION": 0,
             "PIN_CLICK": 0,
+            "IMPRESSION": 0,
             "OUTBOUND_CLICK": 0
           }
         },
@@ -481,8 +251,8 @@
           "data_status": "READY",
           "metrics": {
             "SAVE": 0,
-            "IMPRESSION": 0,
             "PIN_CLICK": 0,
+            "IMPRESSION": 0,
             "OUTBOUND_CLICK": 0
           }
         },
@@ -491,8 +261,8 @@
           "data_status": "READY",
           "metrics": {
             "SAVE": 0,
-            "IMPRESSION": 4,
             "PIN_CLICK": 0,
+            "IMPRESSION": 4,
             "OUTBOUND_CLICK": 0
           }
         },
@@ -501,8 +271,8 @@
           "data_status": "READY",
           "metrics": {
             "SAVE": 0,
-            "IMPRESSION": 4,
             "PIN_CLICK": 0,
+            "IMPRESSION": 4,
             "OUTBOUND_CLICK": 0
           }
         },
@@ -511,8 +281,8 @@
           "data_status": "READY",
           "metrics": {
             "SAVE": 0,
-            "IMPRESSION": 0,
             "PIN_CLICK": 0,
+            "IMPRESSION": 0,
             "OUTBOUND_CLICK": 0
           }
         },
@@ -521,8 +291,8 @@
           "data_status": "READY",
           "metrics": {
             "SAVE": 0,
-            "IMPRESSION": 4,
             "PIN_CLICK": 0,
+            "IMPRESSION": 4,
             "OUTBOUND_CLICK": 0
           }
         },
