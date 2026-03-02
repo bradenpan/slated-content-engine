@@ -343,7 +343,7 @@ class ClaudeAPI:
             "Follow the brand voice guidelines exactly. Write practically, not preachy."
         )
 
-        logger.info("Generating %s blog post: %s", post_type, post_spec.get("topic", "unknown"))
+        logger.info("Generating %s blog post: %s", post_type, safe_get(post_spec, "topic", "unknown"))
         response_text = self._call_api(
             prompt=prompt,
             system=system,
@@ -390,7 +390,7 @@ class ClaudeAPI:
             "For food: prefer overhead/flat-lay compositions, warm lighting, rustic surfaces."
         )
 
-        subject_hint = pin_spec.get("_image_subject_hint", "")
+        subject_hint = safe_get(pin_spec, "_image_subject_hint", "")
         if subject_hint:
             system_msg += (
                 f" The image should depict: {subject_hint}."
@@ -453,15 +453,15 @@ class ClaudeAPI:
         # If reviewer feedback is provided, attach it to the posts for context
         if reviewer_feedback:
             for post in posts_to_replace:
-                pid = post.get("post_id", "")
-                feedback = reviewer_feedback.get(pid, "")
+                pid = safe_get(post, "post_id", "")
+                feedback = safe_get(reviewer_feedback, pid, "")
                 if feedback:
                     post["_reviewer_feedback"] = feedback
 
         # Format recent topics as a bullet list
         recent_topics_text = "\n".join(f"- {t}" for t in recent_topics) if recent_topics else "None (first run)."
         kept_topics_text = "\n".join(
-            f"- {t}" for t in plan_context.get("kept_post_topics", []) if t
+            f"- {t}" for t in safe_get(plan_context, "kept_post_topics", []) if t
         ) or "None."
         neg_kw_text = "\n".join(f"- {kw}" for kw in negative_keywords) if negative_keywords else "None."
 
@@ -472,8 +472,8 @@ class ClaudeAPI:
             "NEGATIVE_KEYWORDS": neg_kw_text,
             "POSTS_TO_REPLACE": json.dumps(posts_to_replace, indent=2),
             "SLOTS_TO_FILL": json.dumps(slots_to_fill, indent=2),
-            "BOARD_COUNTS": json.dumps(plan_context.get("kept_pin_boards", {})),
-            "PILLAR_COUNTS": json.dumps(plan_context.get("kept_pin_pillars", {})),
+            "BOARD_COUNTS": json.dumps(safe_get(plan_context, "kept_pin_boards", {})),
+            "PILLAR_COUNTS": json.dumps(safe_get(plan_context, "kept_pin_pillars", {})),
         }
 
         prompt = self._render_template(template, context)
@@ -539,22 +539,22 @@ class ClaudeAPI:
 
         context = {
             "this_week_data": {
-                "week_summary": performance_data.get("week_summary", {}),
-                "top_pins": performance_data.get("top_pins", []),
-                "bottom_pins": performance_data.get("bottom_pins", []),
-                "by_content_type": performance_data.get("by_content_type", {}),
-                "by_template": performance_data.get("by_template", {}),
-                "by_image_source": performance_data.get("by_image_source", {}),
-                "by_pin_type": performance_data.get("by_pin_type", {}),
-                "plan_vs_recipe": performance_data.get("plan_vs_recipe", {}),
+                "week_summary": safe_get(performance_data, "week_summary", {}),
+                "top_pins": safe_get(performance_data, "top_pins", []),
+                "bottom_pins": safe_get(performance_data, "bottom_pins", []),
+                "by_content_type": safe_get(performance_data, "by_content_type", {}),
+                "by_template": safe_get(performance_data, "by_template", {}),
+                "by_image_source": safe_get(performance_data, "by_image_source", {}),
+                "by_pin_type": safe_get(performance_data, "by_pin_type", {}),
+                "plan_vs_recipe": safe_get(performance_data, "plan_vs_recipe", {}),
             },
             "last_week_analysis": previous_analysis or "No previous analysis available (first run).",
             "content_plan_vs_actual": content_plan or "No content plan data available.",
-            "per_pillar_metrics": performance_data.get("by_pillar", {}),
-            "per_keyword_metrics": performance_data.get("by_keyword", {}),
-            "per_board_metrics": performance_data.get("by_board", {}),
-            "per_funnel_layer_metrics": performance_data.get("by_funnel_layer", {}),
-            "account_trends": performance_data.get("account_trends", {}),
+            "per_pillar_metrics": safe_get(performance_data, "by_pillar", {}),
+            "per_keyword_metrics": safe_get(performance_data, "by_keyword", {}),
+            "per_board_metrics": safe_get(performance_data, "by_board", {}),
+            "per_funnel_layer_metrics": safe_get(performance_data, "by_funnel_layer", {}),
+            "account_trends": safe_get(performance_data, "account_trends", {}),
         }
 
         prompt = self._render_template(template, context)
@@ -602,7 +602,7 @@ class ClaudeAPI:
         template = self.load_prompt_template("monthly_review.md")
 
         # Build the review period label (e.g., "February 2026")
-        review_period = monthly_data.get("review_period", "")
+        review_period = safe_get(monthly_data, "review_period", "")
         if review_period:
             try:
                 y, m = review_period.split("-")
@@ -617,11 +617,11 @@ class ClaudeAPI:
             "monthly_data": monthly_data,
             "all_weekly_analyses": "\n\n---\n\n".join(weekly_analyses) if weekly_analyses else "No weekly analyses available for this month.",
             "current_strategy_summary": current_strategy or "No strategy document loaded.",
-            "pillar_performance": monthly_data.get("by_pillar", {}),
-            "keyword_performance": monthly_data.get("by_keyword", {}),
-            "board_performance": monthly_data.get("by_board", {}),
-            "content_type_performance": monthly_data.get("by_content_type", {}),
-            "image_source_performance": monthly_data.get("by_image_source", {}),
+            "pillar_performance": safe_get(monthly_data, "by_pillar", {}),
+            "keyword_performance": safe_get(monthly_data, "by_keyword", {}),
+            "board_performance": safe_get(monthly_data, "by_board", {}),
+            "content_type_performance": safe_get(monthly_data, "by_content_type", {}),
+            "image_source_performance": safe_get(monthly_data, "by_image_source", {}),
             "seasonal_context": seasonal_context or "No seasonal calendar data available.",
             "month_year": month_year,
         }

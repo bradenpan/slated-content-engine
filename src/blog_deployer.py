@@ -95,13 +95,13 @@ class BlogDeployer:
 
         approved_blogs = [
             item for item in approvals
-            if item.get("type") == "blog"
-            and item.get("status") in ("approved", "use_ai_image")
+            if safe_get(item, "type") == "blog"
+            and safe_get(item, "status") in ("approved", "use_ai_image")
         ]
         approved_pins = [
             item for item in approvals
-            if item.get("type") == "pin"
-            and item.get("status") in ("approved", "use_ai_image")
+            if safe_get(item, "type") == "pin"
+            and safe_get(item, "status") in ("approved", "use_ai_image")
         ]
 
         logger.info(
@@ -224,7 +224,7 @@ class BlogDeployer:
 
         # Step 3: Verify blog post URLs on production
         deployed_slugs = [
-            b.get("slug") or b.get("id", "") for b in approved_blogs
+            safe_get(b, "slug") or safe_get(b, "id", "") for b in approved_blogs
         ]
         if deployed_slugs:
             results["verification_results"] = self.verify_urls(
@@ -273,7 +273,7 @@ class BlogDeployer:
             original_count = len(approved_pins)
             approved_pins = [
                 pin for pin in approved_pins
-                if pin.get("blog_slug", pin.get("slug", "")) not in failed_slugs
+                if (safe_get(pin, "blog_slug") or safe_get(pin, "slug", "")) not in failed_slugs
             ]
             filtered_count = original_count - len(approved_pins)
             if filtered_count:
@@ -366,7 +366,7 @@ class BlogDeployer:
         # Build the list of posts for batch commit
         posts_for_commit = []
         for blog_item in approved_blogs:
-            slug = blog_item.get("slug") or blog_item.get("id", "")
+            slug = safe_get(blog_item, "slug") or safe_get(blog_item, "id", "")
 
             # Read the generated MDX file
             mdx_path = GENERATED_BLOG_DIR / f"{slug}.mdx"

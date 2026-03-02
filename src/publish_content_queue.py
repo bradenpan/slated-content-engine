@@ -288,16 +288,16 @@ def _upload_blog_hero_images(
     # Build post_id -> first pin mapping (each blog may have multiple pins)
     post_to_pin: dict[str, dict] = {}
     for pin in generated_pins:
-        source_id = pin.get("source_post_id", "")
+        source_id = safe_get(pin, "source_post_id", "")
         if source_id and source_id not in post_to_pin:
             post_to_pin[source_id] = pin
 
     urls: dict[str, str] = {}
     for post_id, post_data in blog_results.items():
-        if post_data.get("status") != "success":
+        if safe_get(post_data, "status") != "success":
             continue
 
-        slug = post_data.get("slug", "")
+        slug = safe_get(post_data, "slug", "")
         pin = post_to_pin.get(post_id)
 
         hero_path = _find_hero_image(slug, pin, pins_dir)
@@ -347,7 +347,7 @@ def _find_hero_image(
 
     # Try pin_id-named hero image
     if pin:
-        pin_id = pin.get("pin_id", "")
+        pin_id = safe_get(pin, "pin_id", "")
         if pin_id:
             for ext in extensions:
                 candidate = pins_dir / f"{pin_id}-hero{ext}"
@@ -355,7 +355,7 @@ def _find_hero_image(
                     return candidate
 
         # Try the hero_image_path stored in pin data
-        hero_path_str = pin.get("hero_image_path")
+        hero_path_str = safe_get(pin, "hero_image_path")
         if hero_path_str:
             hero_path = Path(hero_path_str)
             if hero_path.exists():
@@ -395,7 +395,7 @@ def _extract_frontmatter_description(mdx_path: Path) -> str:
         if not isinstance(frontmatter, dict):
             return ""
 
-        description = frontmatter.get("description", "")
+        description = safe_get(frontmatter, "description", "")
         return str(description)[:500]
 
     except (ValueError, yaml.YAMLError, OSError) as e:
@@ -411,8 +411,8 @@ def _build_quality_note(pin: dict) -> str:
         "AI generated"             — generated first try
         "AI generated (retry 1)"   — retried once
     """
-    retries = pin.get("image_retries", 0)
-    source = pin.get("image_source", "")
+    retries = safe_get(pin, "image_retries", 0)
+    source = safe_get(pin, "image_source", "")
 
     if source == "template":
         return ""
@@ -434,7 +434,7 @@ def _compute_quality_stats(pins: list[dict]) -> dict:
     template_only = 0
 
     for pin in pins:
-        source = pin.get("image_source", "")
+        source = safe_get(pin, "image_source", "")
         if source == "ai_generated":
             ai_generated += 1
         elif source == "template":

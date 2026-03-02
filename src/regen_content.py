@@ -100,7 +100,7 @@ def regen(
         except (json.JSONDecodeError, OSError) as e:
             logger.error("Failed to load pin generation results: %s", e)
 
-    generated_pins = pin_results.get("generated", [])
+    generated_pins = safe_get(pin_results, "generated", [])
     pin_index = {p["pin_id"]: p for p in generated_pins if "pin_id" in p}
 
     # Load blog generation results (for blog image regen)
@@ -119,8 +119,8 @@ def regen(
     for req in requests:
         item_id = req["id"]
         regen_type = req["status"]  # regen_image, regen_copy, or regen
-        feedback = req.get("feedback", "")
-        item_type = req.get("type", "pin")
+        feedback = safe_get(req, "feedback", "")
+        item_type = safe_get(req, "type", "pin")
         row_index = req["row_index"]
 
         logger.info(
@@ -208,11 +208,11 @@ def regen(
                 })
                 continue
 
-            new_image_url = blog_result.get("image_url")
-            new_score = blog_result.get("quality_score")
+            new_image_url = safe_get(blog_result, "image_url")
+            new_score = safe_get(blog_result, "quality_score")
 
             # Update blog_results in-place for later save
-            if blog_result.get("image_source"):
+            if safe_get(blog_result, "image_source"):
                 blog_data["_hero_image_source"] = blog_result["image_source"]
                 blog_data["_hero_image_id"] = safe_get(blog_result, "image_id", "")
                 blog_data["_hero_quality_score"] = new_score
@@ -325,7 +325,7 @@ def regen(
             continue
 
         new_pin_data = result["pin_data"]
-        new_image_url = result.get("image_url")
+        new_image_url = safe_get(result, "image_url")
         new_score = None
 
         # Step 4: Update pin-generation-results.json in-place
@@ -340,9 +340,9 @@ def regen(
 
         # Build quality note for the Notes column
         quality_note = _build_regen_quality_note(new_pin_data)
-        if new_pin_data.get("_copy_regen_no_rerender"):
+        if safe_get(new_pin_data, "_copy_regen_no_rerender"):
             quality_note += " | WARNING: copy updated but pin image not re-rendered (hero unavailable)"
-        if new_pin_data.get("_copy_regen_failed"):
+        if safe_get(new_pin_data, "_copy_regen_failed"):
             quality_note += " | WARNING: copy regen failed, original copy retained"
             update_kwargs["feedback"] = feedback  # preserve feedback for retry
         update_kwargs["notes"] = quality_note
@@ -364,9 +364,9 @@ def regen(
             logger.error("Failed to update Sheet row for %s: %s", item_id, e)
 
         warning = None
-        if new_pin_data.get("_copy_regen_no_rerender"):
+        if safe_get(new_pin_data, "_copy_regen_no_rerender"):
             warning = "Copy updated but pin image not re-rendered (hero unavailable)"
-        if new_pin_data.get("_copy_regen_failed"):
+        if safe_get(new_pin_data, "_copy_regen_failed"):
             warning = "Copy regen failed, original copy retained"
         regen_results.append({
             "pin_id": item_id,
@@ -402,7 +402,7 @@ def regen(
                 schedule = json.loads(schedule_path.read_text(encoding="utf-8"))
                 # Build lookup from updated pin results
                 updated_pins = {}
-                for pin in pin_results.get("generated", []):
+                for pin in safe_get(pin_results, "generated", []):
                     if pin["pin_id"] in regen_pin_ids:
                         updated_pins[pin["pin_id"]] = pin
 
@@ -795,11 +795,11 @@ def _update_pin_results(
         "regen_type": regen_type,
         "feedback": feedback,
         "timestamp": datetime.now().isoformat(),
-        "previous_image_source": pin_data.get("image_source"),
-        "previous_title": pin_data.get("title"),
+        "previous_image_source": safe_get(pin_data, "image_source"),
+        "previous_title": safe_get(pin_data, "title"),
     }
 
-    regen_history = pin_data.get("_regen_history", [])
+    regen_history = safe_get(pin_data, "_regen_history", [])
     regen_history.append(history_entry)
 
     # Copy new values over
@@ -818,7 +818,7 @@ def _update_pin_results(
 def _build_regen_quality_note(pin_data: dict) -> str:
     """Build a quality note for a regenerated pin's Notes column."""
     note = "Regen | AI generated"
-    retries = pin_data.get("image_retries", 0)
+    retries = safe_get(pin_data, "image_retries", 0)
     if retries > 0:
         note += f" (retry {retries})"
     return note

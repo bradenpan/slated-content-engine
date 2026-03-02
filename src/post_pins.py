@@ -365,7 +365,7 @@ def load_scheduled_pins(date_str: str, time_slot: str) -> list[dict]:
         return []
 
     # The schedule is a list of pin objects with scheduled_date and scheduled_slot
-    pins = schedule if isinstance(schedule, list) else schedule.get("pins", [])
+    pins = schedule if isinstance(schedule, list) else safe_get(schedule, "pins", [])
 
     # Match pins for this date and slot. The evening slot is special:
     # Claude assigns "evening-1" and "evening-2" but the workflow calls with "evening".
@@ -412,8 +412,8 @@ def build_board_map(pinterest: PinterestAPI) -> dict[str, str]:
 
     board_map = {}
     for board in boards:
-        name = board.get("name", "")
-        board_id = board.get("id", "")
+        name = safe_get(board, "name", "")
+        board_id = safe_get(board, "id", "")
         if name and board_id:
             board_map[name] = board_id
             # Also store lowercase version for fuzzy matching
@@ -562,7 +562,7 @@ def _create_pin_with_retry(
                 image_url=image_url,
                 alt_text=alt_text,
             )
-            pin_id_result = result.get("id", "")
+            pin_id_result = safe_get(result, "id", "")
             if not pin_id_result:
                 raise PinterestAPIError(
                     0, "Pinterest API returned success but no pin ID in response"
@@ -628,8 +628,8 @@ def _record_failure(pin_id: str, error_msg: str) -> None:
         except (json.JSONDecodeError, OSError):
             failures = {}
 
-    pin_failures = failures.get(pin_id, {"count": 0, "errors": []})
-    pin_failures["count"] = pin_failures.get("count", 0) + 1
+    pin_failures = safe_get(failures, pin_id, {"count": 0, "errors": []})
+    pin_failures["count"] = safe_get(pin_failures, "count", 0) + 1
     pin_failures["errors"].append({
         "timestamp": datetime.now().isoformat(),
         "error": error_msg[:500],
@@ -685,9 +685,9 @@ if __name__ == "__main__":
         pins = load_scheduled_pins(today_str, slot)
         print(f"Scheduled pins: {len(pins)}")
         for pin in pins:
-            print(f"  - {pin.get('pin_id')}: {pin.get('title', 'N/A')[:50]}")
-            print(f"    Board: {pin.get('target_board')}")
-            print(f"    Already posted: {is_pin_posted(pin.get('pin_id', ''))}")
+            print(f"  - {safe_get(pin, 'pin_id')}: {safe_get(pin, 'title', 'N/A')[:50]}")
+            print(f"    Board: {safe_get(pin, 'target_board')}")
+            print(f"    Already posted: {is_pin_posted(safe_get(pin, 'pin_id', ''))}")
     else:
         print(f"Posting pins for {slot} slot...")
         results = post_pins(slot)

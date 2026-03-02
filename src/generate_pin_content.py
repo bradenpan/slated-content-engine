@@ -159,11 +159,11 @@ def generate_pin_content(
 
             # Extract headline/subtitle from text_overlay (may be dict or str)
             if isinstance(text_overlay, dict):
-                headline = text_overlay.get("headline", "")
-                subtitle = text_overlay.get("sub_text", "")
+                headline = safe_get(text_overlay, "headline", "")
+                subtitle = safe_get(text_overlay, "sub_text", "")
             else:
                 headline = str(text_overlay) if text_overlay else ""
-                subtitle = pin_copy.get("subtitle", "")
+                subtitle = safe_get(pin_copy, "subtitle", "")
 
             # Build template-specific context for non-recipe templates
             extra_context = build_template_context(
@@ -192,7 +192,7 @@ def generate_pin_content(
 
             # Build the blog post link (bare URL — UTM params added at posting
             # time by post_pins.py:construct_utm_link to avoid double-tagging)
-            board_name = pin_spec.get("target_board", "")
+            board_name = safe_get(pin_spec, "target_board", "")
             link = f"{BLOG_BASE_URL}/{blog_slug}" if blog_slug else BLOG_BASE_URL
 
             # Build the complete pin data
@@ -226,15 +226,15 @@ def generate_pin_content(
 
             # Inherit pillar/content_type from parent blog post if missing
             if pin_data["pillar"] is None or pin_data["content_type"] is None:
-                source_id = pin_spec.get("source_post_id", "")
+                source_id = safe_get(pin_spec, "source_post_id", "")
                 parent = blog_posts.get(source_id) or plan_post_meta.get(source_id) or {}
                 if pin_data["pillar"] is None:
-                    pin_data["pillar"] = parent.get("pillar")
+                    pin_data["pillar"] = safe_get(parent, "pillar")
                 if pin_data["content_type"] is None:
-                    pin_data["content_type"] = parent.get("content_type")
+                    pin_data["content_type"] = safe_get(parent, "content_type")
 
             generated_pins.append(pin_data)
-            logger.info("Generated pin %s: %s", pin_id, pin_copy.get("title", "")[:60])
+            logger.info("Generated pin %s: %s", pin_id, safe_get(pin_copy, "title", "")[:60])
 
         except Exception as e:
             logger.error("Failed to generate pin %s: %s", pin_id, e)
@@ -282,11 +282,11 @@ def generate_copy_batch(
         enriched = dict(spec)
 
         # Add blog post content context if available
-        source_id = spec.get("source_post_id", "")
+        source_id = safe_get(spec, "source_post_id", "")
         if source_id and source_id in blog_context:
             post_data = blog_context[source_id]
             # Include a summary of the blog post for context
-            mdx_content = post_data.get("mdx_content", "")
+            mdx_content = safe_get(post_data, "mdx_content", "")
             if mdx_content:
                 # Truncate to first 500 chars of body for context
                 body_start = mdx_content.find("---", 3)
@@ -329,15 +329,15 @@ def load_used_image_ids() -> list[str]:
                 continue
             try:
                 entry = json.loads(line)
-                entry_date_str = entry.get("posted_date", entry.get("date", ""))
+                entry_date_str = safe_get(entry, "posted_date") or safe_get(entry, "date", "")
                 try:
                     entry_date = datetime.strptime(entry_date_str, "%Y-%m-%d").date()
                 except (ValueError, TypeError):
                     continue
 
                 if entry_date >= ninety_days_ago:
-                    source = entry.get("image_source", "")
-                    img_id = entry.get("image_id", "")
+                    source = safe_get(entry, "image_source", "")
+                    img_id = safe_get(entry, "image_id", "")
                     if source and img_id:
                         image_ids.append(f"{source}:{img_id}")
             except json.JSONDecodeError:
@@ -440,7 +440,7 @@ def _generate_all_copy(
     # Process in batches of COPY_BATCH_SIZE
     for batch_start in range(0, len(pin_specs), COPY_BATCH_SIZE):
         batch = pin_specs[batch_start:batch_start + COPY_BATCH_SIZE]
-        batch_ids = [p.get("pin_id", f"pin-{batch_start + i}") for i, p in enumerate(batch)]
+        batch_ids = [safe_get(p, "pin_id", f"pin-{batch_start + i}") for i, p in enumerate(batch)]
 
         logger.info(
             "Generating copy for batch %d-%d: %s",
@@ -458,7 +458,7 @@ def _generate_all_copy(
 
             # Map results back to pin IDs
             for spec, result in zip(batch, batch_results):
-                pin_id = spec.get("pin_id", "")
+                pin_id = safe_get(spec, "pin_id", "")
                 if pin_id and result:
                     all_copy[pin_id] = result
         except Exception as e:
@@ -467,7 +467,7 @@ def _generate_all_copy(
             )
             # Generate copy individually as fallback
             for spec in batch:
-                pin_id = spec.get("pin_id", "")
+                pin_id = safe_get(spec, "pin_id", "")
                 try:
                     individual_results = generate_copy_batch(
                         claude=claude,
@@ -515,47 +515,47 @@ def build_template_context(
     if template_type != "recipe-pin" and image_path:
         context["background_image_url"] = str(image_path)
 
-    text_overlay = pin_copy.get("text_overlay", {})
+    text_overlay = safe_get(pin_copy, "text_overlay", {})
     if isinstance(text_overlay, dict):
-        overlay_headline = text_overlay.get("headline", "")
-        overlay_sub_text = text_overlay.get("sub_text", "")
+        overlay_headline = safe_get(text_overlay, "headline", "")
+        overlay_sub_text = safe_get(text_overlay, "sub_text", "")
     else:
         overlay_headline = str(text_overlay) if text_overlay else ""
         overlay_sub_text = ""
 
-    description = pin_copy.get("description", "")
-    pin_topic = pin_spec.get("pin_topic", "")
+    description = safe_get(pin_copy, "description", "")
+    pin_topic = safe_get(pin_spec, "pin_topic", "")
 
     if template_type == "recipe-pin":
         # Time badge — rendered in recipe-pin time badge element
-        if isinstance(text_overlay, dict) and text_overlay.get("time_badge"):
+        if isinstance(text_overlay, dict) and safe_get(text_overlay, "time_badge"):
             context["time_badge"] = text_overlay["time_badge"]
         # CTA text
-        if isinstance(text_overlay, dict) and text_overlay.get("cta_text"):
+        if isinstance(text_overlay, dict) and safe_get(text_overlay, "cta_text"):
             context["cta_text"] = text_overlay["cta_text"]
 
     elif template_type == "tip-pin":
         # Prefer structured bullets from text_overlay
-        if isinstance(text_overlay, dict) and text_overlay.get("bullet_1"):
+        if isinstance(text_overlay, dict) and safe_get(text_overlay, "bullet_1"):
             for i in range(1, 4):
-                context[f"bullet_{i}"] = text_overlay.get(f"bullet_{i}", "")
+                context[f"bullet_{i}"] = safe_get(text_overlay, f"bullet_{i}", "")
         else:
             # Fallback: extract from description
             bullets = _extract_bullets(description, overlay_sub_text, pin_topic)
             for i, bullet in enumerate(bullets[:3], 1):
                 context[f"bullet_{i}"] = bullet
         # Category label — injected into {{category_label}} in tip-pin template
-        if isinstance(text_overlay, dict) and text_overlay.get("category_label"):
+        if isinstance(text_overlay, dict) and safe_get(text_overlay, "category_label"):
             context["category_label"] = text_overlay["category_label"]
         else:
             context["category_label"] = "Tips & Advice"
         # CTA text (new field)
-        if isinstance(text_overlay, dict) and text_overlay.get("cta_text"):
+        if isinstance(text_overlay, dict) and safe_get(text_overlay, "cta_text"):
             context["cta_text"] = text_overlay["cta_text"]
 
     elif template_type == "listicle-pin":
         # Prefer structured list_items from text_overlay
-        if isinstance(text_overlay, dict) and text_overlay.get("list_items"):
+        if isinstance(text_overlay, dict) and safe_get(text_overlay, "list_items"):
             items = text_overlay["list_items"]
             # Enforce max 5 items on pin (with "...and more" for longer lists)
             if len(items) > 5:
@@ -567,36 +567,36 @@ def build_template_context(
             context["list_items"] = _extract_list_items(description, pin_topic)
 
         # Number: prefer explicit field, fall back to extraction from headline
-        if isinstance(text_overlay, dict) and text_overlay.get("number"):
+        if isinstance(text_overlay, dict) and safe_get(text_overlay, "number"):
             context["number"] = str(text_overlay["number"])
         else:
             context["number"] = _extract_leading_number(overlay_headline)
 
         # CTA text
-        if isinstance(text_overlay, dict) and text_overlay.get("cta_text"):
+        if isinstance(text_overlay, dict) and safe_get(text_overlay, "cta_text"):
             context["cta_text"] = text_overlay["cta_text"]
 
     elif template_type == "problem-solution-pin":
         # Prefer explicit problem_text/solution_text from text_overlay
-        if isinstance(text_overlay, dict) and text_overlay.get("problem_text"):
+        if isinstance(text_overlay, dict) and safe_get(text_overlay, "problem_text"):
             context["problem_text"] = text_overlay["problem_text"]
-            context["solution_text"] = text_overlay.get("solution_text", overlay_sub_text or "")
+            context["solution_text"] = safe_get(text_overlay, "solution_text", overlay_sub_text or "")
         else:
             # Fallback: headline = problem, sub_text = solution
             context["problem_text"] = overlay_headline
-            context["solution_text"] = overlay_sub_text or pin_copy.get("title", "")
+            context["solution_text"] = overlay_sub_text or safe_get(pin_copy, "title", "")
         # Section labels — injected into {{problem_label}} / {{solution_label}} in template
         # (defaults ensure labels never render empty)
-        context["problem_label"] = text_overlay.get("problem_label", "The Problem") if isinstance(text_overlay, dict) else "The Problem"
-        context["solution_label"] = text_overlay.get("solution_label", "The Answer") if isinstance(text_overlay, dict) else "The Answer"
+        context["problem_label"] = safe_get(text_overlay, "problem_label", "The Problem") if isinstance(text_overlay, dict) else "The Problem"
+        context["solution_label"] = safe_get(text_overlay, "solution_label", "The Answer") if isinstance(text_overlay, dict) else "The Answer"
         # CTA text
-        if isinstance(text_overlay, dict) and text_overlay.get("cta_text"):
+        if isinstance(text_overlay, dict) and safe_get(text_overlay, "cta_text"):
             context["cta_text"] = text_overlay["cta_text"]
 
     elif template_type == "infographic-pin":
-        context["title"] = overlay_headline or pin_copy.get("title", "")
+        context["title"] = overlay_headline or safe_get(pin_copy, "title", "")
         # Prefer structured steps from text_overlay
-        if isinstance(text_overlay, dict) and text_overlay.get("steps"):
+        if isinstance(text_overlay, dict) and safe_get(text_overlay, "steps"):
             steps = text_overlay["steps"]
             # Ensure each step is a dict with number and text
             if isinstance(steps, list) and all(isinstance(s, dict) for s in steps):
@@ -606,17 +606,17 @@ def build_template_context(
         else:
             context["steps"] = _extract_steps(description)
         # Footer text: prefer explicit field
-        if isinstance(text_overlay, dict) and text_overlay.get("footer_text"):
+        if isinstance(text_overlay, dict) and safe_get(text_overlay, "footer_text"):
             context["footer_text"] = text_overlay["footer_text"]
         else:
             context["footer_text"] = overlay_sub_text or ""
         # Category label — injected into {{category_label}} in infographic-pin template
-        if isinstance(text_overlay, dict) and text_overlay.get("category_label"):
+        if isinstance(text_overlay, dict) and safe_get(text_overlay, "category_label"):
             context["category_label"] = text_overlay["category_label"]
         else:
             context["category_label"] = "Step by Step"
         # CTA text
-        if isinstance(text_overlay, dict) and text_overlay.get("cta_text"):
+        if isinstance(text_overlay, dict) and safe_get(text_overlay, "cta_text"):
             context["cta_text"] = text_overlay["cta_text"]
 
     return context
@@ -703,11 +703,11 @@ def source_ai_image(
     Returns:
         tuple: (image_path, "ai_generated", "ai_{hash}", quality_meta)
     """
-    pin_id = pin_spec.get("pin_id", "unknown")
+    pin_id = safe_get(pin_spec, "pin_id", "unknown")
     quality_meta: dict = {"image_retries": 0}
 
     # Generate image prompt (template returns JSON with image_prompt field)
-    regen_feedback = pin_spec.get("_regen_feedback", "")
+    regen_feedback = safe_get(pin_spec, "_regen_feedback", "")
     image_prompt_raw = claude.generate_image_prompt(
         pin_spec, regen_feedback=regen_feedback,
     )
@@ -780,17 +780,17 @@ def _resolve_blog_slug(pin_spec: dict, blog_posts: dict) -> str:
         str: Blog slug, or empty string if not resolved.
     """
     # Check if pin has an explicit blog_slug
-    slug = pin_spec.get("blog_slug", "")
+    slug = safe_get(pin_spec, "blog_slug", "")
     if slug:
         return slug
 
     # Try to resolve from source_post_id
-    source_id = pin_spec.get("source_post_id", "")
+    source_id = safe_get(pin_spec, "source_post_id", "")
     if source_id and source_id in blog_posts:
-        return blog_posts[source_id].get("slug", "")
+        return safe_get(blog_posts[source_id], "slug", "")
 
     # For fresh treatments, the slug should be in the pin spec
-    return pin_spec.get("existing_slug", "")
+    return safe_get(pin_spec, "existing_slug", "")
 
 
 def _save_pin_results(generated_pins: list[dict], failures: list[dict]) -> None:
