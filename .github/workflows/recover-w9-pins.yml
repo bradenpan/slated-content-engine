@@ -1,0 +1,56 @@
+name: Recover W9 Pins
+
+# One-time manual workflow to re-render and re-upload W9-21 through W9-28.
+# DELETE THIS WORKFLOW after W9 pins have posted successfully (by Mar 4, 2026).
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: pinterest-pipeline
+  cancel-in-progress: false
+
+env:
+  ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+  GOOGLE_SHEETS_CREDENTIALS_JSON: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS_JSON }}
+  GCS_BUCKET_NAME: ${{ secrets.GCS_BUCKET_NAME }}
+  UNSPLASH_ACCESS_KEY: ${{ secrets.UNSPLASH_ACCESS_KEY }}
+  PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+
+jobs:
+  recover-w9-pins:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0  # Full history needed to extract pin data from old commit
+
+      - name: Setup pipeline
+        uses: ./.github/actions/setup-pipeline
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Puppeteer
+        run: npm install puppeteer
+
+      - name: Run W9 pin recovery
+        run: python -m src.recover_w9_pins
+
+      - name: Commit updated pin-schedule.json
+        uses: ./.github/actions/commit-data
+        with:
+          message: "fix: recover W9 pin GCS images (W9-21 through W9-28) [skip ci]"
+
+      - name: Notify failure
+        if: failure()
+        uses: ./.github/actions/notify-failure
+        with:
+          workflow_name: "Recover W9 Pins"
+          run_url: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

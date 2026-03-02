@@ -580,24 +580,43 @@ def main():
         print(f"WARNING: {len(failed_pins)} pins failed: {sorted(failed_pins)}")
         print()
 
-    # Step 5: Update pin-schedule.json (with confirmation)
-    print("[Step 5/5] Update pin-schedule.json?")
-    answer = input("  Type 'yes' to update, anything else to skip: ").strip().lower()
+    # Write GitHub Actions job summary if running in CI
+    summary_path = os.environ.get("GITHUB_STEP_SUMMARY", "")
+    if summary_path:
+        with open(summary_path, "a", encoding="utf-8") as sf:
+            sf.write("## W9 Pin Recovery Results\n\n")
+            sf.write(f"**Rendered:** {len(rendered_pins)}/{len(pin_data_map)} pins\n\n")
+            sf.write(f"**Uploaded:** {len(new_urls)}/{len(rendered_pins)} pins\n\n")
+            if failed_pins:
+                sf.write(f"**Failed:** {sorted(failed_pins)}\n\n")
+            sf.write("### Pin Preview URLs\n\n")
+            sf.write("| Pin ID | GCS Image URL |\n")
+            sf.write("|--------|---------------|\n")
+            for pin_id in sorted(new_urls.keys()):
+                url = new_urls[pin_id]
+                sf.write(f"| {pin_id} | [View Image]({url}) |\n")
+            sf.write("\n")
 
-    if answer == "yes":
+    # Step 5: Update pin-schedule.json
+    ci_mode = os.environ.get("CI", "") == "true"
+    if ci_mode:
+        print("[Step 5/5] Updating pin-schedule.json (CI mode, auto-confirm)...")
         update_pin_schedule(new_urls)
         print("  pin-schedule.json updated successfully!")
     else:
-        print("  Skipped. You can manually update pin-schedule.json later.")
-        print("  URLs to use:")
-        for pin_id, url in sorted(new_urls.items()):
-            print(f"    {pin_id}: {url}")
+        print("[Step 5/5] Update pin-schedule.json?")
+        answer = input("  Type 'yes' to update, anything else to skip: ").strip().lower()
+        if answer == "yes":
+            update_pin_schedule(new_urls)
+            print("  pin-schedule.json updated successfully!")
+        else:
+            print("  Skipped. You can manually update pin-schedule.json later.")
+            print("  URLs to use:")
+            for pin_id, url in sorted(new_urls.items()):
+                print(f"    {pin_id}: {url}")
 
     print()
-    print("Done! Next steps:")
-    print("  1. Review the pin images at the preview URLs above")
-    print("  2. Commit the updated pin-schedule.json")
-    print("  3. Push so the next scheduled pin posting uses the new URLs")
+    print("Done!")
 
 
 if __name__ == "__main__":
