@@ -1,0 +1,12 @@
+{
+  "W9-21": {
+    "count": 1,
+    "errors": [
+      {
+        "timestamp": "2026-03-02T15:49:29.154698",
+        "error": "Pinterest API error 400: Sorry we could not fetch the image."
+      }
+    ],
+    "last_failure": "2026-03-02T15:49:29.154708"
+  }
+}
