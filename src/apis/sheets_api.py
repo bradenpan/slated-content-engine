@@ -167,7 +167,11 @@ class SheetsAPI:
             logger.warning("Header validation failed for '%s' (could not read row 1): %s", tab_name, e)
             return
 
-        if list(actual) != list(expected_headers):
+        # Check that the expected columns are present in the correct positions.
+        # Extra trailing columns (e.g., manual additions like "Regen →") are OK
+        # as long as they don't shift the expected columns.
+        actual_prefix = list(actual[:len(expected_headers)])
+        if actual_prefix != list(expected_headers):
             raise SheetsAPIError(
                 f"Header mismatch in '{tab_name}'! Expected {expected_headers}, "
                 f"got {actual}. Column indices may be wrong — check for manual "
