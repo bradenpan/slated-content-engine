@@ -650,7 +650,7 @@ def _regen_item(
                     new_pin_data["_drive_download_url"] = new_image_url
                     logger.info("Uploaded regen pin %s to GCS: %s", pin_id, new_image_url)
 
-            if not new_image_url:
+            if not new_image_url and drive is not None:
                 # Fall back to Drive upload
                 old_drive_file_id = extract_drive_file_id(old_image_url)
                 try:

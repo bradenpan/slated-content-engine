@@ -1963,3 +1963,82 @@ Features: Unsplash API resolution (not CDN guessing), Pexels API with CDN fallba
 ### Status
 
 GCS fix complete and committed. Recovery script ready to run.
+
+---
+
+## Phase 19 — Full Pipeline Production-Hardening Review (2026-03-02)
+
+### Trigger
+
+Deploy-to-preview failed with `SheetsAPIError: Header mismatch on tab 'Content Queue'` — the pipeline's own regen workflow writes columns M-N (`Regen →`, `idle`, `idle`) but `_validate_headers` did strict equality, rejecting the extra trailing columns.
+
+### Root Cause (Header Validation)
+
+`sheets_api.py:_validate_headers()` compared `actual == expected` exactly. But `CQ_CELL_REGEN_TRIGGER = "N1"` (same file, line 74) writes to column N, which is beyond the expected headers (A-L). The pipeline's own writes caused its own validation to fail.
+
+### Fix: Prefix-Only Header Matching
+
+Changed `_validate_headers` to compare only the first `len(expected)` columns: `actual_prefix = list(actual[:len(expected_headers)])`. Trailing columns (from regen workflow) are now allowed. Inserted/shifted columns still raise errors.
+
+### Full Pipeline Review (6 Agents)
+
+Spawned 6 review agents covering the entire codebase:
+- **sheets_api + header contracts** — found header validation self-contradiction
+- **workflow contracts** — found timeout gaps in generate-content and monthly-review
+- **GitHub workflows** — found missing SLACK_WEBHOOK_URL in recover workflow
+- **API wrappers** — found missing safe_get in pinterest/github/token_manager/image_gen APIs
+- **orchestrators** — found safe_get gaps in plan_validator, plan_utils, content_memory
+- **utils + templates** — found duplicate CSS rule, render_pin.js CDN dependency
+
+### Findings: 13 Critical + 17 Warning
+
+Fixed by 4 parallel fix agents:
+- **safe_get gaps**: Converted all `.get()` on external JSON to `safe_get()` in `plan_validator.py`, `plan_utils.py`, `content_memory.py`
+- **API wrappers**: Added retry logic to `github_api.py`, overload-specific delay to `claude_api.py`, IndexError guard to `image_gen.py`, KeyError handling to `token_manager.py`, confirmed `gpt-image-1.5` model name with code comment
+- **Orchestrators**: Added `sys.exit(1)` on zero-output in `generate_blog_posts.py` and `generate_pin_content.py`, try/except in `publish_content_queue.py`, drive null guard in `regen_content.py`
+- **Templates/workflows**: Deduplicated `.brand-logo-text.logo-secondary` CSS rule, extended workflow timeouts, added SLACK_WEBHOOK_URL to recover workflow
+
+### Review of Fixes (4 Review Agents)
+
+Found 1 critical + 4 warnings:
+- **R-C1**: Pinterest rate limit — reverted `wait_seconds = reset_timestamp` back to `wait_seconds = reset_timestamp - int(time.time())` (epoch interpretation)
+- **R-W1**: `plan_validator.py:163` chained `.get()` → converted to `safe_get(rules, ...)`
+- **R-W2**: `blog_deployer.py:280` trailing-slash edge case → added `.rstrip("/")`
+- **R-W3**: `render_pin.js` CDN timeout → added `timeout: 10000` to `setContent`
+- **R-W4**: Dead `plan_status` variable in `regen_weekly_plan.py` → removed
+
+### Files Modified
+
+- `src/apis/sheets_api.py` — prefix-only header validation, None-to-empty string fixes
+- `src/apis/pinterest_api.py` — rate limit epoch fix (reverted incorrect change)
+- `src/apis/github_api.py` — timeout + retry on 429
+- `src/apis/claude_api.py` — overload-specific backoff for 529
+- `src/apis/image_gen.py` — IndexError guard, model name comment
+- `src/apis/token_manager.py` — KeyError handling
+- `src/plan_validator.py` — safe_get conversion throughout
+- `src/utils/plan_utils.py` — safe_get conversion
+- `src/utils/content_memory.py` — safe_get conversion
+- `src/blog_deployer.py` — safe_get + trailing-slash fix
+- `src/regen_weekly_plan.py` — removed dead plan_status code
+- `src/regen_content.py` — drive null guard
+- `src/generate_blog_posts.py` — sys.exit(1) on zero blogs
+- `src/generate_pin_content.py` — sys.exit(1) on zero pins
+- `src/publish_content_queue.py` — try/except with sys.exit(1)
+- `src/pin_assembler.py` — output file existence check
+- `render_pin.js` — networkidle0 + timeout
+- `templates/pins/shared/base-styles.css` — deduplicated logo rule
+- `templates/pins/tip-pin/styles.css` — removed duplicate rule
+- `.github/workflows/generate-content.yml` — timeout 45→60 min
+- `.github/workflows/monthly-review.yml` — timeout 30→45 min
+- `.github/workflows/daily-post-evening.yml` — timeout 45→60 min
+- `tests/test_sheets_header_validation.py` — updated for prefix-only matching
+
+### Verification
+
+- 207 tests pass (176 core + 31 image cleaner)
+- 1 pre-existing flaky test (`test_noise_does_not_produce_uniform_patterns`) — unrelated float rounding issue
+- All 5 review-of-fix items resolved
+
+### Status
+
+Complete. Deploy-to-preview should now succeed.

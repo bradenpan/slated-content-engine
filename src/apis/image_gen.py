@@ -210,6 +210,7 @@ class ImageGenAPI:
                 "Content-Type": "application/json",
             },
             json={
+                # gpt-image-1.5 is correct — OpenAI's latest image gen model (not gpt-image-1)
                 "model": "gpt-image-1.5",
                 "prompt": prompt,
                 "n": 1,
@@ -229,7 +230,10 @@ class ImageGenAPI:
             raise ImageGenError(f"OpenAI image generation failed (HTTP {response.status_code}): {error_text}")
 
         data = response.json()
-        image_data = data.get("data", [{}])[0]
+        data_list = data.get("data") or []
+        if not data_list:
+            raise ImageGenError("OpenAI returned empty data array")
+        image_data = data_list[0]
 
         # gpt-image-1 returns base64-encoded image
         b64_image = image_data.get("b64_json")

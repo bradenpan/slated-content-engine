@@ -238,20 +238,26 @@ class TokenManager:
         resp_data = response.json()
         now = datetime.now(timezone.utc)
 
-        new_token_data = {
-            "access_token": resp_data["access_token"],
-            "refresh_token": resp_data["refresh_token"],
-            "token_type": resp_data.get("token_type", "bearer"),
-            "scope": resp_data.get("scope", ""),
-            "expires_in": resp_data["expires_in"],
-            "expires_at": int((now + timedelta(seconds=resp_data["expires_in"])).timestamp()),
-            "refresh_token_expires_in": resp_data.get("refresh_token_expires_in", 5184000),
-            "refresh_token_expires_at": int(
-                (now + timedelta(seconds=resp_data.get("refresh_token_expires_in", 5184000))).timestamp()
-            ),
-            "obtained_at": token_data.get("obtained_at", now.isoformat()),
-            "refreshed_at": now.isoformat(),
-        }
+        try:
+            new_token_data = {
+                "access_token": resp_data["access_token"],
+                "refresh_token": resp_data["refresh_token"],
+                "token_type": resp_data.get("token_type", "bearer"),
+                "scope": resp_data.get("scope", ""),
+                "expires_in": resp_data["expires_in"],
+                "expires_at": int((now + timedelta(seconds=resp_data["expires_in"])).timestamp()),
+                "refresh_token_expires_in": resp_data.get("refresh_token_expires_in", 5184000),
+                "refresh_token_expires_at": int(
+                    (now + timedelta(seconds=resp_data.get("refresh_token_expires_in", 5184000))).timestamp()
+                ),
+                "obtained_at": token_data.get("obtained_at", now.isoformat()),
+                "refreshed_at": now.isoformat(),
+            }
+        except KeyError as e:
+            raise TokenManagerError(
+                f"Pinterest token refresh response missing expected field {e}. "
+                f"Response keys: {list(resp_data.keys())}"
+            ) from e
 
         self._save_tokens(new_token_data)
 
@@ -308,20 +314,26 @@ class TokenManager:
         resp_data = response.json()
         now = datetime.now(timezone.utc)
 
-        token_data = {
-            "access_token": resp_data["access_token"],
-            "refresh_token": resp_data["refresh_token"],
-            "token_type": resp_data.get("token_type", "bearer"),
-            "scope": resp_data.get("scope", ""),
-            "expires_in": resp_data["expires_in"],
-            "expires_at": int((now + timedelta(seconds=resp_data["expires_in"])).timestamp()),
-            "refresh_token_expires_in": resp_data.get("refresh_token_expires_in", 5184000),
-            "refresh_token_expires_at": int(
-                (now + timedelta(seconds=resp_data.get("refresh_token_expires_in", 5184000))).timestamp()
-            ),
-            "obtained_at": now.isoformat(),
-            "refreshed_at": now.isoformat(),
-        }
+        try:
+            token_data = {
+                "access_token": resp_data["access_token"],
+                "refresh_token": resp_data["refresh_token"],
+                "token_type": resp_data.get("token_type", "bearer"),
+                "scope": resp_data.get("scope", ""),
+                "expires_in": resp_data["expires_in"],
+                "expires_at": int((now + timedelta(seconds=resp_data["expires_in"])).timestamp()),
+                "refresh_token_expires_in": resp_data.get("refresh_token_expires_in", 5184000),
+                "refresh_token_expires_at": int(
+                    (now + timedelta(seconds=resp_data.get("refresh_token_expires_in", 5184000))).timestamp()
+                ),
+                "obtained_at": now.isoformat(),
+                "refreshed_at": now.isoformat(),
+            }
+        except KeyError as e:
+            raise TokenManagerError(
+                f"Pinterest token exchange response missing expected field {e}. "
+                f"Response keys: {list(resp_data.keys())}"
+            ) from e
 
         self._save_tokens(token_data)
 

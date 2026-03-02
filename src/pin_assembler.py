@@ -490,6 +490,9 @@ class PinAssembler:
             finally:
                 os.unlink(temp_html_path)
 
+            if not output_path.exists() or output_path.stat().st_size == 0:
+                raise PinAssemblerError(f"Puppeteer produced no output at {output_path}")
+
             # Step 6: Optimize file size
             self._optimize_image(output_path)
 

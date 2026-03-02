@@ -828,6 +828,8 @@ def _save_pin_results(generated_pins: list[dict], failures: list[dict]) -> None:
 
 
 if __name__ == "__main__":
+    import sys
+
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
@@ -835,3 +837,5 @@ if __name__ == "__main__":
     print("Starting pin content generation...")
     results = generate_pin_content()
     print(f"Generated {len(results)} pins")
+    if len(results) == 0:
+        sys.exit(1)

@@ -240,6 +240,8 @@ def _save_generation_metadata(results: dict) -> None:
 
 
 if __name__ == "__main__":
+    import sys
+
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
@@ -249,3 +251,5 @@ if __name__ == "__main__":
     succeeded = sum(1 for r in results.values() if r["status"] == "success")
     failed = sum(1 for r in results.values() if r["status"] == "failed")
     print(f"Generated {succeeded} blog posts ({failed} failed)")
+    if succeeded == 0:
+        sys.exit(1)

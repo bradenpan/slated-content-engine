@@ -54,9 +54,19 @@ class TestHeaderMismatch:
         with pytest.raises(SheetsAPIError, match="Header mismatch"):
             sheets_api._validate_headers("TestTab", EXPECTED_HEADERS)
 
-    def test_extra_columns_raises_error(self, sheets_api):
+    def test_extra_trailing_columns_allowed(self, sheets_api):
+        """Extra columns AFTER expected headers are OK (e.g., regen workflow adds cols M-N)."""
         sheets_api.sheets.values().get().execute.return_value = {
-            "values": [["ID", "Type", "Title", "Status", "Extra"]]
+            "values": [["ID", "Type", "Title", "Status", "Extra", "Regen →"]]
+        }
+
+        # Should NOT raise — trailing columns are ignored
+        sheets_api._validate_headers("TestTab", EXPECTED_HEADERS)
+
+    def test_inserted_column_shifts_expected_raises_error(self, sheets_api):
+        """A column inserted BEFORE expected columns shifts indices and must raise."""
+        sheets_api.sheets.values().get().execute.return_value = {
+            "values": [["Extra", "ID", "Type", "Title", "Status"]]
         }
 
         with pytest.raises(SheetsAPIError, match="Header mismatch"):

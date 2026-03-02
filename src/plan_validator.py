@@ -14,6 +14,7 @@ from typing import Optional
 from src.paths import STRATEGY_DIR
 from src.utils.content_log import load_content_log as _load_content_log
 from src.utils.content_memory import get_entry_date, parse_date
+from src.utils.safe_get import safe_get
 
 logger = logging.getLogger(__name__)
 
@@ -74,8 +75,8 @@ def validate_plan(
         list[dict]: Structured violation objects (empty if all pass).
     """
     violations: list[dict] = []
-    pins = plan.get("pins", [])
-    blog_posts = plan.get("blog_posts", [])
+    pins = safe_get(plan, "pins", [])
+    blog_posts = safe_get(plan, "blog_posts", [])
 
     if content_log is None:
         content_log = _load_content_log()
@@ -96,7 +97,7 @@ def validate_plan(
             )
             negative_keywords = [
                 item["term"] if isinstance(item, dict) else item
-                for item in neg_kw_data.get("negative_keywords", [])
+                for item in safe_get(neg_kw_data, "negative_keywords", [])
             ]
         except (FileNotFoundError, json.JSONDecodeError):
             negative_keywords = []
@@ -111,7 +112,7 @@ def validate_plan(
         })
 
     # --- Check 2: Pillar mix within ranges (allow +/-1 pin tolerance) ---
-    pillar_counts = Counter(pin.get("pillar") or 0 for pin in pins)
+    pillar_counts = Counter(safe_get(pin, "pillar", 0) for pin in pins)
     for pillar, (min_pins, max_pins) in PILLAR_MIX_TARGETS.items():
         count = pillar_counts.get(pillar, 0)
         if count < min_pins - 1 or count > max_pins + 1:
@@ -132,15 +133,15 @@ def validate_plan(
     for entry in content_log:
         entry_date = parse_date(get_entry_date(entry))
         if entry_date and entry_date >= topic_window:
-            topic = entry.get("topic_summary", "").lower()
+            topic = safe_get(entry, "topic_summary", "").lower()
             if topic:
                 recent_topics.add(topic)
-            slug = entry.get("blog_slug", "")
+            slug = safe_get(entry, "blog_slug", "")
             if slug:
                 recent_slugs.add(slug)
 
     for post in blog_posts:
-        topic = post.get("topic", "").lower()
+        topic = safe_get(post, "topic", "").lower()
         if topic:
             topic_words = set(topic.split())
             for recent_topic in recent_topics:
@@ -150,18 +151,17 @@ def validate_plan(
                     violations.append({
                         "category": "topic_repetition",
                         "message": (
-                            f"Topic '{post.get('topic')}' may repeat recent topic "
+                            f"Topic '{safe_get(post, 'topic', '')}' may repeat recent topic "
                             f"'{recent_topic}' (shared words: {overlap})"
                         ),
-                        "post_id": post.get("post_id"),
+                        "post_id": safe_get(post, "post_id", None),
                         "severity": "targeted",
                     })
 
     # --- Check 4: Max 5 pins per board ---
-    board_counts = Counter(pin.get("target_board", "") for pin in pins)
-    max_per_board = board_structure.get("rules", {}).get(
-        "max_pins_per_board_per_week", MAX_PINS_PER_BOARD
-    )
+    board_counts = Counter(safe_get(pin, "target_board", "") for pin in pins)
+    rules = safe_get(board_structure, "rules", {})
+    max_per_board = safe_get(rules, "max_pins_per_board_per_week", MAX_PINS_PER_BOARD)
     for board, count in board_counts.items():
         if count > max_per_board:
             violations.append({
@@ -174,8 +174,8 @@ def validate_plan(
     # --- Check 5: Max 2 fresh treatments per URL per week ---
     url_treatment_counts: Counter = Counter()
     for pin in pins:
-        if pin.get("pin_type") == "fresh-treatment":
-            slug = pin.get("blog_slug", "") or pin.get("source_post_id", "")
+        if safe_get(pin, "pin_type", "") == "fresh-treatment":
+            slug = safe_get(pin, "blog_slug", "") or safe_get(pin, "source_post_id", "")
             if slug:
                 url_treatment_counts[slug] += 1
 
@@ -196,14 +196,14 @@ def validate_plan(
         sorted_pins = sorted(
             pins,
             key=lambda p: (
-                p.get("scheduled_date", ""),
-                TIME_SLOTS.index(p.get("scheduled_slot", "morning"))
-                if p.get("scheduled_slot", "") in TIME_SLOTS else 99,
+                safe_get(p, "scheduled_date", ""),
+                TIME_SLOTS.index(safe_get(p, "scheduled_slot", "morning"))
+                if safe_get(p, "scheduled_slot", "") in TIME_SLOTS else 99,
             ),
         )
         for i in range(len(sorted_pins) - MAX_CONSECUTIVE_SAME_TEMPLATE):
             templates = [
-                sorted_pins[j].get("pin_template", "")
+                safe_get(sorted_pins[j], "pin_template", "")
                 for j in range(i, i + MAX_CONSECUTIVE_SAME_TEMPLATE + 1)
             ]
             if len(set(templates)) == 1 and templates[0]:
@@ -220,7 +220,7 @@ def validate_plan(
 
     # --- Check 7: 4 pins per day, spread across Tue-Mon ---
     day_counts = Counter(
-        pin.get("scheduled_date", "").lower() for pin in pins
+        safe_get(pin, "scheduled_date", "").lower() for pin in pins
     )
     # Verify correct number of posting days
     if len(day_counts) != len(POSTING_DAYS):
@@ -241,9 +241,9 @@ def validate_plan(
 
     # --- Check 8: Negative keywords ---
     for pin in pins:
-        pin_id = pin.get("pin_id")
-        pin_keywords = [pin.get("primary_keyword", "")] + pin.get("secondary_keywords", [])
-        pin_topic = pin.get("pin_topic", "").lower()
+        pin_id = safe_get(pin, "pin_id", None)
+        pin_keywords = [safe_get(pin, "primary_keyword", "")] + safe_get(pin, "secondary_keywords", [])
+        pin_topic = safe_get(pin, "pin_topic", "").lower()
         for neg_kw in negative_keywords:
             neg_kw_lower = neg_kw.lower()
             for kw in pin_keywords:
@@ -271,8 +271,8 @@ def validate_plan(
                 })
 
     for post in blog_posts:
-        post_keywords = [post.get("primary_keyword", "")] + post.get("secondary_keywords", [])
-        post_topic = post.get("topic", "").lower()
+        post_keywords = [safe_get(post, "primary_keyword", "")] + safe_get(post, "secondary_keywords", [])
+        post_topic = safe_get(post, "topic", "").lower()
         for neg_kw in negative_keywords:
             neg_kw_lower = neg_kw.lower()
             for kw in post_keywords:
@@ -280,20 +280,20 @@ def validate_plan(
                     violations.append({
                         "category": "negative_keyword_post",
                         "message": (
-                            f"Blog post '{post.get('post_id')}' targets negative keyword: "
+                            f"Blog post '{safe_get(post, 'post_id', '')}' targets negative keyword: "
                             f"'{kw}' matches '{neg_kw}'"
                         ),
-                        "post_id": post.get("post_id"),
+                        "post_id": safe_get(post, "post_id", None),
                         "severity": "targeted",
                     })
             if neg_kw_lower in post_topic:
                 violations.append({
                     "category": "negative_keyword_post",
                     "message": (
-                        f"Blog post '{post.get('post_id')}' topic contains negative keyword: "
+                        f"Blog post '{safe_get(post, 'post_id', '')}' topic contains negative keyword: "
                         f"'{neg_kw}'"
                     ),
-                    "post_id": post.get("post_id"),
+                    "post_id": safe_get(post, "post_id", None),
                     "severity": "targeted",
                 })
 

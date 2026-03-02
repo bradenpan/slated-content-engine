@@ -448,8 +448,14 @@ def _compute_quality_stats(pins: list[dict]) -> dict:
 
 
 if __name__ == "__main__":
+    import sys
+
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
-    publish()
+    try:
+        publish()
+    except Exception as e:
+        logging.getLogger(__name__).error("Publish failed: %s", e)
+        sys.exit(1)

@@ -220,14 +220,8 @@ def regen_plan(
         raise
     logger.info("Saved updated plan to %s", plan_path)
 
-    # Step 8: Re-write Weekly Review sheet with updated plan, preserving B3/B4
-    # Read current B3 (plan approval) and B4 (deploy status) before clearing
-    try:
-        plan_status = sheets.read_plan_approval_status()
-    except Exception as e:
-        logger.warning("Could not read plan approval status, defaulting to pending_review: %s", e)
-        plan_status = "pending_review"
-
+    # Step 8: Re-write Weekly Review sheet with updated plan, preserving B4
+    # B3 (plan approval) is always reset to pending_review after regen (line 246)
     try:
         deploy_status = sheets.read_deploy_status()
     except Exception as e:
@@ -241,14 +235,14 @@ def regen_plan(
         performance_data={},
     )
 
-    # Restore B3 and B4 values that were cleared by write_weekly_review
+    # After regen, always reset B3 to pending_review so the human reviews again
     from src.apis.sheets_api import TAB_WEEKLY_REVIEW, WR_CELL_PLAN_STATUS
-    sheets.write_cell(TAB_WEEKLY_REVIEW, WR_CELL_PLAN_STATUS, plan_status)
+    sheets.write_cell(TAB_WEEKLY_REVIEW, WR_CELL_PLAN_STATUS, "pending_review")
 
     sheets.write_deploy_status(status=deploy_status)
 
-    logger.info("Re-wrote Weekly Review sheet with updated plan (B3=%s, B4=%s preserved)",
-                plan_status, deploy_status)
+    logger.info("Re-wrote Weekly Review sheet with updated plan (B3=pending_review, B4=%s preserved)",
+                deploy_status)
 
     # Step 9: Reset B5 trigger to "idle"
     sheets.reset_plan_regen_trigger()

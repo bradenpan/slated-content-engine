@@ -8,6 +8,7 @@ from pathlib import Path
 from src.paths import DATA_DIR
 from src.utils.content_log import load_content_log as _load_content_log
 from src.utils.content_memory import get_entry_date, parse_date
+from src.utils.safe_get import safe_get
 
 logger = logging.getLogger(__name__)
 
@@ -69,18 +70,18 @@ def identify_replaceable_posts(
               Only includes posts from targeted violations that can be replaced
               (not existing/published posts).
     """
-    pins = plan.get("pins", [])
-    blog_posts = plan.get("blog_posts", [])
+    pins = safe_get(plan, "pins", [])
+    blog_posts = safe_get(plan, "blog_posts", [])
 
     # Build indexes
     post_index = {p["post_id"]: p for p in blog_posts}
     pins_by_source: dict[str, list] = defaultdict(list)
     for pin in pins:
-        pins_by_source[pin.get("source_post_id", "")].append(pin)
+        pins_by_source[safe_get(pin, "source_post_id", "")].append(pin)
 
     # Trace pin-level violations to their source post
     pin_to_source = {
-        pin.get("pin_id", ""): pin.get("source_post_id", "")
+        safe_get(pin, "pin_id", ""): safe_get(pin, "source_post_id", "")
         for pin in pins
     }
 
@@ -117,15 +118,15 @@ def identify_replaceable_posts(
             "pin_ids": {p["pin_id"] for p in derived_pins},
             "slots": [
                 {
-                    "pin_id": p.get("pin_id"),
-                    "source_post_id": p.get("source_post_id"),
-                    "scheduled_date": p.get("scheduled_date"),
-                    "scheduled_slot": p.get("scheduled_slot"),
-                    "target_board": p.get("target_board"),
-                    "pin_template": p.get("pin_template"),
-                    "funnel_layer": p.get("funnel_layer"),
-                    "pin_type": p.get("pin_type"),
-                    "treatment_number": p.get("treatment_number"),
+                    "pin_id": safe_get(p, "pin_id", None),
+                    "source_post_id": safe_get(p, "source_post_id", None),
+                    "scheduled_date": safe_get(p, "scheduled_date", None),
+                    "scheduled_slot": safe_get(p, "scheduled_slot", None),
+                    "target_board": safe_get(p, "target_board", None),
+                    "pin_template": safe_get(p, "pin_template", None),
+                    "funnel_layer": safe_get(p, "funnel_layer", None),
+                    "pin_type": safe_get(p, "pin_type", None),
+                    "treatment_number": safe_get(p, "treatment_number", None),
                 }
                 for p in derived_pins
             ],
@@ -160,24 +161,24 @@ def splice_replacements(
     new_plan = dict(plan)
 
     replacement_posts = {
-        p["post_id"]: p for p in replacements.get("blog_posts", [])
+        p["post_id"]: p for p in safe_get(replacements, "blog_posts", [])
     }
     replacement_pins = {
-        p["pin_id"]: p for p in replacements.get("pins", [])
+        p["pin_id"]: p for p in safe_get(replacements, "pins", [])
     }
 
     new_plan["blog_posts"] = [
         replacement_posts.get(post["post_id"], post)
-        if post.get("post_id") in offending_post_ids
+        if safe_get(post, "post_id", None) in offending_post_ids
         else post
-        for post in plan.get("blog_posts", [])
+        for post in safe_get(plan, "blog_posts", [])
     ]
 
     new_plan["pins"] = [
         replacement_pins.get(pin["pin_id"], pin)
-        if pin.get("pin_id") in offending_pin_ids
+        if safe_get(pin, "pin_id", None) in offending_pin_ids
         else pin
-        for pin in plan.get("pins", [])
+        for pin in safe_get(plan, "pins", [])
     ]
 
     return new_plan
@@ -209,17 +210,17 @@ def build_keyword_performance_data(
     )
 
     for entry in content_log:
-        pk = entry.get("primary_keyword", "")
+        pk = safe_get(entry, "primary_keyword", "")
         if pk:
-            keyword_perf[pk]["impressions"] += entry.get("impressions", 0)
-            keyword_perf[pk]["saves"] += entry.get("saves", 0)
-            keyword_perf[pk]["outbound_clicks"] += entry.get("outbound_clicks", 0)
+            keyword_perf[pk]["impressions"] += safe_get(entry, "impressions", 0)
+            keyword_perf[pk]["saves"] += safe_get(entry, "saves", 0)
+            keyword_perf[pk]["outbound_clicks"] += safe_get(entry, "outbound_clicks", 0)
             keyword_perf[pk]["pin_count"] += 1
 
-        for sk in entry.get("secondary_keywords", []):
-            keyword_perf[sk]["impressions"] += entry.get("impressions", 0)
-            keyword_perf[sk]["saves"] += entry.get("saves", 0)
-            keyword_perf[sk]["outbound_clicks"] += entry.get("outbound_clicks", 0)
+        for sk in safe_get(entry, "secondary_keywords", []):
+            keyword_perf[sk]["impressions"] += safe_get(entry, "impressions", 0)
+            keyword_perf[sk]["saves"] += safe_get(entry, "saves", 0)
+            keyword_perf[sk]["outbound_clicks"] += safe_get(entry, "outbound_clicks", 0)
             keyword_perf[sk]["pin_count"] += 1
 
     # Compute save rates
@@ -231,7 +232,7 @@ def build_keyword_performance_data(
 
     # Merge into keyword lists
     enriched = {
-        "pillars": keyword_lists.get("pillars", {}),
+        "pillars": safe_get(keyword_lists, "pillars", {}),
         "performance": dict(keyword_perf),
     }
 
@@ -257,7 +258,7 @@ def extract_recent_topics(content_log: list[dict], topic_repetition_window_weeks
     for entry in content_log:
         entry_date = parse_date(get_entry_date(entry))
         if entry_date and entry_date >= topic_window:
-            topic = entry.get("topic_summary", "")
+            topic = safe_get(entry, "topic_summary", "")
             if topic:
                 topics.add(topic)
     return list(topics)

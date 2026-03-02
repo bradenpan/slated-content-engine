@@ -77,7 +77,7 @@ class GitHubAPI:
 
         try:
             from github import Github
-            self.github = Github(self.token)
+            self.github = Github(self.token, timeout=30)
             self.repo = self.github.get_repo(self.repo_name)
             logger.info("GitHub API initialized for repo: %s", self.repo_name)
         except ImportError as e:
@@ -296,76 +296,82 @@ class GitHubAPI:
         Returns:
             str: The commit SHA.
         """
-        try:
-            from github import InputGitTreeElement
+        from github import InputGitTreeElement
 
-            # Get the current HEAD commit and tree
-            ref = self.repo.get_git_ref(f"heads/{branch}")
-            head_sha = ref.object.sha
-            base_tree = self.repo.get_git_tree(head_sha)
+        max_attempts = 2
+        for attempt in range(1, max_attempts + 1):
+            try:
+                # Get the current HEAD commit and tree
+                ref = self.repo.get_git_ref(f"heads/{branch}")
+                head_sha = ref.object.sha
+                base_tree = self.repo.get_git_tree(head_sha)
 
-            # Build tree elements for each file
-            tree_elements = []
-            for file_info in files:
-                path = file_info["path"]
-                content = file_info["content"]
-                is_binary = file_info.get("is_binary", False)
+                # Build tree elements for each file
+                tree_elements = []
+                for file_info in files:
+                    path = file_info["path"]
+                    content = file_info["content"]
+                    is_binary = file_info.get("is_binary", False)
 
-                if is_binary:
-                    # Binary files need to be created as blobs first
-                    import base64 as b64
-                    if isinstance(content, bytes):
-                        blob = self.repo.create_git_blob(
-                            b64.b64encode(content).decode("ascii"),
-                            "base64",
+                    if is_binary:
+                        # Binary files need to be created as blobs first
+                        import base64 as b64
+                        if isinstance(content, bytes):
+                            blob = self.repo.create_git_blob(
+                                b64.b64encode(content).decode("ascii"),
+                                "base64",
+                            )
+                        else:
+                            blob = self.repo.create_git_blob(content, "base64")
+
+                        tree_elements.append(
+                            InputGitTreeElement(
+                                path=path,
+                                mode="100644",
+                                type="blob",
+                                sha=blob.sha,
+                            )
                         )
                     else:
-                        blob = self.repo.create_git_blob(content, "base64")
-
-                    tree_elements.append(
-                        InputGitTreeElement(
-                            path=path,
-                            mode="100644",
-                            type="blob",
-                            sha=blob.sha,
+                        tree_elements.append(
+                            InputGitTreeElement(
+                                path=path,
+                                mode="100644",
+                                type="blob",
+                                content=content if isinstance(content, str) else content.decode("utf-8"),
+                            )
                         )
-                    )
-                else:
-                    tree_elements.append(
-                        InputGitTreeElement(
-                            path=path,
-                            mode="100644",
-                            type="blob",
-                            content=content if isinstance(content, str) else content.decode("utf-8"),
-                        )
-                    )
 
-            # Create the new tree
-            new_tree = self.repo.create_git_tree(tree_elements, base_tree)
+                # Create the new tree
+                new_tree = self.repo.create_git_tree(tree_elements, base_tree)
 
-            # Create the commit
-            parent = self.repo.get_git_commit(head_sha)
-            new_commit = self.repo.create_git_commit(
-                message=commit_message,
-                tree=new_tree,
-                parents=[parent],
-            )
+                # Create the commit
+                parent = self.repo.get_git_commit(head_sha)
+                new_commit = self.repo.create_git_commit(
+                    message=commit_message,
+                    tree=new_tree,
+                    parents=[parent],
+                )
 
-            # Update the branch ref
-            ref.edit(sha=new_commit.sha)
+                # Update the branch ref
+                ref.edit(sha=new_commit.sha)
 
-            logger.info(
-                "Committed %d files to %s/%s: %s (SHA: %s)",
-                len(files), self.repo_name, branch,
-                commit_message[:60], new_commit.sha[:8],
-            )
+                logger.info(
+                    "Committed %d files to %s/%s: %s (SHA: %s)",
+                    len(files), self.repo_name, branch,
+                    commit_message[:60], new_commit.sha[:8],
+                )
 
-            return new_commit.sha
+                return new_commit.sha
 
-        except Exception as e:
-            raise GitHubAPIError(
-                f"Failed to commit {len(files)} files: {e}"
-            ) from e
+            except Exception as e:
+                if attempt < max_attempts and hasattr(e, 'status') and getattr(e, 'status', 0) >= 429:
+                    logger.warning("GitHub API error (attempt %d/%d): %s. Retrying...", attempt, max_attempts, e)
+                    time.sleep(5 * attempt)
+                    continue
+                raise GitHubAPIError(
+                    f"Failed to commit {len(files)} files: {e}"
+                ) from e
 
 
 

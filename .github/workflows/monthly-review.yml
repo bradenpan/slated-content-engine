@@ -34,7 +34,7 @@ env:
 jobs:
   monthly-review:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - name: Guard — first Monday only

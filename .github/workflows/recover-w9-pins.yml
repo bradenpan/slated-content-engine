@@ -16,6 +16,7 @@ env:
   GCS_BUCKET_NAME: ${{ secrets.GCS_BUCKET_NAME }}
   UNSPLASH_ACCESS_KEY: ${{ secrets.UNSPLASH_ACCESS_KEY }}
   PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+  SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
 jobs:
   recover-w9-pins:

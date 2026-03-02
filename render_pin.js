@@ -35,7 +35,7 @@ async function renderOne(browser, { html_file, output_file, width, height, wait_
 
   const page = await browser.newPage();
   await page.setViewport({ width: w, height: h });
-  await page.setContent(html, { waitUntil: "domcontentloaded" });
+  await page.setContent(html, { waitUntil: "networkidle0", timeout: 10000 });
 
   // Brief wait for web fonts to load
   if (waitMs > 0) {

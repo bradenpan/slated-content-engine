@@ -16,6 +16,7 @@ from typing import Optional
 
 from src.paths import DATA_DIR, STRATEGY_DIR
 from src.utils.content_log import load_content_log
+from src.utils.safe_get import safe_get
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,7 @@ def get_entry_date(entry: dict) -> str:
     Returns:
         Date string (YYYY-MM-DD) or empty string if neither field exists.
     """
-    return entry.get("date") or entry.get("posted_date", "")
+    return safe_get(entry, "date", "") or safe_get(entry, "posted_date", "")
 
 
 def parse_date(date_str: Optional[str]) -> Optional[date]:
@@ -103,9 +104,9 @@ def generate_content_memory_summary(
             (STRATEGY_DIR / "keyword-lists.json").read_text(encoding="utf-8")
         )
         all_target_keywords: set[str] = set()
-        for pillar_data in kw_data.get("pillars", {}).values():
-            all_target_keywords.update(pillar_data.get("primary", []))
-            all_target_keywords.update(pillar_data.get("secondary", []))
+        for pillar_data in safe_get(kw_data, "pillars", {}).values():
+            all_target_keywords.update(safe_get(pillar_data, "primary", []))
+            all_target_keywords.update(safe_get(pillar_data, "secondary", []))
     except (FileNotFoundError, json.JSONDecodeError):
         all_target_keywords = set()
 
@@ -122,13 +123,13 @@ def generate_content_memory_summary(
     if recent_entries:
         seen_slugs: set[str] = set()
         for entry in sorted(recent_entries, key=lambda e: get_entry_date(e), reverse=True):
-            slug = entry.get("blog_slug", "")
+            slug = safe_get(entry, "blog_slug", "")
             if slug and slug not in seen_slugs:
                 seen_slugs.add(slug)
                 section_lines.append(
-                    f"- [{get_entry_date(entry)}] P{entry.get('pillar') or '?'}: "
-                    f"{entry.get('blog_title', slug)} "
-                    f"({entry.get('content_type') or 'unknown'})"
+                    f"- [{get_entry_date(entry)}] P{safe_get(entry, 'pillar', '?')}: "
+                    f"{safe_get(entry, 'blog_title', slug)} "
+                    f"({safe_get(entry, 'content_type', 'unknown')})"
                 )
     else:
         section_lines.append(
@@ -141,14 +142,14 @@ def generate_content_memory_summary(
     posts_by_type: dict[str, dict[int, list]] = defaultdict(lambda: defaultdict(list))
     seen_slugs = set()
     for entry in content_log:
-        slug = entry.get("blog_slug", "")
+        slug = safe_get(entry, "blog_slug", "")
         if slug and slug not in seen_slugs:
             seen_slugs.add(slug)
-            ctype = entry.get("content_type") or "unknown"
-            pillar = entry.get("pillar") or 0
+            ctype = safe_get(entry, "content_type", "unknown")
+            pillar = safe_get(entry, "pillar", 0)
             posts_by_type[ctype][pillar].append({
                 "slug": slug,
-                "title": entry.get("blog_title") or slug,
+                "title": safe_get(entry, "blog_title", slug),
             })
 
     if posts_by_type:
@@ -166,10 +167,10 @@ def generate_content_memory_summary(
     section_lines = ["## 3. PILLAR MIX\n"]
 
     recent_pillar_counts = Counter(
-        e.get("pillar") or 0 for e in recent_entries
+        safe_get(e, "pillar", 0) for e in recent_entries
     )
     all_time_pillar_counts = Counter(
-        e.get("pillar") or 0 for e in content_log
+        safe_get(e, "pillar", 0) for e in content_log
     )
 
     section_lines.append(f"### Last {topic_window_weeks} Weeks")
@@ -187,21 +188,21 @@ def generate_content_memory_summary(
         section_lines.append(f"  P{p}: {count} pins ({pct:.0f}%)")
 
     recent_type_counts = Counter(
-        e.get("content_type") or "unknown" for e in recent_entries
+        safe_get(e, "content_type", "unknown") for e in recent_entries
     )
     section_lines.append(f"\n### Content Type (Last {topic_window_weeks} Weeks)")
     for ctype, count in recent_type_counts.most_common():
         section_lines.append(f"  {ctype}: {count}")
 
     recent_board_counts = Counter(
-        e.get("board") or "unknown" for e in recent_entries
+        safe_get(e, "board", "unknown") for e in recent_entries
     )
     section_lines.append(f"\n### Board Distribution (Last {topic_window_weeks} Weeks)")
     for board, count in recent_board_counts.most_common():
         section_lines.append(f"  {board}: {count}")
 
     recent_funnel_counts = Counter(
-        e.get("funnel_layer") or "unknown" for e in recent_entries
+        safe_get(e, "funnel_layer", "unknown") for e in recent_entries
     )
     section_lines.append(f"\n### Funnel Layer (Last {topic_window_weeks} Weeks)")
     for layer, count in recent_funnel_counts.most_common():
@@ -219,17 +220,17 @@ def generate_content_memory_summary(
     )
 
     for entry in content_log:
-        pk = entry.get("primary_keyword") or ""
+        pk = safe_get(entry, "primary_keyword", "")
         if pk:
             keyword_counts[pk] += 1
             entry_date = get_entry_date(entry)
             if entry_date > keyword_last_used.get(pk, ""):
                 keyword_last_used[pk] = entry_date
-            keyword_performance[pk]["impressions"] += entry.get("impressions") or 0
-            keyword_performance[pk]["saves"] += entry.get("saves") or 0
+            keyword_performance[pk]["impressions"] += safe_get(entry, "impressions", 0)
+            keyword_performance[pk]["saves"] += safe_get(entry, "saves", 0)
             keyword_performance[pk]["count"] += 1
 
-        for sk in entry.get("secondary_keywords") or []:
+        for sk in safe_get(entry, "secondary_keywords", []):
             keyword_counts[sk] += 1
             entry_date = get_entry_date(entry)
             if entry_date > keyword_last_used.get(sk, ""):
@@ -265,8 +266,8 @@ def generate_content_memory_summary(
 
     image_ids = []
     for entry in recent_image_entries:
-        source = entry.get("image_source", "")
-        img_id = entry.get("image_id", "")
+        source = safe_get(entry, "image_source", "")
+        img_id = safe_get(entry, "image_id", "")
         if source and img_id:
             image_ids.append(f"{source}:{img_id}")
 
@@ -286,15 +287,15 @@ def generate_content_memory_summary(
 
     slug_data: dict[str, dict] = {}
     for entry in content_log:
-        slug = entry.get("blog_slug", "")
+        slug = safe_get(entry, "blog_slug", "")
         if not slug:
             continue
 
         entry_date = get_entry_date(entry)
         if slug not in slug_data:
             slug_data[slug] = {
-                "title": entry.get("blog_title") or slug,
-                "pillar": entry.get("pillar") or 0,
+                "title": safe_get(entry, "blog_title", slug),
+                "pillar": safe_get(entry, "pillar", 0),
                 "last_pin_date": entry_date,
                 "total_impressions": 0,
                 "total_saves": 0,
@@ -304,11 +305,11 @@ def generate_content_memory_summary(
         data = slug_data[slug]
         if entry_date > data["last_pin_date"]:
             data["last_pin_date"] = entry_date
-        data["total_impressions"] += entry.get("impressions") or 0
-        data["total_saves"] += entry.get("saves") or 0
+        data["total_impressions"] += safe_get(entry, "impressions", 0)
+        data["total_saves"] += safe_get(entry, "saves", 0)
         data["treatment_count"] = max(
             data["treatment_count"],
-            entry.get("treatment_number") or 1,
+            safe_get(entry, "treatment_number", 1),
         )
 
     candidates = []
@@ -350,19 +351,19 @@ def generate_content_memory_summary(
 
     url_treatments: dict[str, dict] = {}
     for entry in recent_60d_entries:
-        slug = entry.get("blog_slug", "")
+        slug = safe_get(entry, "blog_slug", "")
         if not slug:
             continue
         if slug not in url_treatments:
             url_treatments[slug] = {
-                "title": entry.get("blog_title") or slug,
+                "title": safe_get(entry, "blog_title", slug),
                 "treatment_count": 0,
                 "treatments": [],
             }
         url_treatments[slug]["treatment_count"] += 1
         url_treatments[slug]["treatments"].append({
             "date": get_entry_date(entry),
-            "treatment_number": entry.get("treatment_number") or 1,
+            "treatment_number": safe_get(entry, "treatment_number", 1),
         })
 
     if url_treatments:

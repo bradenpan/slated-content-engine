@@ -390,3 +390,8 @@ html, body {
 .pin-cta.hidden {
     display: none;
 }
+
+/* === Logo color variant — secondary (Amber 50) === */
+.brand-logo-text.logo-secondary {
+    color: var(--brand-secondary);
+}

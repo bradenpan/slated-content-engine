@@ -767,7 +767,10 @@ class ClaudeAPI:
 
             except anthropic.APIError as e:
                 if attempt < max_retries and getattr(e, "status_code", 0) >= 500:
-                    wait_time = 2 ** (attempt + 1)
+                    if getattr(e, "status_code", 0) == 529:
+                        wait_time = min(30 * (attempt + 1), 120)
+                    else:
+                        wait_time = 2 ** (attempt + 1)
                     logger.warning(
                         "Claude API server error. Retry %d/%d after %ds. Error: %s",
                         attempt + 1, max_retries, wait_time, e,

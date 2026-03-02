@@ -271,10 +271,16 @@ class BlogDeployer:
         }
         if failed_slugs:
             original_count = len(approved_pins)
-            approved_pins = [
-                pin for pin in approved_pins
-                if (safe_get(pin, "blog_slug") or safe_get(pin, "slug", "")) not in failed_slugs
-            ]
+            filtered_pins = []
+            for pin in approved_pins:
+                pin_slug = safe_get(pin, "blog_slug") or ""
+                if not pin_slug:
+                    # slug field from Sheet contains full URL — extract bare slug
+                    raw = safe_get(pin, "slug", "")
+                    pin_slug = raw.rstrip("/").rsplit("/", 1)[-1] if "/" in raw else raw
+                if pin_slug not in failed_slugs:
+                    filtered_pins.append(pin)
+            approved_pins = filtered_pins
             filtered_count = original_count - len(approved_pins)
             if filtered_count:
                 logger.warning(
@@ -484,7 +490,9 @@ class BlogDeployer:
             try:
                 pin_results = json.loads(pin_results_path.read_text(encoding="utf-8"))
                 for pin in safe_get(pin_results, "generated", []):
-                    full_pin_data[pin["pin_id"]] = pin
+                    pin_id = safe_get(pin, "pin_id", "")
+                    if pin_id:
+                        full_pin_data[pin_id] = pin
             except (json.JSONDecodeError, KeyError) as e:
                 logger.warning("Could not load pin generation results: %s", e)
 
@@ -562,7 +570,9 @@ class BlogDeployer:
             try:
                 pin_results = json.loads(pin_results_path.read_text(encoding="utf-8"))
                 for pin in safe_get(pin_results, "generated", []):
-                    full_pin_data[pin["pin_id"]] = pin
+                    pin_id = safe_get(pin, "pin_id", "")
+                    if pin_id:
+                        full_pin_data[pin_id] = pin
             except (json.JSONDecodeError, KeyError):
                 pass
 

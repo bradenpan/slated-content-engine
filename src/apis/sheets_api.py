@@ -249,34 +249,34 @@ class SheetsAPI:
         rows.append(["=== CONTENT PLAN ==="])
 
         # Blog posts section
-        blog_posts = content_plan.get("blog_posts", [])
+        blog_posts = content_plan.get("blog_posts") or []
         if blog_posts:
             rows.append(["Blog Posts Planned:", str(len(blog_posts))])
             rows.append(["ID", "Type", "Topic", "Pillar", "Keywords", "Status", "Feedback"])
             for post in blog_posts:
                 rows.append([
-                    str(post.get("post_id", "")),
-                    str(post.get("content_type", "")),
-                    str(post.get("topic", "")),
-                    str(post.get("pillar", "")),
-                    ", ".join([post.get("primary_keyword", "")] + post.get("secondary_keywords", [])),
+                    str(post.get("post_id") or ""),
+                    str(post.get("content_type") or ""),
+                    str(post.get("topic") or ""),
+                    str(post.get("pillar") or ""),
+                    ", ".join([post.get("primary_keyword") or ""] + (post.get("secondary_keywords") or [])),
                     "",  # Status — blank = approved by default; user sets "regen" to request replacement
                     "",  # Feedback — free text for reviewer notes on what to change
                 ])
 
         # Pins section
-        pins = content_plan.get("pins", [])
+        pins = content_plan.get("pins") or []
         if pins:
             rows.append([""])
             rows.append(["Pins Planned:", str(len(pins))])
             rows.append(["ID", "Topic", "Board", "Schedule", "Type"])
             for pin in pins:
                 rows.append([
-                    str(pin.get("pin_id", "")),
-                    str(pin.get("pin_topic", "")),
-                    str(pin.get("target_board", "")),
-                    f"{pin.get('scheduled_date', '')} / {pin.get('scheduled_slot', '')}",
-                    str(pin.get("pin_type", "")),
+                    str(pin.get("pin_id") or ""),
+                    str(pin.get("pin_topic") or ""),
+                    str(pin.get("target_board") or ""),
+                    f"{pin.get('scheduled_date') or ''} / {pin.get('scheduled_slot') or ''}",
+                    str(pin.get("pin_type") or ""),
                 ])
 
         self._clear_and_write(TAB_WEEKLY_REVIEW, rows)
@@ -397,8 +397,8 @@ class SheetsAPI:
 
         # Blog posts
         for post in blog_posts:
-            post_id = str(post.get("post_id", ""))
-            description = blog_previews.get(post_id, str(post.get("content_type", "")))
+            post_id = str(post.get("post_id") or "")
+            description = blog_previews.get(post_id, str(post.get("content_type") or ""))
 
             # Use IMAGE() formula if we have a hero image URL from Drive
             blog_img_url = blog_image_urls.get(post_id)
@@ -407,12 +407,12 @@ class SheetsAPI:
             rows.append([
                 post_id,
                 "blog",
-                str(post.get("title", "")),
+                str(post.get("title") or ""),
                 description,
                 "",  # No board for blog posts
-                str(post.get("slug", "")),  # Slug stored in Blog URL column; deployer needs it
+                str(post.get("slug") or ""),  # Slug stored in Blog URL column; deployer needs it
                 "",  # No schedule for blog posts
-                str(post.get("pillar", "")),
+                str(post.get("pillar") or ""),
                 blog_thumbnail,
                 "pending_review",
                 "",  # Notes
@@ -421,11 +421,11 @@ class SheetsAPI:
 
         # Pins
         for pin in pins:
-            pin_id = str(pin.get("pin_id", ""))
+            pin_id = str(pin.get("pin_id") or "")
 
             # Build description with alt text
-            desc = str(pin.get("description", ""))
-            alt_text = pin.get("alt_text", "")
+            desc = str(pin.get("description") or "")
+            alt_text = pin.get("alt_text") or ""
             if alt_text:
                 desc = f"{desc}\n\nAlt: {alt_text}"
 
@@ -439,17 +439,17 @@ class SheetsAPI:
                 thumbnail = ""
 
             # Per-pin quality note (populated by publish_content_queue.py)
-            quality_note = str(pin.get("_quality_note", ""))
+            quality_note = str(pin.get("_quality_note") or "")
 
             rows.append([
                 pin_id,
                 "pin",
-                str(pin.get("title", "")),
+                str(pin.get("title") or ""),
                 desc,
-                str(pin.get("board_name", pin.get("target_board", ""))),
-                str(pin.get("link", "")),
-                f"{pin.get('scheduled_date', '')}/{pin.get('scheduled_slot', '')}",
-                str(pin.get("pillar", "")),
+                str(pin.get("board_name") or pin.get("target_board") or ""),
+                str(pin.get("link") or ""),
+                f"{pin.get('scheduled_date') or ''}/{pin.get('scheduled_slot') or ''}",
+                str(pin.get("pillar") or ""),
                 thumbnail,
                 "pending_review",
                 quality_note,
@@ -728,15 +728,15 @@ class SheetsAPI:
                       url, pinterest_pin_id, status, error.
         """
         row = [
-            str(pin_data.get("pin_id", "")),
-            str(pin_data.get("date", datetime.now(timezone.utc).strftime("%Y-%m-%d"))),
-            str(pin_data.get("slot", "")),
-            str(pin_data.get("board", "")),
-            str(pin_data.get("title", "")),
-            str(pin_data.get("url", "")),
-            str(pin_data.get("pinterest_pin_id", "")),
-            str(pin_data.get("status", "")),
-            str(pin_data.get("error", "")),
+            str(pin_data.get("pin_id") or ""),
+            str(pin_data.get("date") or datetime.now(timezone.utc).strftime("%Y-%m-%d")),
+            str(pin_data.get("slot") or ""),
+            str(pin_data.get("board") or ""),
+            str(pin_data.get("title") or ""),
+            str(pin_data.get("url") or ""),
+            str(pin_data.get("pinterest_pin_id") or ""),
+            str(pin_data.get("status") or ""),
+            str(pin_data.get("error") or ""),
         ]
 
         try:
