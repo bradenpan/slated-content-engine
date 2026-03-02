@@ -35,6 +35,7 @@ import requests
 
 from src.apis.openai_chat_api import OpenAIChatAPIError, call_gpt5_mini
 from src.paths import PROMPTS_DIR, STRATEGY_DIR
+from src.utils.safe_get import safe_get
 from src.config import (
     CLAUDE_MODEL_ROUTINE as MODEL_ROUTINE,
     CLAUDE_MODEL_DEEP as MODEL_DEEP,
@@ -309,13 +310,13 @@ class ClaudeAPI:
         template = self.load_prompt_template(template_name)
 
         context = {
-            "topic": post_spec.get("topic", ""),
-            "plan_theme": post_spec.get("topic", ""),  # alias for weekly-plan template
-            "primary_keyword": post_spec.get("primary_keyword", ""),
-            "secondary_keywords": post_spec.get("secondary_keywords") or [],
-            "recipes": post_spec.get("recipes", "See topic description"),
-            "include_recipes": str(post_spec.get("include_recipes", False)),
-            "pillar": str(post_spec.get("pillar", "")),
+            "topic": safe_get(post_spec, "topic", ""),
+            "plan_theme": safe_get(post_spec, "topic", ""),  # alias for weekly-plan template
+            "primary_keyword": safe_get(post_spec, "primary_keyword", ""),
+            "secondary_keywords": safe_get(post_spec, "secondary_keywords", []),
+            "recipes": safe_get(post_spec, "recipes", "See topic description"),
+            "include_recipes": str(safe_get(post_spec, "include_recipes", False)),
+            "pillar": str(safe_get(post_spec, "pillar", "")),
             "current_date": _date.today().isoformat(),
             "post_spec": post_spec,
             "brand_voice": brand_voice,
@@ -373,11 +374,11 @@ class ClaudeAPI:
         template = self.load_prompt_template("image_prompt.md")
 
         context = {
-            "pin_topic": pin_spec.get("pin_topic") or pin_spec.get("topic") or "",
-            "content_type": pin_spec.get("content_type") or "",
-            "primary_keyword": pin_spec.get("primary_keyword") or "",
-            "pin_template": pin_spec.get("pin_template") or "",
-            "pillar": str(pin_spec.get("pillar") or ""),
+            "pin_topic": safe_get(pin_spec, "pin_topic") or safe_get(pin_spec, "topic", ""),
+            "content_type": safe_get(pin_spec, "content_type", ""),
+            "primary_keyword": safe_get(pin_spec, "primary_keyword", ""),
+            "pin_template": safe_get(pin_spec, "pin_template", ""),
+            "pillar": str(safe_get(pin_spec, "pillar", "")),
         }
 
         prompt = self._render_template(template, context)
@@ -402,7 +403,7 @@ class ClaudeAPI:
                 f"addresses this feedback."
             )
 
-        logger.info("Generating AI image prompt for: %s", (pin_spec.get("pin_topic") or pin_spec.get("topic") or "unknown")[:50])
+        logger.info("Generating AI image prompt for: %s", (safe_get(pin_spec, "pin_topic") or safe_get(pin_spec, "topic", "unknown"))[:50])
         try:
             return call_gpt5_mini(prompt=prompt, system=system_msg, max_tokens=500, temperature=0.8)
         except Exception as e:

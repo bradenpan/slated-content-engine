@@ -168,8 +168,8 @@ def publish() -> None:
     blog_entries = [
         {
             "post_id": post_id,
-            "title": pdata.get("title", ""),
-            "slug": pdata.get("slug", ""),
+            "title": safe_get(pdata, "title", ""),
+            "slug": safe_get(pdata, "slug", ""),
             "pillar": str(safe_get(pdata, "pillar", "")),
             "content_type": safe_get(pdata, "content_type", ""),
         }

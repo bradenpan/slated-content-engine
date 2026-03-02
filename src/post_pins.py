@@ -143,7 +143,7 @@ def post_pins(
     total_pins = len(pins_to_post)
 
     for i, pin_data in enumerate(pins_to_post):
-        pin_id = pin_data.get("pin_id", f"unknown-{i}")
+        pin_id = safe_get(pin_data, "pin_id", f"unknown-{i}")
 
         try:
             # Idempotency check
@@ -157,7 +157,7 @@ def post_pins(
                 apply_jitter(time_slot, pin_index=i)
 
             # Resolve board ID from board name
-            board_name = pin_data.get("board_name", pin_data.get("target_board", ""))
+            board_name = safe_get(pin_data, "board_name") or safe_get(pin_data, "target_board", "")
             board_id = board_map.get(board_name)
             if not board_id:
                 # Try fuzzy matching (case-insensitive, strip whitespace)
@@ -170,7 +170,7 @@ def post_pins(
                 )
 
             # Verify the blog post URL is live
-            blog_url = pin_data.get("link", pin_data.get("blog_url", ""))
+            blog_url = safe_get(pin_data, "link") or safe_get(pin_data, "blog_url", "")
             if blog_url and not verify_url_is_live(blog_url):
                 logger.warning("Blog URL not live: %s. Will proceed with posting anyway.", blog_url)
 
@@ -184,8 +184,8 @@ def post_pins(
             # Prepare image source
             image_base64 = None
             image_url = None
-            image_path = pin_data.get("image_path")
-            image_hosted_url = pin_data.get("image_url")
+            image_path = safe_get(pin_data, "image_path")
+            image_hosted_url = safe_get(pin_data, "image_url")
 
             if image_hosted_url:
                 image_url = image_hosted_url
@@ -206,10 +206,10 @@ def post_pins(
                 pinterest=pinterest,
                 token_manager=token_manager,
                 board_id=board_id,
-                title=pin_data.get("title", ""),
-                description=pin_data.get("description", ""),
+                title=safe_get(pin_data, "title", ""),
+                description=safe_get(pin_data, "description", ""),
                 link=link,
-                alt_text=pin_data.get("alt_text", ""),
+                alt_text=safe_get(pin_data, "alt_text", ""),
                 image_base64=image_base64,
                 image_url=image_url,
             )

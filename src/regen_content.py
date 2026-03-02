@@ -351,9 +351,9 @@ def regen(
             update_kwargs["thumbnail"] = f'=IMAGE("{new_image_url}")'
 
         if regen_type in ("regen_copy", "regen"):
-            update_kwargs["title"] = new_pin_data.get("title", pin_data.get("title", ""))
-            desc = new_pin_data.get("description", pin_data.get("description", ""))
-            alt_text = new_pin_data.get("alt_text", "")
+            update_kwargs["title"] = safe_get(new_pin_data, "title") or safe_get(pin_data, "title", "")
+            desc = safe_get(new_pin_data, "description") or safe_get(pin_data, "description", "")
+            alt_text = safe_get(new_pin_data, "alt_text", "")
             if alt_text:
                 desc = f"{desc}\n\nAlt: {alt_text}"
             update_kwargs["description"] = desc
@@ -484,15 +484,15 @@ def _regen_item(
     # Build a pin_spec-like dict for the generation functions
     pin_spec = {
         "pin_id": pin_id,
-        "pin_topic": pin_data.get("title", ""),
-        "target_board": pin_data.get("board_name", ""),
-        "pillar": pin_data.get("pillar"),
-        "primary_keyword": pin_data.get("primary_keyword", ""),
-        "secondary_keywords": pin_data.get("secondary_keywords", []),
-        "pin_template": pin_data.get("template", "recipe-pin"),
-        "template_variant": pin_data.get("template_variant", 1),
-        "content_type": pin_data.get("content_type"),
-        "funnel_layer": pin_data.get("funnel_layer", "discovery"),
+        "pin_topic": safe_get(pin_data, "title", ""),
+        "target_board": safe_get(pin_data, "board_name", ""),
+        "pillar": safe_get(pin_data, "pillar"),
+        "primary_keyword": safe_get(pin_data, "primary_keyword", ""),
+        "secondary_keywords": safe_get(pin_data, "secondary_keywords", []),
+        "pin_template": safe_get(pin_data, "template", "recipe-pin"),
+        "template_variant": safe_get(pin_data, "template_variant", 1),
+        "content_type": safe_get(pin_data, "content_type"),
+        "funnel_layer": safe_get(pin_data, "funnel_layer", "discovery"),
     }
 
     if feedback:
@@ -521,10 +521,10 @@ def _regen_item(
             )
             if copy_results:
                 new_copy = copy_results[0]
-                new_pin_data["title"] = new_copy.get("title", new_pin_data.get("title", ""))
-                new_pin_data["description"] = new_copy.get("description", new_pin_data.get("description", ""))
-                new_pin_data["alt_text"] = new_copy.get("alt_text", new_pin_data.get("alt_text", ""))
-                new_pin_data["text_overlay"] = new_copy.get("text_overlay", new_pin_data.get("text_overlay", ""))
+                new_pin_data["title"] = safe_get(new_copy, "title") or safe_get(new_pin_data, "title", "")
+                new_pin_data["description"] = safe_get(new_copy, "description") or safe_get(new_pin_data, "description", "")
+                new_pin_data["alt_text"] = safe_get(new_copy, "alt_text") or safe_get(new_pin_data, "alt_text", "")
+                new_pin_data["text_overlay"] = safe_get(new_copy, "text_overlay") or safe_get(new_pin_data, "text_overlay", "")
                 logger.info("Copy regenerated for %s: '%s'", pin_id, new_pin_data["title"][:60])
         except Exception as e:
             logger.error("Copy regeneration failed for %s: %s", pin_id, e)

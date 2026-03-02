@@ -584,21 +584,21 @@ class BlogDeployer:
                 "posted_date": today_str,  # weekly_analysis.py filters on this field
                 "schedule_id": pin_id,  # Per-pin unique ID (e.g., "W9-01") for dedup
                 "pin_id": None,  # Set when actually posted to Pinterest
-                "blog_slug": full.get("blog_slug", ""),
-                "blog_title": full.get("title", pin_item.get("title", "")),
+                "blog_slug": safe_get(full, "blog_slug", ""),
+                "blog_title": safe_get(full, "title") or safe_get(pin_item, "title", ""),
                 "topic_summary": _build_topic_summary(full),
-                "pillar": full.get("pillar", pin_item.get("pillar")),
-                "content_type": full.get("content_type", ""),
-                "funnel_layer": full.get("funnel_layer", "discovery"),
-                "template": full.get("template", ""),
-                "board": full.get("board_name", ""),
-                "primary_keyword": full.get("primary_keyword", ""),
-                "secondary_keywords": full.get("secondary_keywords", []),
-                "image_source": full.get("image_source", ""),
-                "image_id": full.get("image_id", ""),
-                "pin_type": full.get("pin_type", "primary"),
-                "treatment_number": full.get("treatment_number", 1),
-                "source_post_id": full.get("source_post_id", ""),
+                "pillar": safe_get(full, "pillar") or safe_get(pin_item, "pillar"),
+                "content_type": safe_get(full, "content_type", ""),
+                "funnel_layer": safe_get(full, "funnel_layer", "discovery"),
+                "template": safe_get(full, "template", ""),
+                "board": safe_get(full, "board_name", ""),
+                "primary_keyword": safe_get(full, "primary_keyword", ""),
+                "secondary_keywords": safe_get(full, "secondary_keywords", []),
+                "image_source": safe_get(full, "image_source", ""),
+                "image_id": safe_get(full, "image_id", ""),
+                "pin_type": safe_get(full, "pin_type", "primary"),
+                "treatment_number": safe_get(full, "treatment_number", 1),
+                "source_post_id": safe_get(full, "source_post_id", ""),
                 "impressions": 0,
                 "saves": 0,
                 "outbound_clicks": 0,
@@ -625,11 +625,11 @@ def _build_topic_summary(pin_data: dict) -> str:
     """
     parts = []
 
-    title = pin_data.get("title", "")
+    title = safe_get(pin_data, "title", "")
     if title:
         parts.append(title)
 
-    primary_kw = pin_data.get("primary_keyword", "")
+    primary_kw = safe_get(pin_data, "primary_keyword", "")
     if primary_kw and primary_kw.lower() not in title.lower():
         parts.append(primary_kw)
 

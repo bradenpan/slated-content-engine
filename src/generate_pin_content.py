@@ -32,6 +32,7 @@ from src.paths import DATA_DIR, STRATEGY_DIR, PIN_OUTPUT_DIR
 from src.config import BLOG_BASE_URL, COPY_BATCH_SIZE
 from src.utils.plan_utils import find_latest_plan, load_plan
 from src.utils.strategy_utils import load_brand_voice
+from src.utils.safe_get import safe_get
 
 logger = logging.getLogger(__name__)
 
@@ -174,7 +175,7 @@ def generate_pin_content(
                 hero_image_path=image_path,
                 headline=headline,
                 subtitle=subtitle,
-                variant=pin_spec.get("template_variant") or 1,
+                variant=safe_get(pin_spec, "template_variant", 1),
                 output_path=PIN_OUTPUT_DIR / f"{pin_id}.png",
                 extra_context=extra_context,
             )
@@ -197,30 +198,30 @@ def generate_pin_content(
             # Build the complete pin data
             pin_data = {
                 "pin_id": pin_id,
-                "title": pin_copy.get("title", ""),
-                "description": pin_copy.get("description", ""),
-                "alt_text": pin_copy.get("alt_text", ""),
+                "title": safe_get(pin_copy, "title", ""),
+                "description": safe_get(pin_copy, "description", ""),
+                "alt_text": safe_get(pin_copy, "alt_text", ""),
                 "text_overlay": text_overlay,
                 "image_path": str(rendered_pin_path),
                 "hero_image_path": str(image_path) if image_path else None,
                 "board_name": board_name,
-                "board_id": board_id_map.get(board_name, ""),
+                "board_id": safe_get(board_id_map, board_name, ""),
                 "link": link,
                 "blog_slug": blog_slug,
-                "scheduled_date": pin_spec.get("scheduled_date", ""),
-                "scheduled_slot": pin_spec.get("scheduled_slot", ""),
+                "scheduled_date": safe_get(pin_spec, "scheduled_date", ""),
+                "scheduled_slot": safe_get(pin_spec, "scheduled_slot", ""),
                 "image_source": image_source,
                 "image_id": image_id,
-                "pillar": pin_spec.get("pillar"),
-                "pin_type": pin_spec.get("pin_type", "primary"),
+                "pillar": safe_get(pin_spec, "pillar"),
+                "pin_type": safe_get(pin_spec, "pin_type", "primary"),
                 "template": template_type,
-                "content_type": pin_spec.get("content_type"),
-                "primary_keyword": pin_spec.get("primary_keyword", ""),
-                "secondary_keywords": pin_spec.get("secondary_keywords", []),
-                "treatment_number": pin_spec.get("treatment_number") or 1,
-                "source_post_id": pin_spec.get("source_post_id", ""),
-                "funnel_layer": pin_spec.get("funnel_layer", "discovery"),
-                "image_retries": quality_meta.get("image_retries") or 0,
+                "content_type": safe_get(pin_spec, "content_type"),
+                "primary_keyword": safe_get(pin_spec, "primary_keyword", ""),
+                "secondary_keywords": safe_get(pin_spec, "secondary_keywords", []),
+                "treatment_number": safe_get(pin_spec, "treatment_number", 1),
+                "source_post_id": safe_get(pin_spec, "source_post_id", ""),
+                "funnel_layer": safe_get(pin_spec, "funnel_layer", "discovery"),
+                "image_retries": safe_get(quality_meta, "image_retries", 0),
             }
 
             # Inherit pillar/content_type from parent blog post if missing
