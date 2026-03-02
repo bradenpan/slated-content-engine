@@ -233,7 +233,7 @@ def generate_plan(
                         p.get("target_board", "") for p in kept_pins
                     )),
                     "kept_pin_pillars": dict(Counter(
-                        p.get("pillar", 0) for p in kept_pins
+                        p.get("pillar") or 0 for p in kept_pins
                     )),
                     "week_number": plan.get("week_number", ""),
                     "date_range": plan.get("date_range", ""),

@@ -148,7 +148,7 @@ def generate_content_memory_summary(
             pillar = entry.get("pillar") or 0
             posts_by_type[ctype][pillar].append({
                 "slug": slug,
-                "title": entry.get("blog_title", slug),
+                "title": entry.get("blog_title") or slug,
             })
 
     if posts_by_type:
@@ -219,17 +219,17 @@ def generate_content_memory_summary(
     )
 
     for entry in content_log:
-        pk = entry.get("primary_keyword", "")
+        pk = entry.get("primary_keyword") or ""
         if pk:
             keyword_counts[pk] += 1
             entry_date = get_entry_date(entry)
             if entry_date > keyword_last_used.get(pk, ""):
                 keyword_last_used[pk] = entry_date
-            keyword_performance[pk]["impressions"] += entry.get("impressions", 0)
-            keyword_performance[pk]["saves"] += entry.get("saves", 0)
+            keyword_performance[pk]["impressions"] += entry.get("impressions") or 0
+            keyword_performance[pk]["saves"] += entry.get("saves") or 0
             keyword_performance[pk]["count"] += 1
 
-        for sk in entry.get("secondary_keywords", []):
+        for sk in entry.get("secondary_keywords") or []:
             keyword_counts[sk] += 1
             entry_date = get_entry_date(entry)
             if entry_date > keyword_last_used.get(sk, ""):
@@ -293,7 +293,7 @@ def generate_content_memory_summary(
         entry_date = get_entry_date(entry)
         if slug not in slug_data:
             slug_data[slug] = {
-                "title": entry.get("blog_title", slug),
+                "title": entry.get("blog_title") or slug,
                 "pillar": entry.get("pillar") or 0,
                 "last_pin_date": entry_date,
                 "total_impressions": 0,
@@ -304,11 +304,11 @@ def generate_content_memory_summary(
         data = slug_data[slug]
         if entry_date > data["last_pin_date"]:
             data["last_pin_date"] = entry_date
-        data["total_impressions"] += entry.get("impressions", 0)
-        data["total_saves"] += entry.get("saves", 0)
+        data["total_impressions"] += entry.get("impressions") or 0
+        data["total_saves"] += entry.get("saves") or 0
         data["treatment_count"] = max(
             data["treatment_count"],
-            entry.get("treatment_number", 1),
+            entry.get("treatment_number") or 1,
         )
 
     candidates = []
@@ -355,14 +355,14 @@ def generate_content_memory_summary(
             continue
         if slug not in url_treatments:
             url_treatments[slug] = {
-                "title": entry.get("blog_title", slug),
+                "title": entry.get("blog_title") or slug,
                 "treatment_count": 0,
                 "treatments": [],
             }
         url_treatments[slug]["treatment_count"] += 1
         url_treatments[slug]["treatments"].append({
             "date": get_entry_date(entry),
-            "treatment_number": entry.get("treatment_number", 1),
+            "treatment_number": entry.get("treatment_number") or 1,
         })
 
     if url_treatments:

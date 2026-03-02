@@ -111,7 +111,7 @@ def validate_plan(
         })
 
     # --- Check 2: Pillar mix within ranges (allow +/-1 pin tolerance) ---
-    pillar_counts = Counter(pin.get("pillar", 0) for pin in pins)
+    pillar_counts = Counter(pin.get("pillar") or 0 for pin in pins)
     for pillar, (min_pins, max_pins) in PILLAR_MIX_TARGETS.items():
         count = pillar_counts.get(pillar, 0)
         if count < min_pins - 1 or count > max_pins + 1:

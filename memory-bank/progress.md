@@ -1806,3 +1806,47 @@ Automated review agent found 4 issues (1 MEDIUM, 3 LOW), all addressed before co
 ### Status
 
 Complete. 206 tests pass.
+
+---
+
+## Phase 16 — Content Memory None-Safety Fix (2026-03-02)
+
+### Problem
+
+Weekly review workflow crashed on GitHub Actions at step 5 (`python -m src.utils.content_memory`):
+```
+AttributeError: 'NoneType' object has no attribute 'title'
+```
+at `content_memory.py` line 156 (the `.title()` call on `ctype`).
+
+### Root Cause
+
+Python's `dict.get(key, default)` only returns the default when the key is **absent**. When the key **exists** with a `None` value, `.get()` returns `None`. After the Phase 15 backfill, some content-log entries had keys present with `null` values (e.g., `"content_type": null`), so `.get("content_type", "unknown")` returned `None` instead of `"unknown"`.
+
+### Fix
+
+Changed all vulnerable `.get(key, default)` patterns to `.get(key) or default` across 5 files:
+
+**`src/utils/content_memory.py`** (primary crash site — 18 lines fixed):
+- `content_type`, `pillar`, `board`, `funnel_layer`, `blog_title`, `primary_keyword`, `secondary_keywords`, `impressions`, `saves`, `treatment_number`
+
+**`src/generate_weekly_plan.py`** (1 line):
+- Line 236: `p.get("pillar") or 0`
+
+**`src/plan_validator.py`** (1 line):
+- Line 114: `pin.get("pillar") or 0`
+
+**`src/regen_weekly_plan.py`** (1 line):
+- Line 169: `p.get("pillar") or 0`
+
+**`src/monthly_review.py`** (1 line):
+- Line 496: `entry.get("board") or "unknown"`
+
+### Verification
+
+- Code review agent audited all changes + found 4 additional missed categories in content_memory.py (blog_title, treatment_number, impressions/saves, secondary_keywords) — all fixed
+- Audit testing agent confirmed: all-None entries, mixed entries, edge cases, output correctness, and full 206-test suite all PASS
+
+### Status
+
+Complete. 206 tests pass.

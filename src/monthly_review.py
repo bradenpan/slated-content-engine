@@ -493,7 +493,7 @@ def _analyze_board_density(entries: list[dict]) -> dict:
     """
     board_counts = defaultdict(int)
     for entry in entries:
-        board = entry.get("board", "unknown")
+        board = entry.get("board") or "unknown"
         board_counts[board] += 1
 
     # Load board structure for expected boards
