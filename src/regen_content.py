@@ -42,6 +42,7 @@ from src.pin_assembler import PinAssembler
 from src.paths import DATA_DIR, PIN_OUTPUT_DIR
 from src.utils.plan_utils import save_pin_schedule
 from src.utils.image_utils import extract_drive_file_id
+from src.utils.safe_get import safe_get
 
 logger = logging.getLogger(__name__)
 
@@ -213,7 +214,7 @@ def regen(
             # Update blog_results in-place for later save
             if blog_result.get("image_source"):
                 blog_data["_hero_image_source"] = blog_result["image_source"]
-                blog_data["_hero_image_id"] = blog_result.get("image_id", "")
+                blog_data["_hero_image_id"] = safe_get(blog_result, "image_id", "")
                 blog_data["_hero_quality_score"] = new_score
                 blog_data["_hero_regen_feedback"] = feedback
                 blog_data["_hero_regen_timestamp"] = datetime.now().isoformat()
@@ -410,13 +411,13 @@ def regen(
                     pid = entry.get("pin_id", "")
                     if pid in updated_pins:
                         src = updated_pins[pid]
-                        entry["title"] = src.get("title", entry.get("title", ""))
-                        entry["description"] = src.get("description", entry.get("description", ""))
-                        entry["alt_text"] = src.get("alt_text", entry.get("alt_text", ""))
-                        entry["image_path"] = src.get("image_path", entry.get("image_path", ""))
-                        entry["image_url"] = src.get("_drive_download_url", entry.get("image_url", ""))
-                        entry["image_source"] = src.get("image_source", entry.get("image_source", ""))
-                        entry["image_id"] = src.get("image_id", entry.get("image_id", ""))
+                        entry["title"] = safe_get(src, "title") or safe_get(entry, "title", "")
+                        entry["description"] = safe_get(src, "description") or safe_get(entry, "description", "")
+                        entry["alt_text"] = safe_get(src, "alt_text") or safe_get(entry, "alt_text", "")
+                        entry["image_path"] = safe_get(src, "image_path") or safe_get(entry, "image_path", "")
+                        entry["image_url"] = safe_get(src, "_drive_download_url") or safe_get(entry, "image_url", "")
+                        entry["image_source"] = safe_get(src, "image_source") or safe_get(entry, "image_source", "")
+                        entry["image_id"] = safe_get(src, "image_id") or safe_get(entry, "image_id", "")
                         changed += 1
 
                 if changed:

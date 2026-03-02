@@ -32,6 +32,7 @@ from src.paths import DATA_DIR, BLOG_OUTPUT_DIR, PIN_OUTPUT_DIR
 from src.config import BLOG_BASE_URL, DEPLOY_VERIFY_TIMEOUT
 from src.utils.content_log import load_content_log, append_content_log_entry
 from src.utils.plan_utils import save_pin_schedule
+from src.utils.safe_get import safe_get
 
 logger = logging.getLogger(__name__)
 
@@ -495,28 +496,28 @@ class BlogDeployer:
 
             schedule_entry = {
                 "pin_id": pin_id,
-                "title": full_data.get("title", pin_item.get("title", "")),
-                "description": full_data.get("description", ""),
-                "alt_text": full_data.get("alt_text", ""),
-                "board_id": full_data.get("board_id", ""),
-                "board_name": full_data.get("board_name", ""),
-                "link": full_data.get("link", ""),
-                "image_path": full_data.get("image_path", ""),
-                "image_url": full_data.get("_drive_download_url", ""),
-                "scheduled_date": full_data.get("scheduled_date", ""),
-                "scheduled_slot": full_data.get("scheduled_slot", ""),
-                "pillar": full_data.get("pillar"),
-                "pin_type": full_data.get("pin_type", "primary"),
-                "primary_keyword": full_data.get("primary_keyword", ""),
-                "secondary_keywords": full_data.get("secondary_keywords", []),
-                "blog_slug": full_data.get("blog_slug", ""),
-                "content_type": full_data.get("content_type", ""),
-                "funnel_layer": full_data.get("funnel_layer", "discovery"),
-                "template": full_data.get("template", ""),
-                "treatment_number": full_data.get("treatment_number", 1),
-                "source_post_id": full_data.get("source_post_id", ""),
-                "image_source": full_data.get("image_source", ""),
-                "image_id": full_data.get("image_id", ""),
+                "title": safe_get(full_data, "title") or safe_get(pin_item, "title", ""),
+                "description": safe_get(full_data, "description", ""),
+                "alt_text": safe_get(full_data, "alt_text", ""),
+                "board_id": safe_get(full_data, "board_id", ""),
+                "board_name": safe_get(full_data, "board_name", ""),
+                "link": safe_get(full_data, "link", ""),
+                "image_path": safe_get(full_data, "image_path", ""),
+                "image_url": safe_get(full_data, "_drive_download_url", ""),
+                "scheduled_date": safe_get(full_data, "scheduled_date", ""),
+                "scheduled_slot": safe_get(full_data, "scheduled_slot", ""),
+                "pillar": safe_get(full_data, "pillar"),
+                "pin_type": safe_get(full_data, "pin_type", "primary"),
+                "primary_keyword": safe_get(full_data, "primary_keyword", ""),
+                "secondary_keywords": safe_get(full_data, "secondary_keywords", []),
+                "blog_slug": safe_get(full_data, "blog_slug", ""),
+                "content_type": safe_get(full_data, "content_type", ""),
+                "funnel_layer": safe_get(full_data, "funnel_layer", "discovery"),
+                "template": safe_get(full_data, "template", ""),
+                "treatment_number": safe_get(full_data, "treatment_number", 1),
+                "source_post_id": safe_get(full_data, "source_post_id", ""),
+                "image_source": safe_get(full_data, "image_source", ""),
+                "image_id": safe_get(full_data, "image_id", ""),
                 "status": "scheduled",
             }
             schedule.append(schedule_entry)

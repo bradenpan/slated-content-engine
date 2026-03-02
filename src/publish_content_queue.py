@@ -21,6 +21,7 @@ from src.apis.sheets_api import SheetsAPI, TAB_CONTENT_QUEUE, CQ_CELL_REGEN_TRIG
 from src.apis.slack_notify import SlackNotify
 from src.paths import DATA_DIR, BLOG_OUTPUT_DIR, PIN_OUTPUT_DIR
 from src.utils.image_utils import extract_drive_file_id
+from src.utils.safe_get import safe_get
 
 logger = logging.getLogger(__name__)
 
@@ -169,8 +170,8 @@ def publish() -> None:
             "post_id": post_id,
             "title": pdata.get("title", ""),
             "slug": pdata.get("slug", ""),
-            "pillar": str(pdata.get("pillar", "")),
-            "content_type": pdata.get("content_type", ""),
+            "pillar": str(safe_get(pdata, "pillar", "")),
+            "content_type": safe_get(pdata, "content_type", ""),
         }
         for post_id, pdata in blog_results.items()
         if pdata.get("status") == "success"
