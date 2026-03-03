@@ -71,6 +71,7 @@ SLOT_PIN_COUNTS = {
 
 def post_pins(
     time_slot: str,
+    date_override: Optional[str] = None,
     pinterest: Optional[PinterestAPI] = None,
     sheets: Optional[SheetsAPI] = None,
     token_manager: Optional[TokenManager] = None,
@@ -94,6 +95,8 @@ def post_pins(
 
     Args:
         time_slot: "morning", "afternoon", or "evening".
+        date_override: Optional YYYY-MM-DD string to post pins for a specific date
+                       instead of today. Useful for recovering missed slots.
 
     Returns:
         dict: Results with posted_count, failed_count, skipped_count.
@@ -101,8 +104,11 @@ def post_pins(
     if time_slot not in SLOT_PIN_COUNTS:
         raise ValueError(f"Invalid time_slot: {time_slot}. Must be one of {list(SLOT_PIN_COUNTS.keys())}")
 
+    if date_override:
+        datetime.strptime(date_override, "%Y-%m-%d")  # validate format
+
     results = {"posted_count": 0, "failed_count": 0, "skipped_count": 0, "errors": []}
-    today_str = datetime.now(ET).date().isoformat()
+    today_str = date_override or datetime.now(ET).date().isoformat()
 
     # Initialize services
     try:
@@ -119,8 +125,9 @@ def post_pins(
             pass
         raise
 
-    # Apply initial jitter before posting
-    apply_jitter(time_slot, pin_index=0)
+    # Apply initial jitter before posting (skip for manual recovery)
+    if not date_override:
+        apply_jitter(time_slot, pin_index=0)
 
     # Load pin schedule for today + slot
     pins_to_post = load_scheduled_pins(today_str, time_slot)
@@ -152,8 +159,8 @@ def post_pins(
                 results["skipped_count"] += 1
                 continue
 
-            # Inter-pin jitter (for 2nd+ pins in the same window)
-            if i > 0:
+            # Inter-pin jitter (for 2nd+ pins in the same window, skip for manual recovery)
+            if i > 0 and not date_override:
                 apply_jitter(time_slot, pin_index=i)
 
             # Resolve board ID from board name
@@ -676,19 +683,25 @@ if __name__ == "__main__":
 
     slot = sys.argv[1] if len(sys.argv) > 1 else "morning"
 
+    date_override = None
+    for arg in sys.argv[2:]:
+        if arg.startswith("--date="):
+            date_override = arg.split("=", 1)[1]
+
     if "--demo" in sys.argv:
         # Demo mode: show what would happen without actually posting
+        target_date = date_override or datetime.now(ET).date().isoformat()
         print(f"=== Demo mode: post_pins('{slot}') ===")
-        today_str = datetime.now(ET).date().isoformat()
-        print(f"Date: {today_str}")
+        print(f"Date: {target_date}")
         print(f"Slot: {slot} (expected pins: {SLOT_PIN_COUNTS[slot]})")
-        pins = load_scheduled_pins(today_str, slot)
+        pins = load_scheduled_pins(target_date, slot)
         print(f"Scheduled pins: {len(pins)}")
         for pin in pins:
             print(f"  - {safe_get(pin, 'pin_id')}: {safe_get(pin, 'title', 'N/A')[:50]}")
             print(f"    Board: {safe_get(pin, 'target_board')}")
             print(f"    Already posted: {is_pin_posted(safe_get(pin, 'pin_id', ''))}")
     else:
-        print(f"Posting pins for {slot} slot...")
-        results = post_pins(slot)
+        target_date = date_override or datetime.now(ET).date().isoformat()
+        print(f"Posting pins for {slot} slot (date: {target_date})...")
+        results = post_pins(slot, date_override=date_override)
         print(f"Results: {json.dumps(results, indent=2)}")

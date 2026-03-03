@@ -7,7 +7,12 @@ name: Daily Post -- Evening
 on:
   schedule:
     - cron: '0 1 * * *'  # 01:00 UTC = 8:00 PM ET (previous day), daily
-  workflow_dispatch:      # Manual fallback trigger
+  workflow_dispatch:
+    inputs:
+      date_override:
+        description: 'Post pins for a specific date (YYYY-MM-DD) instead of today'
+        required: false
+        default: ''
 
 concurrency:
   group: pinterest-posting
@@ -44,7 +49,7 @@ jobs:
         run: python -m src.token_manager
 
       - name: Post pins for evening slot
-        run: python -m src.post_pins evening
+        run: python -m src.post_pins evening ${{ inputs.date_override && format('--date={0}', inputs.date_override) || '' }}
 
       - name: Commit updated data files
         uses: ./.github/actions/commit-data
