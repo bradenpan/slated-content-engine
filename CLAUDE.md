@@ -15,10 +15,13 @@ This is the Slated Pinterest automation pipeline. It generates blog posts and pi
 
 ## Key Paths
 - `ARCHITECTURE.md` — **Start here.** Full system architecture, pipeline flow, file responsibilities, data schemas, gotchas
-- `src/` — Python pipeline scripts
-- `src/apis/` — API wrappers (Claude, Pinterest, Sheets, GCS, GitHub, Slack, etc.)
-- `src/utils/` — Shared utilities (content log, plan helpers, safe_get, etc.)
-- `prompts/` — Claude/GPT prompt templates for content generation
+- `src/shared/` — Cross-channel code (APIs, utilities, blog generation, content planning)
+- `src/shared/apis/` — Shared API wrappers (Claude, Sheets, GCS, GitHub, Slack, etc.)
+- `src/shared/utils/` — Shared utilities (content log, plan helpers, safe_get, etc.)
+- `src/pinterest/` — Pinterest-specific pipeline scripts
+- `src/pinterest/apis/` — Pinterest API wrapper
+- `prompts/shared/` — Cross-channel prompt templates (blog generation, image prompts)
+- `prompts/pinterest/` — Pinterest-specific prompts (planning, analysis, review)
 - `templates/pins/` — HTML/CSS pin templates (5 types × 3 variants)
 - `strategy/` — Content strategy files (keywords, CTAs, boards, brand voice)
 - `data/` — Runtime data (content log, token store — gitignored)

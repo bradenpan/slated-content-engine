@@ -1,7 +1,7 @@
 """
 One-time Pinterest board and section setup.
 
-Reads board definitions from strategy/board-structure.json and creates all
+Reads board definitions from strategy/pinterest/board-structure.json and creates all
 boards + sections in the Pinterest account. Safe to run multiple times —
 skips boards that already exist (matched by name).
 
@@ -22,7 +22,7 @@ from src.shared.paths import STRATEGY_DIR
 
 logger = logging.getLogger(__name__)
 
-BOARD_STRUCTURE_PATH = STRATEGY_DIR / "board-structure.json"
+BOARD_STRUCTURE_PATH = STRATEGY_DIR / "pinterest" / "board-structure.json"
 
 
 def load_board_structure() -> list[dict]:
@@ -36,7 +36,7 @@ def setup_boards() -> None:
     pinterest = PinterestAPI(access_token=token)
 
     board_definitions = load_board_structure()
-    logger.info("Loaded %d board definitions from board-structure.json", len(board_definitions))
+    logger.info("Loaded %d board definitions from pinterest/board-structure.json", len(board_definitions))
 
     # Fetch existing boards to make this idempotent
     existing_boards = pinterest.list_boards()

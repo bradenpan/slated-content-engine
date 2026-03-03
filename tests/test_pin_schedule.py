@@ -2,7 +2,7 @@
 
 import json
 
-from src.utils.plan_utils import save_pin_schedule
+from src.shared.utils.plan_utils import save_pin_schedule
 
 
 def test_save_creates_file_with_correct_content(tmp_path):

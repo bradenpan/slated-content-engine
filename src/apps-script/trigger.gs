@@ -68,7 +68,7 @@ function onSheetEdit(e) {
 
 function triggerGitHubWorkflow(eventType) {
   var token = PropertiesService.getScriptProperties().getProperty("GITHUB_TOKEN");
-  var repo = "bradenpan/slated-pinterest-bot";
+  var repo = "bradenpan/slated-content-engine";
 
   UrlFetchApp.fetch("https://api.github.com/repos/" + repo + "/dispatches", {
     method: "POST",

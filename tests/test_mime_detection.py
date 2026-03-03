@@ -1,6 +1,6 @@
 """Tests for src/utils/image_utils.py — MIME detection and Drive URL parsing."""
 
-from src.utils.image_utils import detect_mime_type, extract_drive_file_id
+from src.shared.utils.image_utils import detect_mime_type, extract_drive_file_id
 
 
 # --- detect_mime_type ---

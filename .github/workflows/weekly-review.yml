@@ -8,7 +8,7 @@ on:
   workflow_dispatch:       # Manual fallback trigger via GitHub UI
 
 concurrency:
-  group: pinterest-pipeline
+  group: slated-content-engine
   cancel-in-progress: false
 
 env:

@@ -1,10 +1,17 @@
-# TikTok Pipeline — Detailed Implementation Plan
+# TikTok Pipeline — Detailed Implementation Plan (RETIRED)
 
 **Date:** 2026-03-02
-**Status:** PARTIALLY SUPERSEDED (2026-03-03) — see note below
-**Prerequisite:** Multi-channel restructure (Phases 1-7) complete and burned in
+**Status:** FULLY RETIRED (2026-03-03) — all content absorbed into the master plan
 
-> **Important (2026-03-03):** Phases 3, 4, Pre-Build P2, and Environment Variables in this document describe direct TikTok API integration (Content Posting API + Display API). That approach has been replaced with **Publer** (publer.com) as the posting and analytics intermediary. See `implementation-plan.md` Phase 8 for the current approach. The rest of this document (Phases 1-2, 5-7, Open Decisions, strategy, templates, attribute taxonomy, cadence ramp) remains valid.
+> **This document is archived.** All TikTok implementation detail has been merged into `implementation-plan.md` as Phases 8-15 with a single sequential numbering system. **Do not use this document for planning or execution.**
+>
+> - **Master plan:** `architecture/multi-channel-restructure/implementation-plan.md`
+> - Open Decisions → master plan "Open Decisions" section
+> - Pre-Build P1/P2/P3 → master plan "Pre-Build Parallel Track" section
+> - Phases 1-4 (MVP) → master plan Phases 9-12
+> - Phases 5-7 (Post-MVP) → master plan Phases 13-15
+> - Publer decision → master plan "Publer Decision Record" section
+> - All reference sections → master plan "Reference" section
 
 ---
 

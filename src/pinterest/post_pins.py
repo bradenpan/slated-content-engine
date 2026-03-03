@@ -56,7 +56,7 @@ from src.shared.config import (
 logger = logging.getLogger(__name__)
 
 PIN_SCHEDULE_PATH = DATA_DIR / "pin-schedule.json"
-BOARD_STRUCTURE_PATH = STRATEGY_DIR / "board-structure.json"
+BOARD_STRUCTURE_PATH = STRATEGY_DIR / "pinterest" / "board-structure.json"
 
 # Timezone for scheduling logic (all dates are ET)
 ET = ZoneInfo("America/New_York")

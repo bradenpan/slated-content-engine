@@ -9,7 +9,7 @@ import pytest
 from PIL import Image
 
 from conftest import create_jpeg_with_exif as _create_jpeg_with_exif
-from src.image_cleaner import clean_image
+from src.shared.image_cleaner import clean_image
 
 
 def _create_png_with_text(path: Path, size=(80, 80), color=(200, 100, 50)):

@@ -1,6 +1,6 @@
 # Pinterest Pipeline — Architecture
 
-**Last verified:** 2026-03-03
+**Last verified:** 2026-03-04
 **Update this doc when:** a file is added/removed from `src/`, a workflow is added/removed, an external integration changes, a major feature is added/removed, or data schemas change.
 
 ---
@@ -40,12 +40,10 @@ Plan → [Plan Regen] → Generate → Review → [Content Regen] → Deploy →
 
 ## 3. Directory Structure
 
-**Note: Multi-channel restructure in progress (Phases 1-5 complete).** Files are being migrated from `src/` into `src/shared/` (cross-channel) and `src/pinterest/` (Pinterest-specific). Prompt templates reorganized into `prompts/shared/` and `prompts/pinterest/`. GitHub Actions workflows updated to use canonical module paths. Backward-compat shims exist at old locations until Phase 6.
-
 ```
-pinterest-pipeline/
+slated-content-engine/              # Renamed from pinterest-pipeline
 ├── src/
-│   ├── shared/                   # Cross-channel code (Phase 1+)
+│   ├── shared/                   # Cross-channel code
 │   │   ├── apis/                 # Shared API wrappers (Claude, Sheets, GCS, GitHub, etc.)
 │   │   ├── utils/                # Shared utilities (safe_get, content_log, plan_utils, etc.)
 │   │   ├── paths.py              # Centralized path constants (PROJECT_ROOT, DATA_DIR, etc.)
@@ -54,33 +52,36 @@ pinterest-pipeline/
 │   │   ├── blog_generator.py     # Individual blog MDX generation
 │   │   ├── blog_deployer.py      # GitHub commit to goslated.com → Vercel deploy
 │   │   ├── generate_blog_posts.py # Blog post orchestrator
-│   │   ├── content_memory.py     # Content memory summary generation (Phase 2)
-│   │   ├── content_planner.py    # Shared planning utilities: strategy/memory/analysis loading (Phase 3)
-│   │   └── analytics_utils.py    # Channel-agnostic derived metrics + aggregation (Phase 2)
-│   ├── pinterest/                # Pinterest-specific code (Phase 1+)
+│   │   ├── content_memory.py     # Content memory summary generation
+│   │   ├── content_planner.py    # Shared planning utilities: strategy/memory/analysis loading
+│   │   └── analytics_utils.py    # Channel-agnostic derived metrics + aggregation
+│   ├── pinterest/                # Pinterest-specific code
 │   │   ├── apis/                 # Pinterest API wrapper
 │   │   ├── token_manager.py      # Pinterest OAuth 2.0 token auto-refresh
 │   │   ├── pin_assembler.py      # HTML/CSS template → PNG renderer
 │   │   ├── generate_pin_content.py # Pin copy + image generation
-│   │   ├── generate_weekly_plan.py # Weekly planning orchestrator (Phase 3)
-│   │   ├── regen_weekly_plan.py  # Plan-level regen orchestrator (Phase 3)
+│   │   ├── generate_weekly_plan.py # Weekly planning orchestrator
+│   │   ├── regen_weekly_plan.py  # Plan-level regen orchestrator
 │   │   ├── post_pins.py          # Daily Pinterest API posting
 │   │   ├── pull_analytics.py     # Pinterest Analytics API pull
-│   │   ├── weekly_analysis.py    # Claude-driven weekly performance analysis (Phase 2)
-│   │   ├── monthly_review.py     # Claude Opus deep monthly strategy review (Phase 2)
-│   │   ├── publish_content_queue.py # Content Queue sheet publisher (Phase 2)
+│   │   ├── weekly_analysis.py    # Claude-driven weekly performance analysis
+│   │   ├── monthly_review.py     # Claude Opus deep monthly strategy review
+│   │   ├── publish_content_queue.py # Content Queue sheet publisher
 │   │   ├── regen_content.py      # Selective content regeneration
 │   │   ├── plan_validator.py     # Plan constraint validation
 │   │   ├── setup_boards.py       # One-time board creation
 │   │   └── redate_schedule.py    # Pin schedule redating
-│   ├── apis/                     # Backward-compat shims → src/shared/apis/ or src/pinterest/apis/
-│   ├── utils/                    # Backward-compat shims → src/shared/utils/
-│   └── *.py                      # Backward-compat shims for moved files
+│   └── apps-script/              # Google Apps Script source
 ├── prompts/
-│   ├── shared/                  # Cross-channel prompts (blog generation, image prompts)
-│   └── pinterest/               # Pinterest-specific prompts (planning, analysis, review)
+│   ├── shared/                   # Cross-channel prompts (blog generation, image prompts)
+│   └── pinterest/                # Pinterest-specific prompts (planning, analysis, review)
 ├── templates/pins/               # HTML/CSS pin templates (5 types × 3 variants)
 ├── strategy/                     # Content strategy, brand voice, keywords, CTAs
+│   ├── pinterest/                # Pinterest-specific strategy (board-structure.json)
+│   └── tiktok/                   # TikTok strategy (archetypes, brand guidelines)
+├── docs/
+│   └── research/
+│       └── tiktok/               # TikTok research docs + community/ subfolder
 ├── data/                         # Runtime data (gitignored except JSON results)
 │   └── generated/                # Generated blog MDX + pin images (gitignored)
 ├── .github/workflows/            # GitHub Actions workflow definitions
@@ -96,42 +97,26 @@ pinterest-pipeline/
 
 ## 4. Key Files & Responsibilities
 
-### Pipeline Scripts (`src/`)
+### Shared Scripts (`src/shared/`)
 
 | File | Purpose |
 |------|---------|
-| `generate_weekly_plan.py` *(pinterest)* | Claude-driven weekly content planning (8-10 blog posts + 28 pin specs) |
-| `generate_blog_posts.py` | Blog post orchestrator — reads plan, generates MDX via `blog_generator.py` |
-| `blog_generator.py` | Individual blog MDX generation with frontmatter + Schema.org (4 types: recipe, guide, listicle, weekly-plan) |
-| `generate_pin_content.py` | Pin content pipeline: copy generation (GPT-5 Mini) → AI image generation → pin assembly/rendering |
-| `pin_assembler.py` | HTML/CSS template → PNG renderer via Puppeteer (5 template types × 3 variants) |
-| `publish_content_queue.py` | Uploads images to GCS, writes Content Queue sheet, stores GCS URLs back to results JSON |
-| `blog_deployer.py` | Commits blogs to goslated.com repo (Vercel deploy), URL verification, pin schedule creation |
-| `post_pins.py` | Daily Pinterest API posting with anti-bot jitter, idempotency, retry logic. Supports `--date=YYYY-MM-DD` override for recovering missed slots (skips jitter when used). |
-| `pull_analytics.py` | Pinterest Analytics API pull (impressions, saves, clicks, outbound). Derived metrics computed via `shared/analytics_utils.py`. |
-| `weekly_analysis.py` | Claude-driven weekly performance analysis |
-| `monthly_review.py` | Claude Opus deep monthly strategy review |
-| `analytics_utils.py` *(shared)* | Channel-agnostic `compute_derived_metrics()` + `aggregate_by_dimension()` |
-| `content_memory.py` *(shared)* | Content memory summary generation (dedup, topic tracking, pillar mix) |
-| `content_planner.py` *(shared)* | Planning data loading: strategy context, content memory, latest analysis, seasonal windows |
-| `regen_content.py` | Selective content regeneration (image/copy/both) based on reviewer feedback |
-| `regen_weekly_plan.py` *(pinterest)* | Plan-level topic replacement based on reviewer feedback |
-| `plan_validator.py` | Plan constraint validation (pin counts, board distribution, etc.) |
-| `redate_schedule.py` | Pin schedule redating utility |
-| `image_cleaner.py` | AI detection avoidance post-processing for generated images |
-| `setup_boards.py` | One-time Pinterest board creation |
-| `token_manager.py` | Pinterest OAuth 2.0 token auto-refresh |
-| `config.py` | Centralized config: model names, costs, URLs, dimensions, timing constants |
 | `paths.py` | Centralized path constants (PROJECT_ROOT, DATA_DIR, PROMPTS_DIR, etc.) |
-| `recover_w9_pins.py` | One-time recovery script (likely dead code) |
+| `config.py` | Centralized config: model names, costs, URLs, dimensions, timing constants |
+| `blog_generator.py` | Individual blog MDX generation with frontmatter + Schema.org (4 types: recipe, guide, listicle, weekly-plan) |
+| `blog_deployer.py` | Commits blogs to goslated.com repo (Vercel deploy), URL verification, pin schedule creation |
+| `generate_blog_posts.py` | Blog post orchestrator — reads plan, generates MDX via `blog_generator.py` |
+| `image_cleaner.py` | AI detection avoidance post-processing for generated images |
+| `content_memory.py` | Content memory summary generation (dedup, topic tracking, pillar mix) |
+| `content_planner.py` | Planning data loading: strategy context, content memory, latest analysis, seasonal windows |
+| `analytics_utils.py` | Channel-agnostic `compute_derived_metrics()` + `aggregate_by_dimension()` |
 
-### API Wrappers (`src/apis/`)
+### Shared API Wrappers (`src/shared/apis/`)
 
 | File | Purpose |
 |------|---------|
 | `claude_api.py` | Claude Sonnet/Opus + GPT-5 Mini integration, prompt template loading, cost tracking |
 | `openai_chat_api.py` | GPT-5 Mini HTTP wrapper (used by claude_api.py for pin copy + image prompts) |
-| `pinterest_api.py` | Pinterest v5 REST API (pins, boards, analytics) |
 | `sheets_api.py` | Google Sheets CRUD (Weekly Review, Content Queue, Post Log, Dashboard tabs) |
 | `gcs_api.py` | Google Cloud Storage uploads (primary image hosting for Sheet previews + Pinterest) |
 | `drive_api.py` | Google Drive uploads (fallback if GCS fails) |
@@ -139,7 +124,7 @@ pinterest-pipeline/
 | `image_gen.py` | AI image generation via gpt-image-1.5 (Replicate Flux Pro as alternate provider) |
 | `slack_notify.py` | Slack webhook notifications (Block Kit formatted) |
 
-### Utilities (`src/utils/`)
+### Shared Utilities (`src/shared/utils/`)
 
 | File | Purpose |
 |------|---------|
@@ -148,6 +133,31 @@ pinterest-pipeline/
 | `image_utils.py` | MIME detection + Drive file ID parsing |
 | `strategy_utils.py` | Brand voice loading |
 | `safe_get.py` | Safe dictionary access helper |
+
+### Pinterest Scripts (`src/pinterest/`)
+
+| File | Purpose |
+|------|---------|
+| `generate_weekly_plan.py` | Claude-driven weekly content planning (8-10 blog posts + 28 pin specs) |
+| `generate_pin_content.py` | Pin content pipeline: copy generation (GPT-5 Mini) → AI image generation → pin assembly/rendering |
+| `pin_assembler.py` | HTML/CSS template → PNG renderer via Puppeteer (5 template types × 3 variants) |
+| `publish_content_queue.py` | Uploads images to GCS, writes Content Queue sheet, stores GCS URLs back to results JSON |
+| `post_pins.py` | Daily Pinterest API posting with anti-bot jitter, idempotency, retry logic. Supports `--date=YYYY-MM-DD` override for recovering missed slots (skips jitter when used). |
+| `pull_analytics.py` | Pinterest Analytics API pull (impressions, saves, clicks, outbound). Derived metrics computed via `shared/analytics_utils.py`. |
+| `weekly_analysis.py` | Claude-driven weekly performance analysis |
+| `monthly_review.py` | Claude Opus deep monthly strategy review |
+| `regen_content.py` | Selective content regeneration (image/copy/both) based on reviewer feedback |
+| `regen_weekly_plan.py` | Plan-level topic replacement based on reviewer feedback |
+| `plan_validator.py` | Plan constraint validation (pin counts, board distribution, etc.) |
+| `redate_schedule.py` | Pin schedule redating utility |
+| `setup_boards.py` | One-time Pinterest board creation |
+| `token_manager.py` | Pinterest OAuth 2.0 token auto-refresh |
+
+### Pinterest API (`src/pinterest/apis/`)
+
+| File | Purpose |
+|------|---------|
+| `pinterest_api.py` | Pinterest v5 REST API (pins, boards, analytics) |
 
 ---
 
@@ -287,9 +297,9 @@ Cost: ~$3-5/week for a full cycle (planning + 8-10 blogs + 28 pins + analysis).
 | [`memory-bank/Audit/dead-code-analysis.md`](memory-bank/Audit/dead-code-analysis.md) | Dead code tracking with line numbers |
 | [`architecture/codebase-review/synthesis.md`](architecture/codebase-review/synthesis.md) | Code quality: 24 findings across 8 dimensions, prioritized fix plan |
 | [`memory-bank/progress.md`](memory-bank/progress.md) | Chronological changelog of all pipeline phases and features |
-| [`architecture/multi-channel-restructure/`](architecture/multi-channel-restructure/) | Multi-channel restructure plan (Phases 1-5 complete, Phase 6 remaining) |
-| [`src/config.py`](src/config.py) | All hardcoded constants: model names, costs, URLs, dimensions, timing |
-| [`src/paths.py`](src/paths.py) | All path constants: PROJECT_ROOT, DATA_DIR, PROMPTS_DIR, etc. |
+| [`architecture/multi-channel-restructure/`](architecture/multi-channel-restructure/) | Multi-channel restructure plan (Phases 1-6 complete) |
+| [`src/shared/config.py`](src/shared/config.py) | All hardcoded constants: model names, costs, URLs, dimensions, timing |
+| [`src/shared/paths.py`](src/shared/paths.py) | All path constants: PROJECT_ROOT, DATA_DIR, PROMPTS_DIR, etc. |
 
 ---
 

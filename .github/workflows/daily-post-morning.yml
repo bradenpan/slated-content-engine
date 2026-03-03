@@ -13,7 +13,7 @@ on:
         default: ''
 
 concurrency:
-  group: pinterest-posting
+  group: slated-content-engine-posting
   cancel-in-progress: false
 
 env:

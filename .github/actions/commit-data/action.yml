@@ -9,8 +9,8 @@ runs:
   steps:
     - run: |
         set -e
-        git config user.name "pinterest-pipeline-bot"
-        git config user.email "bot@pinterest-pipeline.local"
+        git config user.name "slated-content-engine-bot"
+        git config user.email "bot@slated-content-engine.local"
         git add data/ analysis/
         git diff --staged --stat
         if git diff --staged --quiet; then

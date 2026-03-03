@@ -10,7 +10,7 @@ from unittest.mock import patch, MagicMock
 import pytest
 import requests
 
-from src.apis.openai_chat_api import OpenAIChatAPIError, call_gpt5_mini
+from src.shared.apis.openai_chat_api import OpenAIChatAPIError, call_gpt5_mini
 
 
 def _mock_response(status_code: int, body: dict | None = None) -> MagicMock:

@@ -2502,3 +2502,121 @@ Update all `python -m` invocations in workflow and action YAML files to use cano
 | Modified | 1 | Workflow (inline import): `year-wrap-reminder.yml` |
 | Deleted | 2 | `recover-w9-pins.yml`, `regen-blogs-only.yml` |
 | Modified | 4 | Doc updates: `ARCHITECTURE.md`, `execution-strategy.md`, `implementation-plan.md`, `memory-bank/progress.md` |
+
+---
+
+## Phase 6 — Multi-Channel Restructure: Delete backward-compat shims and clean up (2026-03-04)
+
+**Risk:** LOW | **Effort:** <1 hour
+**Status:** COMPLETE
+
+### Goal
+Remove all backward-compat shim files (no longer needed since Phase 5 updated all workflows to use canonical module paths). Delete orphaned `recover_w9_pins.py`. Update test imports. Clean up docs.
+
+### Sub-step 6a: Delete all backward-compat shim files (37 files + 2 directories)
+
+**Shim files deleted from `src/` (20 files):**
+`blog_deployer.py`, `blog_generator.py`, `config.py`, `generate_blog_posts.py`, `generate_pin_content.py`, `generate_weekly_plan.py`, `image_cleaner.py`, `monthly_review.py`, `paths.py`, `pin_assembler.py`, `plan_validator.py`, `post_pins.py`, `pull_analytics.py`, `publish_content_queue.py`, `regen_content.py`, `regen_weekly_plan.py`, `redate_schedule.py`, `setup_boards.py`, `token_manager.py`, `weekly_analysis.py`
+
+**Shim files deleted from `src/apis/` (10 files):**
+`claude_api.py`, `drive_api.py`, `gcs_api.py`, `github_api.py`, `image_gen.py`, `openai_chat_api.py`, `pinterest_api.py`, `sheets_api.py`, `slack_notify.py`, `__init__.py`
+
+**Shim files deleted from `src/utils/` (7 files):**
+`content_log.py`, `image_utils.py`, `plan_utils.py`, `safe_get.py`, `strategy_utils.py`, `content_memory.py`, `__init__.py`
+
+**Orphaned file deleted:**
+`src/recover_w9_pins.py` — one-time W9 pin recovery script, workflow already deleted in Phase 5.
+
+**Empty directories deleted:**
+`src/apis/`, `src/utils/`
+
+### Sub-step 6b: Update test imports (16 test files)
+
+All test files updated from old shim paths to canonical `src.shared.*` / `src.pinterest.*` paths:
+- `test_blog_deployer_pin_filter.py`: `src.blog_deployer` → `src.shared.blog_deployer`
+- `test_blog_validation.py`: `src.blog_generator` → `src.shared.blog_generator`
+- `test_claude_api_fallback.py`: `src.apis.openai_chat_api` / `src.apis.claude_api` → `src.shared.apis.*`
+- `test_config.py`: `src.config` → `src.shared.config`
+- `test_content_log.py`: `src.utils.content_log` → `src.shared.utils.content_log`
+- `test_image_cleaner.py`: `src.image_cleaner` → `src.shared.image_cleaner`
+- `test_image_cleaner_extended.py`: `src.image_cleaner` → `src.shared.image_cleaner`
+- `test_mime_detection.py`: `src.utils.image_utils` → `src.shared.utils.image_utils`
+- `test_openai_error_wrapping.py`: `src.apis.openai_chat_api` → `src.shared.apis.openai_chat_api`
+- `test_paths.py`: `src.paths` → `src.shared.paths`
+- `test_pin_schedule.py`: `src.utils.plan_utils` → `src.shared.utils.plan_utils`
+- `test_plan_utils.py`: `src.utils.plan_utils` → `src.shared.utils.plan_utils`
+- `test_plan_validator.py`: `src.plan_validator` → `src.pinterest.plan_validator`
+- `test_publish_content_queue.py`: `src.publish_content_queue` → `src.pinterest.publish_content_queue` (4 inline imports)
+- `test_regen_drive_guard.py`: `src.regen_content` → `src.pinterest.regen_content`
+- `test_sheets_header_validation.py`: `src.apis.sheets_api` → `src.shared.apis.sheets_api`
+- `test_sheets_write_pattern.py`: `src.apis.sheets_api` → `src.shared.apis.sheets_api`
+
+### Sub-step 6c: Fix stale imports in canonical source files (2 files)
+
+- `src/pinterest/token_manager.py` L107: `from src.apis.slack_notify` → `from src.shared.apis.slack_notify` (lazy import in `_get_slack_notifier()`)
+- `src/shared/image_cleaner.py` L10: docstring usage example updated to `from src.shared.image_cleaner`
+
+### Sub-step 6d: Update documentation (4 files)
+
+- **ARCHITECTURE.md**: Removed `src/apis/`, `src/utils/`, shim references, `recover_w9_pins.py` from directory tree and file tables. Restructured Section 4 into Shared/Pinterest subsections. Updated deep-dive references to canonical paths.
+- **CLAUDE.md**: Replaced `src/apis/`, `src/utils/` key paths with `src/shared/apis/`, `src/shared/utils/`, `src/pinterest/`, `src/pinterest/apis/`, `prompts/shared/`, `prompts/pinterest/`.
+- **execution-strategy.md**: Status updated to "Phases 1-6 complete, Phase 7 next"
+- **implementation-plan.md**: Status updated to "Phases 1-6 complete, Phase 7 next"
+
+### Verification
+- **207/207 tests pass** (0 failures)
+- **Zero old-style imports** (`from src.X`, `from src.apis.X`, `from src.utils.X`) in `src/` or `tests/`
+- **Zero references to deleted files** (`recover_w9_pins`, old shim paths) in Python code
+- **`src/` directory clean**: only `__init__.py`, `shared/`, `pinterest/`, `apps-script/`
+
+### Files Changed Summary
+| Action | Count | Files |
+|--------|-------|-------|
+| Deleted | 37 | Shim files: 20 in `src/`, 10 in `src/apis/`, 7 in `src/utils/` |
+| Deleted | 1 | Orphaned: `src/recover_w9_pins.py` |
+| Deleted | 2 | Empty directories: `src/apis/`, `src/utils/` |
+| Modified | 16 | Test files: import path updates |
+| Modified | 2 | Source fixes: `src/pinterest/token_manager.py`, `src/shared/image_cleaner.py` |
+| Modified | 4 | Doc updates: `ARCHITECTURE.md`, `CLAUDE.md`, `execution-strategy.md`, `implementation-plan.md` |
+
+### Phase 6 addendum: Phase 7 prep audit
+
+Deep audit of `board-structure.json` references (5 breaking path refs in Python) and repo name references (1 breaking + 12 functional + many cosmetic). Full change maps with file/line/classification written to `execution-strategy.md` "Notes from Phase 6 (for the Phase 7 agent)" section.
+
+---
+
+## Phase 7 — Multi-Channel Restructure: Migrate TikTok Research + Rename Repo (2026-03-03)
+
+### What changed
+
+**TikTok research docs migrated** from `tiktok-automation/` repo into the mono-repo:
+- 8 research files + carousel automation plan → `docs/research/tiktok/`
+- 18 community research files → `docs/research/tiktok/community/`
+- Archetypes + brand guidelines → `strategy/tiktok/`
+- `product-overview.md` already identical — no merge needed
+- `brand-guidelines.md` is distinct from `brand-voice.md` (brand identity vs Pinterest voice) — kept as separate file
+
+**`board-structure.json` moved** to `strategy/pinterest/board-structure.json`:
+- 5 breaking path references updated (setup_boards, post_pins, plan_validator, monthly_review, content_planner)
+- 3 cosmetic references updated (docstrings, YAML comments)
+
+**Repo name references updated** (`pinterest-pipeline` / `slated-pinterest-bot` → `slated-content-engine`):
+- `trigger.gs` repo name (BREAKING — requires Apps Script redeployment)
+- 10 workflow concurrency groups (7 `slated-content-engine` + 3 `slated-content-engine-posting`)
+- `commit-data/action.yml` git user name/email
+- `drive_api.py` Drive folder name (auto-creates new folder on next upload)
+- Cosmetic: `__init__.py`, `github_api.py`, `slack_notify.py`, `blog_deployer.py`, `ARCHITECTURE.md`, `implementation-plan.md`
+
+### Human steps required after commit
+1. Deploy updated `trigger.gs` via Google Apps Script editor
+2. Rename repo on GitHub: `slated-pinterest-bot` → `slated-content-engine`
+3. Update local remote: `git remote set-url origin git@github.com:bradenpan/slated-content-engine.git`
+4. Optionally rename local folder: `pinterest-pipeline` → `slated-content-engine`
+
+### File counts
+
+| Action | Count | Details |
+|--------|-------|---------|
+| Added | 28 | TikTok research + strategy docs |
+| Moved | 1 | `board-structure.json` → `strategy/pinterest/` |
+| Modified | 20 | Path refs, concurrency groups, repo name refs, docs |

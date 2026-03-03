@@ -11,12 +11,12 @@ from unittest.mock import patch, MagicMock
 import pytest
 import requests
 
-from src.apis.openai_chat_api import OpenAIChatAPIError
+from src.shared.apis.openai_chat_api import OpenAIChatAPIError
 
 # Mock the anthropic module before importing claude_api
 sys.modules.setdefault("anthropic", MagicMock())
 
-from src.apis.claude_api import ClaudeAPI
+from src.shared.apis.claude_api import ClaudeAPI
 
 
 @pytest.fixture

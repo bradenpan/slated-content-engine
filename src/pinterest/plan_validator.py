@@ -85,7 +85,7 @@ def validate_plan(
     if board_structure is None:
         try:
             board_structure = json.loads(
-                (STRATEGY_DIR / "board-structure.json").read_text(encoding="utf-8")
+                (STRATEGY_DIR / "pinterest" / "board-structure.json").read_text(encoding="utf-8")
             )
         except (FileNotFoundError, json.JSONDecodeError):
             board_structure = {}

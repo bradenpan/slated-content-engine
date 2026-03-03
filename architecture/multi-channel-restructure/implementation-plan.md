@@ -1,7 +1,7 @@
 # Multi-Channel Content Pipeline — Implementation Plan
 
 **Date:** 2026-02-27 (updated 2026-03-03)
-**Status:** Active — Phases 1-5 complete, Phase 6 next
+**Status:** Active — Phases 1-7 complete, Phase 8 next
 
 ---
 
@@ -19,15 +19,33 @@
   - [Phase 6: Cleanup and burn-in](#phase-6-cleanup-and-burn-in)
 - [Part 2: TikTok Integration](#part-2-tiktok-integration)
   - [Phase 7: Migrate TikTok research + rename repo](#phase-7-migrate-tiktok-research--rename-repo)
-  - [Phase 8: Build TikTok pipeline](#phase-8-build-tiktok-pipeline)
-- [Effort Summary](#effort-summary)
-- [What This Enables](#what-this-enables)
+  - [Phase 8: Two-step planning split](#phase-8-two-step-planning-split)
+  - [Phase 9: Carousel rendering engine](#phase-9-carousel-rendering-engine)
+  - [Phase 10: Content generation pipeline](#phase-10-content-generation-pipeline)
+  - [Phase 11: Posting via Publer](#phase-11-posting-via-publer)
+  - [Phase 12: Analytics + feedback loop](#phase-12-analytics--feedback-loop)
+- [Post-MVP Enhancements](#post-mvp-enhancements)
+  - [Phase 13: Video pipeline](#phase-13-video-pipeline)
+  - [Phase 14: Engagement automation](#phase-14-engagement-automation)
+  - [Phase 15: Remotion migration](#phase-15-remotion-migration)
+- [Reference](#reference)
+  - [Open Decisions](#open-decisions)
+  - [Pre-Build Parallel Track](#pre-build-parallel-track)
+  - [Publer Decision Record](#publer-decision-record)
+  - [Cadence Ramp Plan](#cadence-ramp-plan)
+  - [Cost Summary](#cost-summary)
+  - [Effort Summary](#effort-summary)
+  - [Reuse from Pinterest Pipeline](#reuse-from-pinterest-pipeline)
+  - [Risks & Mitigations](#risks--mitigations)
+  - [Environment Variables](#environment-variables)
+  - [What Success Looks Like](#what-success-looks-like)
+  - [What This Enables](#what-this-enables)
 
 ---
 
 ## Context
 
-The current `pinterest-pipeline` is a vertically integrated Pinterest automation. We're restructuring it into a multi-channel content engine that can serve Pinterest, TikTok, and eventually paid channels. Rather than building separate pipelines per channel, we're extracting content planning and blog generation into a shared layer, with channel-specific workflows branching off.
+The current `slated-content-engine` (formerly `pinterest-pipeline`) is a vertically integrated Pinterest automation being restructured into a multi-channel content engine that can serve Pinterest, TikTok, and eventually paid channels. Rather than building separate pipelines per channel, we're extracting content planning and blog generation into a shared layer, with channel-specific workflows branching off.
 
 **Decisions made:**
 - Monorepo structure (`src/shared/`, `src/pinterest/`, `src/tiktok/`, etc.)
@@ -142,7 +160,7 @@ slated-content-engine/                # Renamed from pinterest-pipeline
 │   │   ├── pin_copy.md
 │   │   ├── weekly_analysis.md
 │   │   └── monthly_review.md
-│   └── tiktok/                       # Built in Phase 9
+│   └── tiktok/                       # Built in Phase 10
 │       └── ...
 │
 ├── strategy/
@@ -374,7 +392,7 @@ Two-step planning (content plan → pin plan) may change output quality vs the c
 **To `prompts/shared/` (5 files):**
 - `blog_post_guide.md`, `blog_post_listicle.md`, `blog_post_recipe.md`, `blog_post_weekly_plan.md`
 - `image_prompt.md`
-- ~~`content_strategy.md` (created in Phase 3)~~ **Deferred to Phase 8a.** Do NOT create this file.
+- ~~`content_strategy.md` (created in Phase 3)~~ **Deferred to Phase 8.** Do NOT create this file.
 
 **To `prompts/pinterest/` (5 files):**
 - `weekly_plan.md`, `weekly_plan_replace.md`
@@ -543,17 +561,15 @@ This is Pinterest-specific and should live under a channel subdirectory now that
 
 ---
 
-### Phase 8: Build TikTok pipeline
+### Phase 8: Two-step planning split
 
-**Goal:** Implement `src/tiktok/` using the research from `tiktok-automation` and adapted Pinterest pipeline patterns.
+**Goal:** Split the single-shot Claude call (blog topics + pin specs) into a two-step process: unified content planning → channel-specific planning. This enables TikTok (and future channels) to share the content planning layer.
 
-**Effort:** TBD — requires its own detailed implementation plan | **Risk:** HIGH
+**Effort:** 8-12 hours | **Risk:** MEDIUM
 
-This phase is a separate planning effort. High-level outline based on the TikTok research:
+**Context:** Phase 3 extracted shared data-loading functions into `src/shared/content_planner.py` but kept the single-shot Claude call unchanged. Before TikTok can share the content planning layer, this must be split.
 
-#### Pre-requisite: Two-step planning split (deferred from Phase 3)
-
-Phase 3 extracted shared data-loading functions into `src/shared/content_planner.py` but kept the single-shot Claude call (blog topics + pin specs in one call) unchanged. Before TikTok can share the content planning layer, the single-shot call must be split into two steps:
+#### What gets built
 
 1. **Add `generate_content_plan()` to `src/shared/content_planner.py`** — new Claude call using `prompts/shared/content_strategy.md` that outputs topics only (pillar assignments, keyword targets, content type recommendations, no pin/channel specs)
 2. **Create `src/pinterest/pin_planner.py`** with `generate_pin_plan(content_plan)` — takes the topic plan and calls Claude to derive 28 pin specs (board distribution, template selection, scheduling). Calls existing `plan_validator.validate_plan()` for constraint checking.
@@ -561,66 +577,688 @@ Phase 3 extracted shared data-loading functions into `src/shared/content_planner
 4. **Update `src/pinterest/generate_weekly_plan.py`** to call `content_planner.generate_content_plan()` → `pin_planner.generate_pin_plan()` instead of the single-shot `claude.generate_weekly_plan()`
 5. **Side-by-side output comparison** — generate plans with old single-shot and new two-step, verify equivalent quality. Keep single-shot as a fallback flag during transition.
 
-This split enables `src/tiktok/tiktok_planner.py` to call the same `content_planner.generate_content_plan()` and derive TikTok-specific content from the shared topic plan.
+#### Key risk
 
-#### Posting via Publer (not direct TikTok API)
+Two-step planning (content plan → pin plan) may change output quality vs the current single-step approach. **Mitigation:** Run side-by-side comparison of 2-3 generated plans. Keep old single-step as a fallback flag during transition.
 
-**Decision (2026-03-03):** Use Publer (publer.com) as the posting and analytics intermediary instead of integrating the TikTok Content Posting API and Display API directly. Rationale:
+#### Verify
+- Generated plan structurally equivalent to previous output (same blog topics, same pin count, same constraint compliance)
+- All constraint validation passes
+- Retry/validation loop works
+- `python -m pytest tests/`
 
+---
+
+### Phase 9: Carousel rendering engine
+
+**Goal:** Render multi-slide TikTok carousels from HTML/CSS templates. No external APIs needed — purely local infrastructure.
+
+**Effort:** 35-50 hours | **Risk:** LOW
+
+#### 1. Carousel HTML/CSS templates (4 visual families)
+
+**Dimensions:** 1080 x 1920px (9:16 vertical, TikTok Photo Mode standard)
+
+**Safe zones** (avoid TikTok UI overlap):
+- Top: 100px
+- Left/Right: 60px each
+- Bottom: 280px (caption + button overlay)
+
+**Template families** (rotated to prevent visual fatigue):
+
+| Family | Style | Best for |
+|--------|-------|----------|
+| `clean-educational` | Light background, bold dark headlines, numbered slides | Listicles, how-tos, tips |
+| `dark-bold` | High-contrast white/accent on dark, dramatic | Bold claims, contrarian takes |
+| `photo-forward` | Real photo background with semi-transparent text overlay (70% image) | Recipes, food photography, transformations |
+| `comparison-grid` | Split panels, structured data, balanced layout | Before/after, comparisons, pros/cons |
+
+Each family has 3 slide types:
+- **Hook slide** — headline + subtitle + background. Captures attention.
+- **Content slide** — headline + body text + slide number indicator. The substance.
+- **CTA slide** — call-to-action + @handle + primary/secondary CTA text.
+
+**File structure:**
+```
+templates/tiktok/carousels/
+├── clean-educational/
+│   ├── hook-slide.html
+│   ├── content-slide.html
+│   ├── cta-slide.html
+│   └── styles.css
+├── dark-bold/
+│   └── ...
+├── photo-forward/
+│   └── ...
+├── comparison-grid/
+│   └── ...
+└── shared/
+    ├── base-styles.css          # Brand colors, fonts, safe zone margins
+    └── assets/
+        ├── logo.png
+        └── icons/
+```
+
+**Effort:** 15-20 hours
+
+#### 2. `render_carousel.js` — Puppeteer multi-slide renderer
+
+Adapt the existing Pinterest `render_pin.js` for multi-slide rendering:
+- Input: manifest JSON listing slides + output paths
+- For each slide: load HTML, set viewport to 1080x1920, screenshot to PNG
+- Validate output: minimum 10KB per slide, correct dimensions
+- Batch mode: render all slides for a carousel in one Puppeteer session (reuse browser instance)
+
+**Key difference from Pinterest:** Pinterest renders one image per pin. TikTok carousels need 3-10 slides per post, so batch rendering within a single browser session is important for performance.
+
+**Effort:** 10-15 hours
+
+#### 3. `src/tiktok/carousel_assembler.py`
+
+Orchestrates the rendering pipeline:
+- Select template family based on spec
+- Inject content variables (headline, body, CTA text, image URLs) into HTML
+- Convert images to base64 data URIs (same pattern as `pin_assembler.py`)
+- Write temporary HTML files
+- Call `render_carousel.js` via subprocess
+- Validate output PNGs
+- Return list of slide image paths
+
+**Effort:** 10-15 hours
+
+#### Verify
+- Render sample carousels across all 4 template families
+- Verify dimensions (1080x1920), file sizes (>10KB), readability at mobile scale
+- Test with 3, 5, 7, and 10 slide counts
+- Visual QA: text within safe zones, no clipping
+
+---
+
+### Phase 10: Content generation pipeline
+
+**Goal:** Generate 7-21 carousel specs per week via Claude, render them, and publish to Google Sheets for human review.
+
+**Effort:** 55-75 hours | **Risk:** MEDIUM
+
+#### 4. Attribute taxonomy (`strategy/tiktok/attribute-taxonomy.json`)
+
+Every TikTok post is tagged with attributes for the feedback loop:
+
+```json
+{
+  "topics": ["grocery_savings", "meal_prep", "weeknight_dinners", "picky_eaters",
+             "kitchen_hacks", "batch_cooking", "family_meals", "seasonal_recipes"],
+  "angles": ["contrarian", "transformation", "social_proof", "problem_solution",
+             "comparison", "lifestyle", "data_driven"],
+  "structures": ["listicle", "tutorial", "comparison", "story_arc",
+                  "problem_solution", "before_after", "data_dump"],
+  "hook_types": ["curiosity_gap", "bold_claim", "relatable_problem", "proof_first",
+                  "question", "shocking_stat", "mistake"],
+  "slide_counts": [3, 5, 7, 8, 10],
+  "visual_templates": ["clean_educational", "dark_bold", "photo_forward", "comparison_grid"]
+}
+```
+
+**Allocation strategy:**
+- 65% exploit: weight toward high-performing attribute combinations
+- 35% explore: underrepresented or untested combinations
+- Cold-start mode (first 2-3 weeks): even distribution across all attributes
+
+**Effort:** 3-5 hours
+
+#### 5. `src/tiktok/compute_attribute_weights.py`
+
+Deterministic Python — no LLM calls. Reads performance data + taxonomy, outputs 7-21 allocated slots:
+- Load `data/tiktok/performance-summary.json` (or use cold-start defaults)
+- For each attribute dimension, compute performance-weighted probabilities
+- Allocate N slots with 65/35 exploit/explore split
+- Enforce minimums: every attribute value gets at least 1 post per 3 weeks
+- Output: `data/tiktok/attribute-weights-W{N}.json`
+
+**Effort:** 12-15 hours
+
+#### 6. Claude prompt templates
+
+**`prompts/tiktok/weekly_plan.md`** — 6-section prompt:
+1. Role: "Generate N TikTok carousel specs for Slated"
+2. Attribute taxonomy: full set of available values
+3. Pre-computed allocations: the N topic+structure slots from `compute_attribute_weights.py`
+4. Performance data: per-attribute save rate, share rate, top/bottom posts
+5. Content constraints: brand voice, no repeats from last 2 weeks, variety rules
+6. Cold-start handling: if <3 weeks of data, use even distribution
+
+**`prompts/tiktok/carousel_copy.md`** — Per-carousel slide text + caption generation:
+- Hook rules: capture attention in 1.5-3 seconds of reading, text overlay required
+- TikTok-native voice: conversational, not blog-like, save-worthy
+- Caption: max 2,200 chars, 2-3 searchable keywords, 3-5 hashtags
+- "Save this for later" encouragement (high-weight algorithm signal)
+
+**`prompts/tiktok/image_prompt.md`** — Adapt from Pinterest `image_prompt.md`:
+- Food photography style for photo-forward template
+- Adjust for vertical 1080x1920 composition
+
+**Effort:** 13-18 hours
+
+#### 7. `src/tiktok/generate_weekly_plan.py`
+
+Orchestrator that calls the shared content planner then derives TikTok-specific content:
+
+```python
+def generate_plan():
+    # Get unified topic plan from shared layer
+    content_plan = content_planner.generate_content_plan()
+
+    # Compute attribute allocations based on TikTok performance data
+    weights = compute_attribute_weights.compute(week_number)
+
+    # Generate TikTok carousel specs via Claude
+    carousel_specs = call_claude(
+        prompt="prompts/tiktok/weekly_plan.md",
+        context={content_plan, weights, performance_data, content_memory}
+    )
+
+    # Can also generate independent content not tied to the content plan
+    # (trend-reactive, community engagement posts)
+
+    # Validate and write to Sheets + JSON
+    write_to_sheets(carousel_specs)
+    save_plan_json(carousel_specs)
+    slack_notify("TikTok plan ready for review")
+```
+
+**Key design point:** The TikTok planner receives the shared content plan as *input context*, not as a rigid constraint. It can derive carousels from those topics, ignore topics that don't suit TikTok, or generate entirely independent content.
+
+**Effort:** 15-20 hours
+
+#### 8. `src/tiktok/generate_carousels.py`
+
+Full orchestrator for rendering a week's carousels:
+
+For each approved carousel spec:
+1. Generate slide text + caption via Claude (`carousel_copy.md`)
+2. Generate images via DALL-E/Replicate (for photo-forward template; skip for text-only templates)
+3. Strip C2PA metadata from AI-generated images (reduces AI detection risk)
+4. Call `carousel_assembler.py` to render all slides
+5. Upload slide PNGs to GCS
+6. Write to Content Queue sheet with `IMAGE()` thumbnail formulas
+
+**Effort:** 20-25 hours
+
+#### 9. `src/tiktok/publish_content_queue.py`
+
+Write generated carousels to the Google Sheet Content Queue tab:
+- One row per carousel
+- Thumbnail via `IMAGE()` formula pointing to GCS
+- All 6 attribute columns populated
+- Status column: `pending_review`
+- Adapt from Pinterest `publish_content_queue.py`
+
+**Effort:** 8-10 hours
+
+#### 10. Apps Script trigger (`src/apps-script/tiktok-trigger.gs`)
+
+Watch the Weekly Review tab for approval, fire `repository_dispatch` to trigger generation and scheduling workflows. Same pattern as Pinterest trigger — adapt for TikTok sheet ID and event types.
+
+**Effort:** 5-8 hours
+
+#### Verify
+- Generate a test week of 7 carousel specs
+- Verify Claude output parses to valid JSON with correct attribute tags
+- Render all carousels, verify visual quality
+- Content Queue sheet populates correctly with thumbnails
+- Apps Script trigger fires on approval
+
+---
+
+### Phase 11: Posting via Publer
+
+**Goal:** Post carousels automatically via Publer's API, with a manual-posting fallback. Get content live on the platform.
+
+**Effort:** 25-35 hours | **Risk:** MEDIUM (no API audit dependency)
+
+#### 11. `src/tiktok/apis/publer_api.py`
+
+Publer REST API wrapper (~80-100 lines). Same pattern as `src/pinterest/apis/pinterest_api.py`.
+
+**Base URL:** `https://app.publer.com/api/v1`
+
+**Auth headers (every request):**
+```
+Authorization: Bearer-API {PUBLER_API_KEY}
+Publer-Workspace-Id: {PUBLER_WORKSPACE_ID}
+Content-Type: application/json
+```
+
+**Photo carousel posting flow:**
+1. `POST /media/from-url` — import slide images from GCS URLs (async, returns job_id)
+2. `GET /job_status/{job_id}` — poll until `"complete"`, extract media IDs
+3. `POST /posts/schedule/publish` — create scheduled TikTok carousel with media IDs
+4. `GET /job_status/{job_id}` — poll until post is confirmed published
+
+**Rate limits:** ~100 requests per 2 minutes per user (unverified — implement exponential backoff on 429)
+
+**Carousel constraints:**
+- Min 2 slides, max 35 slides
+- JPEG, PNG, or WebP, max 20MB per image
+- Caption max 2,200 characters (TikTok limit; Publer allows 4,000)
+- Title max 90 characters
+- Privacy level required (no default)
+
+**TikTok-specific options:** `privacy` (PUBLIC_TO_EVERYONE / MUTUAL_FOLLOW_FRIENDS / SELF_ONLY), `allow_comments`, `auto_add_music`, `branded_content`, `paid_partnership`
+
+**Fallback mode (`TIKTOK_POSTING_ENABLED=false`):** Log `MANUAL_UPLOAD_REQUIRED` to Sheets + send Slack notification with GCS links for manual posting.
+
+**Effort:** 8-12 hours
+
+#### Token management — NOT NEEDED
+
+Publer uses a static API key. No OAuth flow, no token refresh, no token store. This eliminates ~5-8 hours of work and ongoing 24-hour token expiry management.
+
+#### 12. `src/tiktok/post_content.py`
+
+Daily posting orchestrator (called 1-3x daily depending on cadence ramp):
+- Read from `data/tiktok/carousel-schedule.json`
+- Idempotency check against `data/tiktok/content-log.jsonl`
+- Add random jitter (0-120 seconds before API call)
+- Call Publer API to schedule post (or log manual upload)
+- Poll job status to confirm post published
+- Update content-log.jsonl with attribute tags
+- Update Post Log sheet
+- Slack notification
+
+**AI disclosure logic:** Check carousel spec — if `image_source == "ai_generated"` and template is `photo_forward`, the AI content disclosure must be handled. **Open question:** Verify whether Publer exposes TikTok's `is_aigc` flag. If not, label AI-generated content manually in the TikTok app post-upload, or investigate Publer's branded content options. Unlabeled AI content gets -73% reach suppression.
+
+**Effort:** 12-16 hours
+
+#### 13. GitHub Actions posting workflows
+
+| Workflow | Trigger | Steps |
+|----------|---------|-------|
+| `tiktok-promote-and-schedule.yml` | `repository_dispatch` (Sheet approval) | Read approved carousels → distribute across 7 days → write schedule JSON |
+| `tiktok-daily-post.yml` | Cron 3x daily (10am, 4pm, 7pm ET) | Read schedule → post via Publer (or log manual) → update logs → Slack |
+
+Each workflow: single concurrency group, Slack failure notifications, timeout guards.
+
+**Effort:** 5-7 hours
+
+<details>
+<summary>Original direct TikTok API approach (preserved for fallback reference)</summary>
+
+**`src/tiktok/apis/tiktok_api.py`** — TikTok Content Posting API wrapper:
+- Photo carousel posting flow (3-step): `POST /v2/post/publish/creator_info/query/` → `POST /v2/post/publish/content/init/` → `GET /v2/post/publish/status/fetch/`
+- Rate limits: 6 requests/minute per user token
+- Requires 2-4 week API audit approval
+
+**`src/tiktok/token_manager.py`** — TikTok OAuth token management:
+- Client ID + Client Secret auth flow, refresh token rotation
+- Access tokens expire every 24 hours (vs Publer's static API key)
+- Store tokens in `data/tiktok/token-store.json`
+
+</details>
+
+#### Verify
+- Post a test carousel via Publer API (sandbox first, then real)
+- Verify GCS image URLs are accessible from Publer's servers (must be publicly readable)
+- Verify idempotency — re-running doesn't double-post
+- Verify Slack notifications arrive for both success and manual-upload fallback
+- Post Log sheet updates correctly
+- Content-log.jsonl entries have correct attribute tags
+- Verify `is_aigc` handling (or document the gap)
+
+---
+
+### Phase 12: Analytics + feedback loop
+
+**Goal:** Pull TikTok performance data, analyze it, and close the loop so next week's content generation shifts toward what's working.
+
+**Effort:** 25-38 hours | **Risk:** LOW-MEDIUM
+
+#### 14. `src/tiktok/pull_analytics.py`
+
+Publer post insights integration (uses the same `publer_api.py` from Phase 11):
+- Fetch metrics via `GET /api/v1/analytics/{account_id}/post_insights` for all posts in the last 4-week window
+- Metrics: views, likes, comments, shares, engagement rate
+- **Open question:** Verify whether Publer returns **saves** for TikTok posts (saves are a critical algorithm signal). If not, saves may need manual tracking or future TikTok Display API integration.
+- Pagination: 10 posts per page, 0-based page index
+- Join with attribute tags from content-log.jsonl
+- Compute per-attribute averages (save rate, share rate by topic, angle, structure, etc.)
+- Write `data/tiktok/performance-summary.json`
+- Update content memory summary
+- Identify top 5 and bottom 5 posts
+
+**Data lag:** TikTok metrics have 24-48 hour lag. Publer syncs data daily with a manual refresh option. Pull runs Sunday evening, giving Saturday posts ~24 hours to accumulate.
+
+**Fallback:** Manual metric entry via the Performance Data sheet tab. `pull_analytics.py` reads from sheet instead of API.
+
+**Future upgrade:** If deeper analytics needed (audience demographics, traffic sources, daily time-series, saves if not available via Publer), apply for TikTok Display API (`video.list` scope). Estimated effort: 15-25 hours + 1-3 week approval.
+
+**Effort:** 10-15 hours
+
+<details>
+<summary>Original TikTok Display API approach (preserved for fallback/future reference)</summary>
+
+**TikTok Display API integration:**
+- Requires separate API approval (sandbox prototype + demo video + privacy policy page)
+- Access token expires every 24 hours (refresh token lasts 365 days)
+- Metrics: views, likes, comments, shares (lifetime totals only, no daily granularity)
+- Must store snapshots and diff for weekly deltas
+- Endpoint: `POST /v2/video/list/` (paginated, 20 per page)
+- Rate limit: 600 req/min
+- `TIKTOK_DISPLAY_API_ENABLED=false` fallback to manual entry
+
+</details>
+
+#### 15. `src/tiktok/weekly_analysis.py`
+
+Claude-powered weekly performance analysis:
+- Load performance summary + content log
+- Compute aggregate trends (which attributes improving/declining)
+- Call Claude with analysis prompt
+- Output: `analysis/tiktok/weekly/YYYY-wNN-review.md`
+- Feed into next week's content planner alongside Pinterest analytics
+
+**Effort:** 10-15 hours
+
+#### 16. GitHub Actions analytics workflows
+
+| Workflow | Trigger | Steps |
+|----------|---------|-------|
+| `tiktok-weekly-analysis.yml` | Cron Sunday 7pm ET | Pull analytics → compute performance summary → update content memory |
+| `tiktok-weekly-generate.yml` | Cron Sunday 8pm ET (after analysis) | Compute attribute weights → generate plan → render carousels → publish to Sheets |
+
+**Effort:** 6-8 hours
+
+#### 17. Wire the feedback loop
+
+This is the integration work that makes the system self-improving:
+- `pull_analytics.py` writes `performance-summary.json`
+- `compute_attribute_weights.py` reads `performance-summary.json` and shifts allocation toward high performers
+- `generate_weekly_plan.py` receives shifted weights, generates content that reflects what's working
+- Content memory prevents topic repetition across the 2-week window
+- TikTok analytics also feed into `src/shared/content_planner.py` alongside Pinterest data
+
+**Effort:** 4-7 hours
+
+#### Verify
+- Pull analytics for posted content (API or manual entry)
+- Verify performance-summary.json populates with per-attribute breakdowns
+- Confirm feedback loop: Week N analytics → Week N+1 attribute weights visibly shift
+- Run one full automated weekly cycle end-to-end:
+  - [ ] Sunday 7pm: analytics pull
+  - [ ] Sunday 8pm: plan generation + carousel rendering + Sheet publish
+  - [ ] Human approval in Sheet
+  - [ ] Carousels scheduled across the week
+  - [ ] Daily posts fire (API or manual fallback)
+  - [ ] Next Sunday: analytics reflect new posts
+
+---
+
+**MVP COMPLETE** — At this point (Phases 8-12), the pipeline is operational and self-improving: carousels generated weekly based on strategy + performance data, human reviews in Google Sheets, carousels post automatically (or via manual fallback), analytics feed back into next week's planning.
+
+**MVP effort total:** 148-210 hours (8-12 planning split + 140-198 build)
+**MVP monthly cost:** $30-52/mo (Claude + DALL-E + GCS + GitHub Actions + Publer $8/mo)
+
+---
+
+## Post-MVP Enhancements
+
+Everything below is additive. Prioritize based on performance data and capacity.
+
+### Phase 13: Video pipeline
+
+**Goal:** Add video content alongside carousels — voiceover + background music + visual composition.
+
+**Effort:** 45-70 hours | **Risk:** MEDIUM | **Monthly cost addition:** +$128-130/mo
+
+**Prerequisite:** MVP pipeline is stable and posting consistently. Video is additive, not a replacement for carousels.
+
+#### 18. ElevenLabs TTS integration
+
+- API client wrapper for text-to-speech
+- Voice selection (pre-selected voice ID stored in env)
+- Character limit tracking (Creator plan: 100K chars/month, ~150K needed → may need Professional at $99/mo depending on volume)
+- Output: MP3/WAV audio file per video
+
+**Plan:** ElevenLabs Creator ($11/mo) for initial volumes, upgrade if needed.
+
+**Effort:** 5-8 hours
+
+#### 19. Epidemic Sound integration
+
+- Music track selection (manual curation of 20-30 tracks matching brand vibe, or API if available)
+- Licensing tracking per video
+- Commercial license ($19/mo) covers TikTok + all platforms
+
+**Effort:** 3-5 hours
+
+#### 20. Audio mixing (FFmpeg)
+
+- Combine voiceover + background music
+- Volume leveling (voice at 100%, music at 15-25%)
+- Normalization to TikTok-compatible format
+- Output: mixed audio track ready for video composition
+
+**Effort:** 8-12 hours
+
+#### 21. Video rendering — Creatomate (bridge solution)
+
+**Why Creatomate first:** Building custom Remotion templates is 60-80 hours. Creatomate ($99/mo) lets us ship video immediately while we build the long-term solution in Phase 15.
+
+- Set up 3-5 core video templates in Creatomate (listicle, tutorial, problem-solution, recipe walkthrough)
+- API integration: send script + images + audio → receive rendered MP4
+- Template variables: text overlays, image sequences, timing, transitions
+- Output: 1080x1920 MP4 ready for posting
+
+**Effort:** 15-20 hours
+
+#### 22. Extend content generation for video
+
+- Add video specs to weekly plan generation (2-3 videos/week alongside carousels)
+- New prompt: `prompts/tiktok/video_script.md` — generates narration script, shot list, timing cues
+- Orchestrator: `src/tiktok/generate_videos.py` — script generation → TTS → music selection → Creatomate render → GCS upload
+- Extend Content Queue sheet for video rows
+- Extend `post_content.py` to handle video uploads
+- **Pre-requisite:** Verify Publer supports TikTok video posting via API (likely yes, must confirm). If not, evaluate direct TikTok Content Posting API for video only.
+
+**Effort:** 20-30 hours
+
+#### Verify
+- Render a test video end-to-end (script → TTS → music → Creatomate → MP4)
+- Post video via API (or manual fallback)
+- Verify audio quality, timing, text overlay readability
+- Run mixed week: 4 carousels + 2 videos
+
+---
+
+### Phase 14: Engagement automation
+
+**Goal:** Automated comment monitoring, classification, and reply generation.
+
+**Effort:** 25-40 hours | **Risk:** LOW | **Monthly cost addition:** +$52-62/mo
+
+This phase is optional and can be deferred. It improves post-publish performance but isn't required for the core pipeline.
+
+#### 23. Comment ingestion + classification
+
+- NapoleonCat ($32/mo Pro) or Ayrshare ($49/mo) for comment API access
+- Fetch new comments on a schedule (every 4 hours)
+- Claude classifies each comment:
+  - **SPAM** → auto-hide
+  - **QUESTION** → generate helpful answer
+  - **COMPLIMENT** → generate brief friendly reply
+  - **COMPLAINT** → flag for human review
+  - **NEUTRAL** → generate casual reply
+  - **COLLAB_REQUEST** → flag for human review
+
+**Effort:** 10-15 hours
+
+#### 24. Auto-reply with rate limiting
+
+- Claude generates unique replies (no templates — every reply different)
+- Brand voice enforcement via system prompt
+- Rate limits: 5-15 replies/hour, 20-50/day
+- Random delay between replies: 2-15 minutes (avoid obvious automation)
+- Reply timing after comment: 5-30 minutes
+
+**Effort:** 10-15 hours
+
+#### 25. `tiktok-engagement.yml` workflow
+
+- Cron every 4 hours
+- Fetch → classify → generate → post replies
+- Alert on negative comments
+- Log all interactions
+
+**Effort:** 5-10 hours
+
+#### Verify
+- Fetch comments from a test post
+- Verify classification accuracy on 20+ comments
+- Confirm rate limiting prevents bursts
+- Verify human escalation works for complaints
+
+---
+
+### Phase 15: Remotion migration
+
+**Goal:** Replace Creatomate ($99/mo) with custom Remotion templates for video rendering. Full control, lower marginal cost.
+
+**Effort:** 65-95 hours | **Risk:** MEDIUM-HIGH (significant React/TS learning curve)
+
+Only worth doing once the video pipeline is proven and running consistently. Creatomate works fine in the interim.
+
+#### 26. Remotion templates (React/TypeScript)
+
+- Convert Creatomate templates to Remotion compositions
+- 3-5 video types: listicle, tutorial, problem-solution, recipe walkthrough, before-after
+- Timeline composition: image sequences + text overlays + transitions + audio sync
+- Parameterized: all content injected via JSON props
+
+**Effort:** 40-60 hours
+
+#### 27. AWS Lambda rendering
+
+- Remotion Lambda for serverless video rendering
+- S3 output → GCS transfer (or direct S3 serving)
+- Cost: ~$0.01 per render on Lambda + Remotion license ($100/mo Automators plan)
+
+**Effort:** 15-20 hours
+
+#### 28. Migration + Creatomate cancellation
+
+- Swap Creatomate API calls for Remotion Lambda calls in `generate_videos.py`
+- Side-by-side quality comparison
+- Cancel Creatomate subscription ($99/mo savings, net +$1/mo for Remotion)
+
+**Effort:** 10-15 hours
+
+#### Verify
+- Render same video through both Creatomate and Remotion, compare quality
+- Verify Lambda rendering completes within timeout
+- Run full week with Remotion-rendered videos
+- Monitor cost per render
+
+---
+
+# Reference
+
+## Open Decisions
+
+These decisions must be resolved before starting Phase 9 (carousel rendering). They can be resolved in parallel with Phases 5-8.
+
+| # | Decision | Options | Recommendation | Impact |
+|---|----------|---------|----------------|--------|
+| 1 | **Account type** | Creator vs. Business | **Creator** — 2.75-4.4x higher engagement; full trending sound access; switch to Business later at 10K+ followers | Affects API access, sound library, ad capabilities |
+| 2 | **TikTok handle** | e.g., @slated, @slatedapp, @slatedmeals | Short, brand-forward, no numbers, under 15 chars | Hardcoded in CTA templates |
+| 3 | **First subcommunity** | #MomTok, #FoodTok, #MealPrep, #DinnerIdeas | Research scored these — need final pick | Drives initial content angles, hashtags, engagement targets |
+| 4 | **Starting posting cadence** | 3/week → 5/week → 7/week ramp | **3/week first 2 weeks, 5/week weeks 3-4, 7/week weeks 5+** — algorithm rewards consistency over volume | Template count, generation batch size, cost |
+| 5 | **Link-in-bio strategy** | Linktree, direct app store, goslated.com | Creator accounts get link-in-bio at 1K followers; pin app store link in comments until then | CTA slide copy, bio text |
+| 6 | **AI content disclosure** | Always label / label realistic only / never label | **Label realistic images, skip for text-on-background carousels** — unlabeled AI content gets -73% reach suppression | `is_aigc` flag in API calls, image generation approach |
+| 7 | **Engagement staffing** | Human only / automated / hybrid | **Automated with human escalation** — NapoleonCat + Claude for replies, human reviews negative comments | Phase order, tooling cost |
+| 8 | **Initial topic taxonomy** | Needs niche-specific topics defined | Start with 8-10 topics derived from Pinterest strategy pillars, expand based on performance | Attribute weights, prompt templates |
+| 9 | **"Face" of the account** | Faceless / founder / hired creator | Research says accounts with a consistent face dramatically outperform faceless — but this is a staffing decision | Video approach, content authenticity |
+
+## Pre-Build Parallel Track
+
+These can and should start during or before the restructure completes. They have lead times that would otherwise block the build.
+
+### P1. Create TikTok account + 14-day warmup
+
+**Timeline:** 14 days | **Effort:** 30-60 min/day | **Owner:** Human
+
+The algorithm needs to learn the account's niche before posting. Per the warmup playbook:
+
+- **Day 0:** Create account. Username, logo profile photo (200x200px min), bio (80-120 chars describing value prop).
+- **Days 1-3:** Pure consumption. Spend 30-60 min/day consuming content in target niches (#MealPrep, #DinnerIdeas, etc.). Like and comment on 10-15 videos. Follow 20-30 creators in target niche. Do NOT post.
+- **Days 4-7:** Light posting. Post 2-3 test videos/carousels (manual, testing formats). Continue 30-40 min daily engagement. Comment on 15-20 videos daily.
+- **Days 8-14:** Ramp up. Post 3-5 pieces. Monitor which formats drive saves/shares. Participate in trending sounds/hashtags relevant to niche.
+
+### P2. Set up Publer account + API access
+
+**Timeline:** Same day (no audit) | **Effort:** 30-60 min | **Cost:** $8/mo (Business plan, annual billing, 1 TikTok account)
+
+Steps:
+1. Sign up for Publer Business plan (14-day free trial available)
+2. Connect TikTok account to Publer workspace
+3. Generate API key: Settings > Access & Log In > API Key > Manage API Keys
+4. Note your Workspace ID (from Settings or `GET /api/v1/workspaces`)
+5. Note your TikTok Account ID (from `GET /api/v1/accounts` or the Publer dashboard)
+6. Add to `.env`: `PUBLER_API_KEY`, `PUBLER_WORKSPACE_ID`, `PUBLER_TIKTOK_ACCOUNT_ID`
+7. Verify: test `GET /api/v1/accounts` returns your TikTok account
+
+**Confirm during trial:** (a) Business plan includes API access, (b) TikTok carousel posting works via API, (c) post insights endpoint returns TikTok metrics.
+
+### P3. Set up Google Sheet
+
+**Timeline:** 1-2 hours | **Effort:** Human
+
+Create TikTok-specific Google Sheet with 4 tabs:
+
+| Tab | Purpose | Key Columns |
+|-----|---------|-------------|
+| **Weekly Review** | Approve/reject weekly content plan | Week #, status, plan summary, exploit/explore split, feedback |
+| **Content Queue** | Review individual carousels before posting | Carousel ID, date, slot, attributes (6 cols), caption, thumbnail (IMAGE formula), status, feedback |
+| **Post Log** | Track what's been posted | Carousel ID, date posted, TikTok post ID, status, error message, attributes |
+| **Performance Data** | Weekly analytics per post | Carousel ID, views, saves, shares, comments, save rate, share rate, attributes, days since posted |
+
+## Publer Decision Record
+
+**Decision (2026-03-03):** Use Publer (publer.com) as the posting and analytics intermediary instead of integrating the TikTok Content Posting API and Display API directly.
+
+**Rationale:**
 - **No API audit required.** The TikTok Content Posting API requires a fully built app with mandatory UX elements, demo videos, and a 2-4 week audit. Publer handles TikTok's OAuth and API integration on their end.
 - **No token management burden.** TikTok access tokens expire every 24 hours. Publer uses a static API key.
-- **Analytics included.** Publer's post insights endpoint returns views, likes, comments, shares, and engagement rate — sufficient for our weekly review workflow. Avoids the separate TikTok Display API approval process (sandbox prototype + demo video + privacy policy page + 1-3 week review).
+- **Analytics included.** Publer's post insights endpoint returns views, likes, comments, shares, and engagement rate — sufficient for our weekly review workflow. Avoids the separate TikTok Display API approval process.
 - **Cost:** Publer Business plan, 1 TikTok account, annual billing = **$8/month**.
-- **Fallback:** If we outgrow Publer's analytics (need audience demographics, traffic sources, daily granularity), we can apply for the TikTok Display API later. By then we'll have real TikTok posts to show in the required demo video, making approval easier.
+- **Fallback:** If we outgrow Publer's analytics, we can apply for the TikTok Display API later.
 
-**Service evaluated against:** Late (getlate.dev), Metricool, OneUp. Publer chosen for best balance of maturity (13+ years, 300K users, bootstrapped), API documentation quality, pricing, and analytics-via-API support. Full comparison in `docs/research/tiktok/posting-service-comparison.md` (to be created in Phase 7).
-
-**Publer API base URL:** `https://app.publer.com/api/v1`
-
-**Rate limit:** ~100 requests per 2 minutes per user (unverified — implement exponential backoff on 429 responses)
-
-**New env vars:** `PUBLER_API_KEY`, `PUBLER_WORKSPACE_ID`, `PUBLER_TIKTOK_ACCOUNT_ID`, `TIKTOK_POSTING_ENABLED`, `TIKTOK_GOOGLE_SHEET_ID`, `TIKTOK_GOOGLE_SHEET_URL`
+**Services evaluated:** Late (getlate.dev), Metricool, OneUp. Publer chosen for best balance of maturity (13+ years, 300K users, bootstrapped), API documentation quality, pricing, and analytics-via-API support.
 
 **Open questions to verify during Publer trial:**
 - Confirm Business plan (not just Enterprise) includes API access
 - Confirm TikTok **saves** are returned in post insights (critical for feedback loop)
-- Confirm `is_aigc` (AI content disclosure) flag is available through Publer's TikTok options — unlabeled AI content gets -73% reach suppression
+- Confirm `is_aigc` (AI content disclosure) flag is available through Publer's TikTok options
 
-#### Phase 8a: Carousels + posting (Weeks 1-2)
-- **Two-step planning split** (see pre-requisite above)
-- `src/tiktok/apis/publer_api.py` — Publer REST API wrapper (~80 lines, API key auth via `Bearer-API` header + workspace ID). Handles: media import from GCS URLs, carousel post scheduling, job status polling, post insights retrieval. Same pattern as `pinterest_api.py`.
-- `src/tiktok/tiktok_planner.py` — takes unified content plan, generates carousel specs (can also generate independent trend-reactive content)
-- `src/tiktok/carousel_assembler.py` — adapt Puppeteer renderer for 1080x1920 multi-slide
-- `src/tiktok/post_content.py` — posting via Publer API (schedules posts with ISO 8601 timestamps + timezone)
-- `prompts/tiktok/carousel_copy.md` — TikTok-native hooks and copy
-- TikTok-specific Google Sheet tabs for approval
-- `.github/workflows/tiktok-*.yml` — planning, generation, posting workflows
-- Target: 3 carousels/day
-- **Publer-specific:** Media uploaded via `/media/from-url` endpoint (accepts GCS URLs directly). Post creation returns a job ID — poll `/job_status/{job_id}` to confirm success. Up to 35 images per carousel. TikTok options: privacy level, allow comments, auto-add music.
+## Cadence Ramp Plan
 
-#### Phase 8b: Video + audio (Weeks 3-5)
-- **Pre-requisite:** Verify Publer supports TikTok video posting via API (likely yes based on their docs, but must confirm before starting). If not, evaluate adding direct TikTok Content Posting API for video only.
-- Video rendering via Creatomate (Phase 1 bridge) or Remotion (long-term)
-- ElevenLabs TTS integration
-- Epidemic Sound music licensing
-- `src/tiktok/video_renderer.py`
-- Target: mix of carousels + video, 3 posts/day total
+| Week | Posts/week | Mix | Notes |
+|------|-----------|-----|-------|
+| 1-2 | 3 | 3 carousels | Warmup period. Manual posting likely (API audit pending). |
+| 3-4 | 5 | 5 carousels | Automated posting live. Cold-start attribute allocation. |
+| 5-6 | 7 | 7 carousels | 1/day. First performance data feeding back into planner. |
+| 7-8 | 10-14 | 7-10 carousels + 2-4 videos | Video pipeline online (Phase 13). Mixed content. |
+| 9+ | 14-21 | 10-14 carousels + 4-7 videos | Full cadence. Feedback loop mature. Scale based on performance data. |
 
-#### Phase 8c: Analytics feedback loop (Week 6)
-- `src/tiktok/pull_analytics.py` — pulls TikTok post metrics via Publer's `GET /api/v1/analytics/{account_id}/post_insights` endpoint. Returns: views, likes, comments, shares, engagement rate. Paginated (10 posts/page). Data synced daily from TikTok by Publer, with manual refresh option.
-- `src/tiktok/weekly_analysis.py` — performance analysis (same pattern as Pinterest's)
-- Feed TikTok analytics into `src/shared/content_planner.py` alongside Pinterest data
-- Attribute-based feedback loop (70/30 exploit/explore)
-- **Future option:** If deeper analytics needed (audience demographics, traffic sources, daily time-series), apply for TikTok Display API (`video.list` scope). The Display API returns lifetime totals only (must store snapshots and diff), has 24-hour token expiry, and requires sandbox prototype + demo video for approval. Estimated effort: 15-25 hours + 1-3 week approval.
+**Don't rush to 21/week.** The research says 3-5/week is the data-optimal range for engagement per post. Scale only when content quality and engagement signals justify it.
 
-#### Key TikTok-specific decisions (to be resolved before Phase 8)
-- Account type: Creator vs. Business
-- First subcommunity target (#MomTok, #FoodTok, #MealPrep)
-- AI content disclosure policy (TikTok requires labeling; unlabeled = -73% reach)
-- Engagement staffing (20-30 min post-publish required for ranking)
-- Publer Business plan setup + API key provisioning (do before Phase 8a starts)
+## Cost Summary
 
----
+| Milestone | Monthly Cost | What's running |
+|-----------|-------------|----------------|
+| **MVP (Phases 8-12)** | $30-52/mo | Carousel pipeline with feedback loop (includes Publer $8/mo) |
+| **+ Phase 13 (Video)** | $150-175/mo | + Creatomate + ElevenLabs + Epidemic Sound |
+| **+ Phase 14 (Engagement)** | $200-235/mo | + NapoleonCat + additional Claude API |
+| **+ Phase 15 (Remotion)** | $200-235/mo | Creatomate dropped, Remotion replaces it (cost-neutral) |
 
 ## Effort Summary
 
@@ -633,11 +1271,114 @@ This split enables `src/tiktok/tiktok_planner.py` to call the same `content_plan
 | 5 | Update GitHub Actions workflows | 2-3 | MEDIUM | Phase 4 |
 | 6 | Cleanup (delete shims, update docs) | 2-3 | LOW | Phase 5 |
 | 7 | Migrate TikTok research + rename repo | 2-3 | LOW | Phase 6 |
-| 8a | TikTok carousels + posting (via Publer) | 140-198 | MEDIUM | Phase 7 |
-| 8b | TikTok video + audio | TBD | HIGH | Phase 8a |
-| 8c | TikTok analytics feedback loop (via Publer) | (included in 8a) | LOW | Phase 8a |
-| **Restructure total (Phases 1-7)** | | **23-34** | | |
-| **TikTok MVP (Phase 8a+c)** | | **140-198** | | |
+| | **Restructure total (Phases 1-7)** | **23-34** | | |
+| 8 | Two-step planning split | 8-12 | MEDIUM | Phase 7 |
+| 9 | Carousel rendering engine | 35-50 | LOW | Phase 8 |
+| 10 | Content generation pipeline | 55-75 | MEDIUM | Phase 9 |
+| 11 | Posting via Publer | 25-35 | MEDIUM | Phase 10 |
+| 12 | Analytics + feedback loop | 25-38 | LOW-MEDIUM | Phase 11 |
+| | **TikTok MVP total (Phases 8-12)** | **148-210** | | |
+| 13 | Video pipeline (Creatomate) | 45-70 | MEDIUM | MVP stable |
+| 14 | Engagement automation | 25-40 | LOW | MVP stable |
+| 15 | Remotion migration | 65-95 | MEDIUM-HIGH | Phase 13 stable |
+| | **Full build total (Phases 1-15)** | **341-494** | | |
+
+## Reuse from Pinterest Pipeline
+
+| Component | Reuse Level | Notes |
+|-----------|------------|-------|
+| `src/shared/apis/claude_api.py` | 100% | Same module, new prompts |
+| `src/shared/apis/image_gen.py` | 100% | DALL-E/Replicate calls identical |
+| `src/shared/apis/gcs_api.py` | 100% | GCS upload identical |
+| `src/shared/apis/sheets_api.py` | 80% | Same patterns, TikTok-specific sheet config |
+| `src/shared/apis/slack_notify.py` | 80% | Add TikTok event types |
+| `src/shared/content_planner.py` | 100% | TikTok calls same unified planner |
+| `src/shared/content_memory.py` | 90% | Extend for TikTok content dedup |
+| `src/shared/analytics_utils.py` | 70% | Shared log format, TikTok-specific metrics |
+| `src/shared/image_cleaner.py` | 80% | Same validation, different dimensions |
+| `render_pin.js` → `render_carousel.js` | 60% | Puppeteer patterns reused, multi-slide is new |
+| `pin_assembler.py` → `carousel_assembler.py` | 50% | Template injection reused, multi-slide orchestration new |
+| `post_pins.py` → `post_content.py` | 50% | Posting patterns reused, Publer API simpler than Pinterest direct API |
+| `generate_weekly_plan.py` | 30% | Architecture reused, attribute system is new |
+| GitHub Actions workflow patterns | 70% | Same structure, TikTok-specific steps |
+| Apps Script trigger pattern | 80% | Same dispatch mechanism, different sheet |
+| Token management patterns | N/A | Not needed — Publer uses static API key |
+
+**Estimated reuse savings:** 150-190 hours (40-50% reduction from building from scratch)
+
+## Risks & Mitigations
+
+| Risk | Impact | Probability | Mitigation |
+|------|--------|-------------|------------|
+| Publer service disruption or API changes | Can't post programmatically | Low | Manual posting fallback built into every workflow; can fall back to direct TikTok API if needed |
+| Publer Business plan doesn't include API access | Must upgrade to Enterprise | Low | Verify during 14-day trial before committing |
+| AI content detection on images | Reach suppression on photo-forward carousels | Medium | Strip C2PA metadata; use Replicate/Flux (lower detection); self-label when uncertain |
+| Cold start — no performance data for 2-3 weeks | Blind attribute allocation | High (expected) | Cold-start mode: even distribution, learn fast |
+| Algorithm doesn't reward carousels in our niche | Lower-than-expected reach | Low-Medium | Research says carousels get 81% higher engagement — but monitor and adjust mix |
+| ElevenLabs TTS flagged as AI voice | Video reach suppressed | Low | Use stock voices that sound natural; human voiceover backup |
+| TikTok US regulatory disruption | Platform unavailable | Low | Build TikTok-native; keep unwatermarked source assets for reuse on Reels/Shorts |
+| Remotion learning curve (React/TS) | Phase 15 timeline slip | Medium | Creatomate bridge removes time pressure; Remotion migration is optional upgrade |
+| Engagement automation triggers spam detection | Account penalty | Low | Conservative rate limits (20-50 replies/day); all replies unique via Claude; random delays |
+| Template fatigue | Declining engagement | Low-Medium | 4 families from day 1; add 1-2 new families every 4-6 weeks |
+
+## Environment Variables
+
+```bash
+# TikTok posting via Publer
+PUBLER_API_KEY=                        # Generated in Publer dashboard
+PUBLER_WORKSPACE_ID=                   # From Publer dashboard or GET /api/v1/workspaces
+PUBLER_TIKTOK_ACCOUNT_ID=             # From GET /api/v1/accounts or Publer dashboard
+TIKTOK_POSTING_ENABLED=false           # Set to true when Publer integration verified
+
+# TikTok Google Sheet (separate from Pinterest sheet)
+TIKTOK_GOOGLE_SHEET_ID=
+TIKTOK_GOOGLE_SHEET_URL=
+
+# Video — Phase 13
+CREATOMATE_API_KEY=                   # Phase 13 only, dropped in Phase 15
+ELEVENLABS_API_KEY=
+ELEVENLABS_VOICE_ID=
+EPIDEMIC_SOUND_API_KEY=
+
+# Video — Phase 15 (replaces Creatomate)
+REMOTION_AWS_ROLE_ARN=
+
+# Engagement — Phase 14
+NAPOLEONCAT_API_KEY=
+ENGAGEMENT_AUTOMATION_ENABLED=false
+
+# Shared (already in .env from Pinterest)
+# ANTHROPIC_API_KEY, OPENAI_API_KEY, GCS_BUCKET_NAME,
+# GOOGLE_SHEETS_CREDENTIALS_JSON, SLACK_WEBHOOK_URL
+```
+
+## What Success Looks Like
+
+### Month 1 (MVP)
+- 12-20 carousels posted
+- Attribute performance data accumulating
+- Feedback loop producing shifted weights for week 3+
+- 100-500 followers (per research growth curves)
+
+### Month 3 (+ Phase 13)
+- Mixed content: carousels + videos
+- 10-14 posts/week automated cadence
+- Performance data driving 65/35 exploit/explore allocation
+- 500-3,000 followers
+- 1-2 breakout posts
+
+### Month 6 (+ Phases 14-15)
+- Full pipeline: carousels + Remotion videos + engagement automation
+- 14-21 posts/week
+- Feedback loop mature — clear signal on what works
+- 2,000-15,000 followers
+- Proven content formats, community forming
+
+### Month 12
+- Established presence, 10,000-50,000+ followers
+- Content engine self-improving weekly
+- TikTok analytics feeding back into shared content planner alongside Pinterest
+- Ready to evaluate paid promotion of top performers
 
 ---
 

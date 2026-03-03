@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from src.paths import (
+from src.shared.paths import (
     CONTENT_LOG_PATH,
     DATA_DIR,
     PROMPTS_DIR,

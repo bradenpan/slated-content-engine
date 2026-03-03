@@ -14,7 +14,7 @@ import pytest
 # Mock heavy dependencies before importing regen_content
 sys.modules.setdefault("anthropic", MagicMock())
 
-from src.regen_content import _regen_item
+from src.pinterest.regen_content import _regen_item
 
 
 def _make_pin_data(pin_id: str = "W1-01", with_drive_url: bool = True) -> dict:

@@ -6,7 +6,7 @@ Uses the same service account credentials as the Sheets API (just adds
 the Drive scope). Images are set to "anyone with link can view" so
 Google Sheets =IMAGE() formulas can render them.
 
-Storage: A single folder called "pinterest-pipeline-pins" in the service
+Storage: A single folder called "slated-content-engine-pins" in the service
 account's Drive space. Previous week's images are deleted before uploading
 new ones — the user never sees or manages this folder.
 
@@ -23,7 +23,7 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-DRIVE_FOLDER_NAME = "pinterest-pipeline-pins"
+DRIVE_FOLDER_NAME = "slated-content-engine-pins"
 
 
 class DriveAPIError(Exception):

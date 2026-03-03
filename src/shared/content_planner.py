@@ -51,7 +51,7 @@ def load_strategy_context() -> dict:
     json_files = {
         "keyword_lists": "keyword-lists.json",
         "negative_keywords": "negative-keywords.json",
-        "board_structure": "board-structure.json",
+        "board_structure": "pinterest/board-structure.json",
         "cta_variants": "cta-variants.json",
         "seasonal_calendar": "seasonal-calendar.json",
     }

@@ -4,7 +4,7 @@ from datetime import date, timedelta
 
 import pytest
 
-from src.plan_validator import (
+from src.pinterest.plan_validator import (
     MAX_CONSECUTIVE_SAME_TEMPLATE,
     MAX_PINS_PER_BOARD,
     PILLAR_MIX_TARGETS,

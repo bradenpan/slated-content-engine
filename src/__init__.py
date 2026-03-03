@@ -1,1 +1,1 @@
-# pinterest-pipeline src package
+# slated-content-engine src package

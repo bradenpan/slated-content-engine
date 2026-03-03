@@ -257,7 +257,7 @@ class GitHubAPI:
             GitHubAPIError: If the merge fails (e.g., conflicts).
         """
         if not commit_message:
-            commit_message = "Merge develop into main (pinterest pipeline deploy)"
+            commit_message = "Merge develop into main (slated content engine deploy)"
 
         try:
             merge_result = self.repo.merge(

@@ -7,7 +7,7 @@ detection layer scans DigitalSourceType, Software tags, and XMP data — re-savi
 pixel data through Pillow discards all of these.
 
 Usage:
-    from src.image_cleaner import clean_image
+    from src.shared.image_cleaner import clean_image
     clean_image(Path("pin.png"))          # overwrite in place
     clean_image(src, dst, add_noise=False) # copy without noise
 """

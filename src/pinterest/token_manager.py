@@ -104,7 +104,7 @@ class TokenManager:
         """Lazy-load Slack notifier to avoid circular imports."""
         if self._slack_notifier is None:
             try:
-                from src.apis.slack_notify import SlackNotify
+                from src.shared.apis.slack_notify import SlackNotify
                 self._slack_notifier = SlackNotify()
             except Exception:
                 logger.warning("Could not initialize Slack notifier for token alerts")

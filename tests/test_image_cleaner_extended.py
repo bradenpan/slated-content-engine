@@ -15,7 +15,7 @@ import pytest
 from PIL import Image, PngImagePlugin
 
 from conftest import create_jpeg_with_exif as _create_jpeg_with_exif
-from src.image_cleaner import _add_gaussian_noise, clean_image
+from src.shared.image_cleaner import _add_gaussian_noise, clean_image
 
 
 def _create_simple_rgb(path: Path, size=(100, 100), color=(128, 128, 128), fmt="JPEG"):

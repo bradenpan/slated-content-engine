@@ -539,7 +539,7 @@ class BlogDeployer:
         # promote doesn't erase pins from the previous week that haven't
         # posted yet (e.g., W9 evening pins still due when W10 promotes).
         #
-        # NOTE: promote (pinterest-pipeline) and daily-post (pinterest-posting)
+        # NOTE: promote (slated-content-engine) and daily-post (slated-content-engine-posting)
         # use different concurrency groups and can run simultaneously. If a
         # daily-post is mid-flight, its content-log.jsonl updates aren't
         # committed yet, so is_pin_posted may return False for just-posted

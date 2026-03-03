@@ -13,7 +13,7 @@ import pytest
 # imports claude_api which requires anthropic).
 sys.modules.setdefault("anthropic", MagicMock())
 
-from src.blog_generator import BlogGenerator, BlogGeneratorError
+from src.shared.blog_generator import BlogGenerator, BlogGeneratorError
 
 
 @pytest.fixture

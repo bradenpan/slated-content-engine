@@ -2,7 +2,7 @@
 
 import json
 
-from src.utils.plan_utils import (
+from src.shared.utils.plan_utils import (
     find_latest_plan,
     identify_replaceable_posts,
     load_plan,

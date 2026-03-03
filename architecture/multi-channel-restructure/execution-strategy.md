@@ -1,7 +1,7 @@
 # Multi-Channel Restructure — Execution Strategy
 
 **Date:** 2026-03-02
-**Status:** Active — Phases 1-5 complete, Phase 6 next
+**Status:** Active — Phases 1-7 complete, Phase 8 next
 
 ---
 
@@ -506,6 +506,90 @@ The method resolves paths via `PROMPTS_DIR / template_name` (line 91 of `claude_
 - If something breaks, it will be an immediate import error (not a silent no-op) — restore the shim file and investigate
 - No week-long gate — Phase 7 and TikTok pre-build can start in parallel (see below)
 
+#### Notes from Phase 6 (for the Phase 7 agent)
+
+##### 1. `board-structure.json` — 5 path references that will break
+
+The implementation plan says to move `strategy/board-structure.json` → `strategy/pinterest/board-structure.json`. All 5 Python files that load this file construct the path via `STRATEGY_DIR / "board-structure.json"` and must be updated to `STRATEGY_DIR / "pinterest" / "board-structure.json"`.
+
+**PATH references (BREAKING — file won't load if not updated):**
+
+| File | Line | Code |
+|------|------|------|
+| `src/pinterest/setup_boards.py` | 25 | `BOARD_STRUCTURE_PATH = STRATEGY_DIR / "board-structure.json"` |
+| `src/pinterest/post_pins.py` | 59 | `BOARD_STRUCTURE_PATH = STRATEGY_DIR / "board-structure.json"` |
+| `src/pinterest/plan_validator.py` | 88 | `(STRATEGY_DIR / "board-structure.json").read_text(encoding="utf-8")` |
+| `src/pinterest/monthly_review.py` | 500 | `board_structure_path = STRATEGY_DIR / "board-structure.json"` |
+| `src/shared/content_planner.py` | 54 | `"board_structure": "board-structure.json",` (strategy file mapping dict) |
+
+**Cosmetic references (won't break, but should update for accuracy):**
+
+| File | Line | Type |
+|------|------|------|
+| `src/pinterest/generate_weekly_plan.py` | 19 | Docstring |
+| `src/pinterest/setup_boards.py` | 4, 39 | Docstring, log message |
+| `.github/workflows/setup-boards.yml` | 4 | YAML comment |
+
+**Variable names like `board_structure` (parameter names, dict keys) do NOT need changes** — they're just Python identifiers, not path references.
+
+**Verification:** After the move, run `python -m pytest tests/test_plan_validator.py` — this test exercises `validate_plan()` which reads the file.
+
+##### 2. Repo name references — complete change map
+
+Phase 7 renames the GitHub repo from `slated-pinterest-bot` to `slated-content-engine`. The local folder is `pinterest-pipeline`. Both names appear across the codebase. Here is the exhaustive list:
+
+**BREAKING (runtime failure if not updated):**
+
+| File | Line | Current | New | Impact |
+|------|------|---------|-----|--------|
+| `src/apps-script/trigger.gs` | 71 | `"bradenpan/slated-pinterest-bot"` | `"bradenpan/slated-content-engine"` | Apps Script dispatch events target wrong repo — all Sheet-triggered workflows stop working |
+
+**FUNCTIONAL (affects behavior, should update):**
+
+| File | Line | Current | New | Impact |
+|------|------|---------|-----|--------|
+| `.github/workflows/weekly-review.yml` | 11 | `group: pinterest-pipeline` | `group: slated-content-engine` | Concurrency serialization |
+| `.github/workflows/generate-content.yml` | 10 | `group: pinterest-pipeline` | `group: slated-content-engine` | Concurrency serialization |
+| `.github/workflows/deploy-and-schedule.yml` | 12 | `group: pinterest-pipeline` | `group: slated-content-engine` | Concurrency serialization |
+| `.github/workflows/promote-and-schedule.yml` | 16 | `group: pinterest-pipeline` | `group: slated-content-engine` | Concurrency serialization |
+| `.github/workflows/monthly-review.yml` | 15 | `group: pinterest-pipeline` | `group: slated-content-engine` | Concurrency serialization |
+| `.github/workflows/regen-content.yml` | 10 | `group: pinterest-pipeline` | `group: slated-content-engine` | Concurrency serialization |
+| `.github/workflows/regen-plan.yml` | 10 | `group: pinterest-pipeline` | `group: slated-content-engine` | Concurrency serialization |
+| `.github/workflows/daily-post-morning.yml` | 16 | `group: pinterest-posting` | `group: slated-content-engine-posting` | Posting serialization |
+| `.github/workflows/daily-post-afternoon.yml` | 16 | `group: pinterest-posting` | `group: slated-content-engine-posting` | Posting serialization |
+| `.github/workflows/daily-post-evening.yml` | 18 | `group: pinterest-posting` | `group: slated-content-engine-posting` | Posting serialization |
+| `.github/actions/commit-data/action.yml` | 12 | `user.name "pinterest-pipeline-bot"` | `user.name "slated-content-engine-bot"` | Git commit author |
+| `.github/actions/commit-data/action.yml` | 13 | `user.email "bot@pinterest-pipeline.local"` | `user.email "bot@slated-content-engine.local"` | Git commit email |
+
+**COSMETIC (comments, docs, display strings):**
+
+| File | Line | Current |
+|------|------|---------|
+| `ARCHITECTURE.md` | 44 | `pinterest-pipeline/` in directory tree |
+| `src/__init__.py` | 1 | `# pinterest-pipeline src package` |
+| `src/shared/apis/github_api.py` | 260 | `"Merge develop into main (pinterest pipeline deploy)"` |
+| `src/shared/apis/slack_notify.py` | 514 | Smoke test message string |
+| `src/shared/blog_deployer.py` | 542 | Code comment |
+| `architecture/multi-channel-restructure/implementation-plan.md` | 48, 537 | Planning docs |
+
+**RENAME SAFE (auto-creates new folder):**
+
+| File | Line | Current | New |
+|------|------|---------|-----|
+| `src/shared/apis/drive_api.py` | 26 | `DRIVE_FOLDER_NAME = "pinterest-pipeline-pins"` | `DRIVE_FOLDER_NAME = "slated-content-engine-pins"` |
+
+The Drive folder is in the service account's space (user never sees it). `_get_or_create_folder()` searches by name and auto-creates if missing, so renaming the constant just creates a new folder on next upload. The old folder becomes harmless orphaned data.
+
+**Data files (`data/*.json`) contain GitHub Actions runner workspace paths** like `/home/runner/work/slated-pinterest-bot/...`. These are runtime artifacts that auto-regenerate on the next workflow run — do NOT manually edit them.
+
+##### 3. Concurrency group rename must be atomic
+
+All 7 `pinterest-pipeline` concurrency group workflows and all 3 `pinterest-posting` workflows must be renamed in the same commit. If some have the old name and some have the new name, they won't serialize against each other, potentially causing race conditions (e.g., `generate-content.yml` and `promote-and-schedule.yml` running simultaneously).
+
+##### 4. Apps Script deployment is a human step
+
+After updating `trigger.gs`, the human must manually deploy the updated script via Google Apps Script editor → Deploy → Deploy as API executable (or re-publish the trigger). The code change alone doesn't take effect until deployed.
+
 ---
 
 ## Parallel Work After Phase 5
@@ -572,8 +656,7 @@ Each phase boundary requires:
 
 1. **`python -m pytest tests/`** — all tests pass
 2. **Import smoke tests** — `python -c "from src.shared.X import Y; print('OK')"` for moved modules
-3. **Shim verification** — old import paths still resolve (until Phase 6 removes shims)
-4. **User confirmation** — daily posting works, no workflow errors in GitHub Actions logs
-5. **No regression in Slack notifications** — all pipeline steps still notify
+3. **User confirmation** — daily posting works, no workflow errors in GitHub Actions logs
+4. **No regression in Slack notifications** — all pipeline steps still notify
 
 Only proceed to the next phase after ALL checks pass.

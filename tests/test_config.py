@@ -1,6 +1,6 @@
 """Tests for src/config.py — verify configuration constants are well-formed."""
 
-from src.config import (
+from src.shared.config import (
     BLOG_BASE_URL,
     CLAUDE_COST_PER_MTK,
     CLAUDE_MODEL_DEEP,

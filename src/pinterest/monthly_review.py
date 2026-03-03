@@ -497,7 +497,7 @@ def _analyze_board_density(entries: list[dict]) -> dict:
         board_counts[board] += 1
 
     # Load board structure for expected boards
-    board_structure_path = STRATEGY_DIR / "board-structure.json"
+    board_structure_path = STRATEGY_DIR / "pinterest" / "board-structure.json"
     expected_boards = set()
     try:
         if board_structure_path.exists():

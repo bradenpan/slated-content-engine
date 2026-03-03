@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.apis.sheets_api import SheetsAPI, SheetsAPIError
+from src.shared.apis.sheets_api import SheetsAPI, SheetsAPIError
 
 
 @pytest.fixture

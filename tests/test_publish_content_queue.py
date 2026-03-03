@@ -75,7 +75,7 @@ class TestSheetsWriteSucceeds:
     """When Sheets write succeeds, notify_content_ready() is called."""
 
     def test_notify_content_ready_called(self, mock_dependencies):
-        from src.publish_content_queue import publish
+        from src.pinterest.publish_content_queue import publish
 
         publish()
 
@@ -83,7 +83,7 @@ class TestSheetsWriteSucceeds:
         slack.notify_content_ready.assert_called_once()
 
     def test_no_failure_notification_sent(self, mock_dependencies):
-        from src.publish_content_queue import publish
+        from src.pinterest.publish_content_queue import publish
 
         publish()
 
@@ -100,7 +100,7 @@ class TestSheetsWriteFails:
     """When Sheets write fails, a failure message is sent instead."""
 
     def test_notify_content_ready_not_called(self, mock_dependencies):
-        from src.publish_content_queue import publish
+        from src.pinterest.publish_content_queue import publish
 
         mock_dependencies["sheets"].write_content_queue.side_effect = SheetsAPIError(
             "Sheets API down"
@@ -112,7 +112,7 @@ class TestSheetsWriteFails:
         slack.notify_content_ready.assert_not_called()
 
     def test_failure_notification_sent(self, mock_dependencies):
-        from src.publish_content_queue import publish
+        from src.pinterest.publish_content_queue import publish
 
         mock_dependencies["sheets"].write_content_queue.side_effect = SheetsAPIError(
             "Sheets API down"

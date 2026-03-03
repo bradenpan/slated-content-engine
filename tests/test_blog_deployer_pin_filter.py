@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.blog_deployer import BlogDeployer
+from src.shared.blog_deployer import BlogDeployer
 
 
 @pytest.fixture

@@ -1,7 +1,7 @@
 name: Setup Pinterest Boards
 
 # One-time manual workflow to create all Pinterest boards and sections
-# defined in strategy/board-structure.json.
+# defined in strategy/pinterest/board-structure.json.
 # Safe to rerun — skips boards that already exist.
 on:
   workflow_dispatch:

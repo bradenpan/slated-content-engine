@@ -16,7 +16,7 @@ Input context loaded for the planning prompt:
 5. strategy/keyword-lists.json + performance data -- Keyword targets
 6. strategy/negative-keywords.json -- Topics to avoid
 7. strategy/cta-variants.json -- CTA copy for blog post assignments
-8. strategy/board-structure.json -- Board distribution constraints
+8. strategy/pinterest/board-structure.json -- Board distribution constraints
 
 Output: Structured plan written to Google Sheet "Weekly Review" tab.
 

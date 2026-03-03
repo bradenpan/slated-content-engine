@@ -511,5 +511,5 @@ if __name__ == "__main__":
         # Smoke test (backward compatible)
         notifier = SlackNotify()
         print("Sending test notification...")
-        notifier.notify_review_ready("Test notification from pinterest-pipeline smoke test.")
+        notifier.notify_review_ready("Test notification from slated-content-engine smoke test.")
         print("Done.")

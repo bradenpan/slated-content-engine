@@ -2,7 +2,7 @@
 
 import json
 
-from src.utils.content_log import (
+from src.shared.utils.content_log import (
     append_content_log_entry,
     is_pin_posted,
     load_content_log,
