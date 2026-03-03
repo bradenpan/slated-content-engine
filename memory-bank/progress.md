@@ -2224,3 +2224,47 @@ src/
 - Phase 4: Move prompts into subdirectories
 - Phase 5: Update GitHub Actions workflows
 - Phase 6: Remove shims + 1-week burn-in
+
+---
+
+## Phase 19b — Shim `__main__` Fix + Date Override for Pin Recovery
+**Date:** 2026-03-03
+
+### Incident: Silent Workflow Failure
+After Phase 1 deployed, the March 2nd evening posting workflow completed green but **produced zero output**. No pins posted, no Slack notification, no errors. Root cause: shim files (`from src.X import *`) lack `if __name__ == "__main__":` blocks. When workflows run `python -m src.post_pins evening`, the shim imports symbols then exits silently with code 0. The real module's `__main__` block never executes because it's imported as a regular module (not as `__main__`).
+
+### Fix 1: `__main__` blocks for all 10 workflow-invoked shims
+Added `runpy.run_module()` delegation to every shim invoked via `python -m` in GitHub Actions:
+
+```python
+if __name__ == "__main__":
+    import runpy
+    runpy.run_module("src.target.module", run_name="__main__", alter_sys=True)
+```
+
+**Files fixed (10):** `src/post_pins.py`, `src/token_manager.py`, `src/blog_deployer.py`, `src/pull_analytics.py`, `src/setup_boards.py`, `src/regen_content.py`, `src/redate_schedule.py`, `src/generate_blog_posts.py`, `src/generate_pin_content.py`, `src/apis/slack_notify.py`
+
+### Fix 2: `--date` override for recovering missed posting slots
+Added `date_override` parameter to `post_pins()` and `--date=YYYY-MM-DD` CLI flag. When used:
+- Targets a specific date's pins instead of today's
+- Skips anti-bot jitter (not needed for manual recovery)
+- Validates date format upfront (`datetime.strptime`)
+- All 3 daily posting workflows accept `date_override` via `workflow_dispatch` input
+
+**Files modified:** `src/pinterest/post_pins.py`, `.github/workflows/daily-post-morning.yml`, `daily-post-afternoon.yml`, `daily-post-evening.yml`
+
+### Recovery
+Used the new `--date` override to recover March 2nd evening pins via workflow_dispatch:
+- **W9-23** posted to "Family Dinner Ideas Even Picky Eaters Love"
+- **W9-24** posted to "Better Than a Meal Kit"
+- Both confirmed in `content-log.jsonl` with valid `pinterest_pin_id`
+
+### Documentation Updates
+- `execution-strategy.md` — Added checklist items #9 (shim `__main__` blocks) and #10 (workflow output verification). Added "Required Reading" section. Updated Phase 2 sub-steps to explicitly call out `__main__` requirements for each file.
+- `ARCHITECTURE.md` — Updated `post_pins.py` description to mention `--date` override
+- `progress.md` — This entry
+
+### Lessons Learned
+1. **`import *` shims are import-only** — they re-export symbols but don't execute entry points. Every shim invoked via `python -m` needs a `__main__` block.
+2. **Green workflow ≠ working workflow** — a silent no-op exits 0. Must verify expected output (log lines, Slack messages, content-log entries), not just exit code.
+3. **Review agents must cross-reference workflows** — the Phase 1 review agent checked imports and shims but didn't verify `python -m` execution paths.

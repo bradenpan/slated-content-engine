@@ -1,7 +1,7 @@
 # Multi-Channel Restructure — Execution Strategy
 
 **Date:** 2026-03-02
-**Status:** Active — Phase 1 in progress
+**Status:** Active — Phase 1 complete, Phase 2 next
 
 ---
 
@@ -20,6 +20,18 @@
   - [Phase 6: Cleanup and burn-in](#phase-6-cleanup-and-burn-in)
 - [Folder and Repo Rename](#folder-and-repo-rename)
 - [Verification Between Phases](#verification-between-phases)
+
+---
+
+## Required Reading (Before Starting Any Phase)
+
+An agent executing any phase MUST read these documents first:
+
+1. **`ARCHITECTURE.md`** — Current system architecture, directory structure, file responsibilities, data flows, gotchas
+2. **`architecture/multi-channel-restructure/execution-strategy.md`** — This document. Failure-mode checklist (items 1-10), sub-steps, verification requirements
+3. **`architecture/multi-channel-restructure/implementation-plan.md`** — Master restructure plan with all phases, directory structure, and effort estimates
+4. **`.github/workflows/*.yml` and `.github/actions/*/action.yml`** — All workflow files. Cross-reference against any file being moved to determine if it's invoked via `python -m` (see checklist item #9)
+5. **`memory-bank/architecture/architecture-data-flows.md`** — Schema details, column layouts, field mappings (relevant when moving files that interact with Sheets or content log)
 
 ---
 
@@ -104,11 +116,28 @@ These are the 8 historical failure categories. The review agent checks every cha
 - Every `from src.X` must resolve after the move
 - Shims must re-export everything the old path exported
 - `python -m src.X` invocations in workflows must still resolve
+- **`@patch()` decorators in tests must target the canonical module path** (where the real code lives), not the shim path — mocking the shim namespace doesn't reach the real code's references
 
 ### 8. Private Function Coupling
 - `regen_content.py` imports private functions from `generate_pin_content.py`
 - Both files must end up in the same package OR the imports must be updated
 - Functions: `_source_ai_image`, `_load_brand_voice`, `_load_keyword_targets`, `build_template_context`, `generate_copy_batch`, `load_used_image_ids`
+
+### 9. Shim Entry Point Execution (`python -m` / `__main__`)
+- **LEARNED FROM PHASE 1 INCIDENT:** Shims using `from src.X import *` only re-export symbols for import purposes. They do NOT execute the target module's `if __name__ == "__main__":` block when invoked via `python -m`.
+- Every shim file that is invoked via `python -m` in a GitHub Actions workflow MUST have its own `__main__` block that delegates to the real module:
+  ```python
+  if __name__ == "__main__":
+      import runpy
+      runpy.run_module("src.target.module", run_name="__main__", alter_sys=True)
+  ```
+- **How to verify:** Cross-reference every `python -m src.X` in `.github/workflows/*.yml` and `.github/actions/*/action.yml` against the file at `src/X.py`. If it's a shim, it needs a `__main__` block.
+- **Failure mode:** Silent no-op. The workflow step exits 0 with zero output. No error, no Slack notification, no indication anything went wrong. Extremely hard to detect without checking workflow logs for missing output.
+- Shims that are only imported by other modules (never invoked via `python -m`) do NOT need `__main__` blocks.
+
+### 10. Workflow Output Verification
+- **LEARNED FROM PHASE 1 INCIDENT:** A green workflow does not mean the step did anything. After deploying changes that affect files invoked by workflows, check that workflow steps produce **expected output** (log lines, print statements), not just that they exit 0.
+- For posting workflows specifically: verify Slack notification arrives AND content-log.jsonl has new entries.
 
 ---
 
@@ -199,9 +228,12 @@ Files (9):
 
 **Risk:** MEDIUM | **Effort:** 3-4 hours
 
+**CRITICAL:** For every file moved in this phase, check if it's invoked via `python -m` in any workflow (see checklist item #9). If so, the shim at the old location MUST include a `__main__` block using `runpy.run_module()`. Failure to do this causes silent no-ops — the workflow step exits 0 with zero output.
+
 #### Sub-step 2a: Consolidate content memory
 - Create `src/shared/content_memory.py` from the canonical `generate_weekly_plan.py` implementation
 - Delete `src/utils/content_memory.py` (replace with shim pointing to shared)
+- **Note:** `python -m src.utils.content_memory` is invoked in `weekly-review.yml` — the shim MUST have a `__main__` block
 - Diff output against baseline to ensure identical results
 
 #### Sub-step 2b: Extract analytics utilities
@@ -212,14 +244,18 @@ Files (9):
 
 #### Sub-step 2c: Move remaining files to `src/pinterest/`
 - `weekly_analysis.py` → `src/pinterest/weekly_analysis.py`
+  - **Workflow:** `python -m src.weekly_analysis` in `weekly-review.yml` — shim needs `__main__` block
 - `monthly_review.py` → `src/pinterest/monthly_review.py`
+  - **Workflow:** `python -m src.monthly_review` in `monthly-review.yml` — shim needs `__main__` block
 - `publish_content_queue.py` → `src/pinterest/publish_content_queue.py`
-- Create shims at old locations
+  - **Workflow:** `python -m src.publish_content_queue` in `generate-content.yml` — shim needs `__main__` block
+- Create shims at old locations (all 3 need `__main__` + `runpy.run_module()`)
 
 #### Sub-step 2d: Verify
 - Content memory output identical to previous version
 - All tests pass
-- Shims work
+- Shims work for both import AND `python -m` execution
+- Cross-reference ALL `python -m` invocations in workflows against shim files — every shim invoked via `python -m` must have a `__main__` block
 
 ---
 

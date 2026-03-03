@@ -102,7 +102,7 @@ pinterest-pipeline/
 | `pin_assembler.py` | HTML/CSS template → PNG renderer via Puppeteer (5 template types × 3 variants) |
 | `publish_content_queue.py` | Uploads images to GCS, writes Content Queue sheet, stores GCS URLs back to results JSON |
 | `blog_deployer.py` | Commits blogs to goslated.com repo (Vercel deploy), URL verification, pin schedule creation |
-| `post_pins.py` | Daily Pinterest API posting with anti-bot jitter, idempotency, retry logic |
+| `post_pins.py` | Daily Pinterest API posting with anti-bot jitter, idempotency, retry logic. Supports `--date=YYYY-MM-DD` override for recovering missed slots (skips jitter when used). |
 | `pull_analytics.py` | Pinterest Analytics API pull (impressions, saves, clicks, outbound) |
 | `weekly_analysis.py` | Claude-driven weekly performance analysis |
 | `monthly_review.py` | Claude Opus deep monthly strategy review |
