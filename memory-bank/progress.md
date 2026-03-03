@@ -2268,3 +2268,65 @@ Used the new `--date` override to recover March 2nd evening pins via workflow_di
 1. **`import *` shims are import-only** — they re-export symbols but don't execute entry points. Every shim invoked via `python -m` needs a `__main__` block.
 2. **Green workflow ≠ working workflow** — a silent no-op exits 0. Must verify expected output (log lines, Slack messages, content-log entries), not just exit code.
 3. **Review agents must cross-reference workflows** — the Phase 1 review agent checked imports and shims but didn't verify `python -m` execution paths.
+
+---
+
+## Multi-Channel Restructure: Phase 2 — Extract Content Memory & Analytics Utilities
+**Date:** 2026-03-03
+
+### Goal
+Move the 4 remaining unmoved files to their canonical locations, extract generic analytics functions into a shared module, and ensure all workflow invocations continue working via shims with `__main__` blocks.
+
+### Sub-step 2a: Move content_memory to shared
+- Moved `src/utils/content_memory.py` → `src/shared/content_memory.py` (420 lines)
+- Updated imports: `src.paths` → `src.shared.paths`, `src.utils.content_log` → `src.shared.utils.content_log`, `src.utils.safe_get` → `src.shared.utils.safe_get`
+- Replaced original with shim + `__main__` block (invoked via `python -m src.utils.content_memory` in `weekly-review.yml`)
+- Updated downstream imports in `src/shared/utils/plan_utils.py` and `src/pinterest/plan_validator.py`
+- **Key finding:** Execution strategy mentioned "consolidating two content_memory implementations" but consolidation was already done — this was purely a file move.
+
+### Sub-step 2b: Extract analytics utilities
+- Created `src/shared/analytics_utils.py` with two functions extracted from `src/pinterest/pull_analytics.py`:
+  - `compute_derived_metrics()` — adds save_rate and click_through_rate to entries
+  - `aggregate_by_dimension()` — groups entries by any field, computes aggregate metrics
+- Updated `pull_analytics.py` to import from shared (removed function definitions + unused `defaultdict` import)
+- Shim chain preserved: `src/pull_analytics.py` (shim) → `src/pinterest/pull_analytics.py` → imports from `src/shared/analytics_utils.py`
+
+### Sub-step 2c: Move 3 files to src/pinterest/
+All three invoked via `python -m` in workflows — all shims have `__main__` blocks.
+
+| File | Moved To | Workflow |
+|------|----------|----------|
+| `weekly_analysis.py` | `src/pinterest/weekly_analysis.py` | `weekly-review.yml` |
+| `monthly_review.py` | `src/pinterest/monthly_review.py` | `monthly-review.yml` |
+| `publish_content_queue.py` | `src/pinterest/publish_content_queue.py` | `generate-content.yml` |
+
+Each file had 6-7 imports updated to canonical `src.shared.*` paths.
+
+Updated `tests/test_publish_content_queue.py`: mock `@patch()` targets changed from `src.publish_content_queue.*` to `src.pinterest.publish_content_queue.*` (mocks must patch at the canonical module where names are used, not at the shim).
+
+### Sub-step 2d: Verification
+- **207/207 tests pass** (0 failures)
+- **16/16 workflow-invoked modules** findable via `importlib.util.find_spec()`
+- **4/4 Phase 2 shims** have `__main__` + `runpy.run_module()` blocks
+- Shim backward-compat imports verified for all moved files
+- `python -m src.utils.content_memory` produces real output (not silent no-op)
+- Review agent ran 10-item failure-mode checklist: **all 10 items PASS**
+- Review agent found 2 pre-existing stale imports outside Phase 2 scope:
+  - `src/generate_weekly_plan.py` still uses `from src.utils.content_memory import` (works via shim, will be fixed in Phase 3)
+  - `src/pinterest/token_manager.py` still uses `from src.apis.slack_notify import` (works via shim)
+
+### Deviation from Implementation Plan
+The implementation plan said to absorb `content_log.py` into `analytics_utils.py`. Decision: **don't do it** because (1) content_log was already moved to `src/shared/utils/content_log.py` in Phase 1, (2) its CRUD functions are conceptually distinct from analytics computation, (3) following the execution strategy which doesn't include this.
+
+### Files Changed Summary
+| Action | Count | Files |
+|--------|-------|-------|
+| Created | 5 | `shared/content_memory.py`, `shared/analytics_utils.py`, `pinterest/weekly_analysis.py`, `pinterest/monthly_review.py`, `pinterest/publish_content_queue.py` |
+| Replaced with shims | 4 | `utils/content_memory.py`, `weekly_analysis.py`, `monthly_review.py`, `publish_content_queue.py` |
+| Modified | 4 | `pinterest/pull_analytics.py`, `shared/utils/plan_utils.py`, `pinterest/plan_validator.py`, `tests/test_publish_content_queue.py` |
+
+### What's Left in src/ (Non-Shim)
+After Phase 2, only 3 original files remain in `src/` root:
+- `generate_weekly_plan.py` — Phase 3 (split into shared planner + Pinterest planner)
+- `regen_weekly_plan.py` — Phase 3
+- `recover_w9_pins.py` — Phase 6 (evaluate for deletion)

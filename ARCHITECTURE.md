@@ -1,6 +1,6 @@
 # Pinterest Pipeline — Architecture
 
-**Last verified:** 2026-03-02
+**Last verified:** 2026-03-03
 **Update this doc when:** a file is added/removed from `src/`, a workflow is added/removed, an external integration changes, a major feature is added/removed, or data schemas change.
 
 ---
@@ -40,7 +40,7 @@ Plan → [Plan Regen] → Generate → Review → [Content Regen] → Deploy →
 
 ## 3. Directory Structure
 
-**Note: Multi-channel restructure in progress (Phase 1 complete).** Files are being migrated from `src/` into `src/shared/` (cross-channel) and `src/pinterest/` (Pinterest-specific). Backward-compat shims exist at old locations until Phase 6.
+**Note: Multi-channel restructure in progress (Phases 1-2 complete).** Files are being migrated from `src/` into `src/shared/` (cross-channel) and `src/pinterest/` (Pinterest-specific). Backward-compat shims exist at old locations until Phase 6.
 
 ```
 pinterest-pipeline/
@@ -53,7 +53,9 @@ pinterest-pipeline/
 │   │   ├── image_cleaner.py      # AI detection avoidance post-processing
 │   │   ├── blog_generator.py     # Individual blog MDX generation
 │   │   ├── blog_deployer.py      # GitHub commit to goslated.com → Vercel deploy
-│   │   └── generate_blog_posts.py # Blog post orchestrator
+│   │   ├── generate_blog_posts.py # Blog post orchestrator
+│   │   ├── content_memory.py     # Content memory summary generation (Phase 2)
+│   │   └── analytics_utils.py    # Channel-agnostic derived metrics + aggregation (Phase 2)
 │   ├── pinterest/                # Pinterest-specific code (Phase 1+)
 │   │   ├── apis/                 # Pinterest API wrapper
 │   │   ├── token_manager.py      # Pinterest OAuth 2.0 token auto-refresh
@@ -61,17 +63,17 @@ pinterest-pipeline/
 │   │   ├── generate_pin_content.py # Pin copy + image generation
 │   │   ├── post_pins.py          # Daily Pinterest API posting
 │   │   ├── pull_analytics.py     # Pinterest Analytics API pull
+│   │   ├── weekly_analysis.py    # Claude-driven weekly performance analysis (Phase 2)
+│   │   ├── monthly_review.py     # Claude Opus deep monthly strategy review (Phase 2)
+│   │   ├── publish_content_queue.py # Content Queue sheet publisher (Phase 2)
 │   │   ├── regen_content.py      # Selective content regeneration
 │   │   ├── plan_validator.py     # Plan constraint validation
 │   │   ├── setup_boards.py       # One-time board creation
 │   │   └── redate_schedule.py    # Pin schedule redating
 │   ├── apis/                     # Backward-compat shims → src/shared/apis/ or src/pinterest/apis/
-│   ├── utils/                    # Backward-compat shims → src/shared/utils/ (content_memory.py still original)
+│   ├── utils/                    # Backward-compat shims → src/shared/utils/
 │   ├── generate_weekly_plan.py   # NOT YET MOVED (Phase 3) — Claude-driven weekly planning
-│   ├── weekly_analysis.py        # NOT YET MOVED (Phase 2)
-│   ├── monthly_review.py         # NOT YET MOVED (Phase 2)
 │   ├── regen_weekly_plan.py      # NOT YET MOVED (Phase 3)
-│   ├── publish_content_queue.py  # NOT YET MOVED (Phase 2)
 │   └── *.py                      # Backward-compat shims for moved files
 ├── prompts/                      # Claude/GPT prompt templates (10 files)
 ├── templates/pins/               # HTML/CSS pin templates (5 types × 3 variants)
@@ -103,9 +105,11 @@ pinterest-pipeline/
 | `publish_content_queue.py` | Uploads images to GCS, writes Content Queue sheet, stores GCS URLs back to results JSON |
 | `blog_deployer.py` | Commits blogs to goslated.com repo (Vercel deploy), URL verification, pin schedule creation |
 | `post_pins.py` | Daily Pinterest API posting with anti-bot jitter, idempotency, retry logic. Supports `--date=YYYY-MM-DD` override for recovering missed slots (skips jitter when used). |
-| `pull_analytics.py` | Pinterest Analytics API pull (impressions, saves, clicks, outbound) |
+| `pull_analytics.py` | Pinterest Analytics API pull (impressions, saves, clicks, outbound). Derived metrics computed via `shared/analytics_utils.py`. |
 | `weekly_analysis.py` | Claude-driven weekly performance analysis |
 | `monthly_review.py` | Claude Opus deep monthly strategy review |
+| `analytics_utils.py` *(shared)* | Channel-agnostic `compute_derived_metrics()` + `aggregate_by_dimension()` |
+| `content_memory.py` *(shared)* | Content memory summary generation (dedup, topic tracking, pillar mix) |
 | `regen_content.py` | Selective content regeneration (image/copy/both) based on reviewer feedback |
 | `regen_weekly_plan.py` | Plan-level topic replacement based on reviewer feedback |
 | `plan_validator.py` | Plan constraint validation (pin counts, board distribution, etc.) |
@@ -136,7 +140,6 @@ pinterest-pipeline/
 | File | Purpose |
 |------|---------|
 | `content_log.py` | JSONL content log read/append operations |
-| `content_memory.py` | Content memory summary generation (dedup, topic tracking, pillar mix) |
 | `plan_utils.py` | Plan loading, validation helpers, atomic pin-schedule writes |
 | `image_utils.py` | MIME detection + Drive file ID parsing |
 | `strategy_utils.py` | Brand voice loading |
@@ -281,7 +284,7 @@ Cost: ~$3-5/week for a full cycle (planning + 8-10 blogs + 28 pins + analysis).
 | [`memory-bank/Audit/dead-code-analysis.md`](memory-bank/Audit/dead-code-analysis.md) | Dead code tracking with line numbers |
 | [`architecture/codebase-review/synthesis.md`](architecture/codebase-review/synthesis.md) | Code quality: 24 findings across 8 dimensions, prioritized fix plan |
 | [`memory-bank/progress.md`](memory-bank/progress.md) | Chronological changelog of all pipeline phases and features |
-| [`architecture/multi-channel-restructure/`](architecture/multi-channel-restructure/) | **FUTURE/DRAFT** — planned multi-channel restructure (Pinterest + TikTok) |
+| [`architecture/multi-channel-restructure/`](architecture/multi-channel-restructure/) | Multi-channel restructure plan (Phases 1-2 complete, 3-6 remaining) |
 | [`src/config.py`](src/config.py) | All hardcoded constants: model names, costs, URLs, dimensions, timing |
 | [`src/paths.py`](src/paths.py) | All path constants: PROJECT_ROOT, DATA_DIR, PROMPTS_DIR, etc. |
 

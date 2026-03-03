@@ -9,19 +9,19 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.apis.sheets_api import SheetsAPIError
+from src.shared.apis.sheets_api import SheetsAPIError
 
 
 @pytest.fixture
 def mock_dependencies():
     """Patch all external dependencies of publish()."""
     with (
-        patch("src.publish_content_queue.SheetsAPI") as MockSheets,
-        patch("src.publish_content_queue.SlackNotify") as MockSlack,
-        patch("src.publish_content_queue.GcsAPI") as MockGcs,
-        patch("src.publish_content_queue.DATA_DIR") as mock_data_dir,
-        patch("src.publish_content_queue.BLOG_OUTPUT_DIR") as mock_blog_dir,
-        patch("src.publish_content_queue.PIN_OUTPUT_DIR") as mock_pin_dir,
+        patch("src.pinterest.publish_content_queue.SheetsAPI") as MockSheets,
+        patch("src.pinterest.publish_content_queue.SlackNotify") as MockSlack,
+        patch("src.pinterest.publish_content_queue.GcsAPI") as MockGcs,
+        patch("src.pinterest.publish_content_queue.DATA_DIR") as mock_data_dir,
+        patch("src.pinterest.publish_content_queue.BLOG_OUTPUT_DIR") as mock_blog_dir,
+        patch("src.pinterest.publish_content_queue.PIN_OUTPUT_DIR") as mock_pin_dir,
     ):
         # GcsAPI: no GCS client so upload path is skipped
         gcs_instance = MagicMock()
@@ -60,7 +60,7 @@ def _no_result_files():
 
     with (
         patch(
-            "src.publish_content_queue.DATA_DIR",
+            "src.pinterest.publish_content_queue.DATA_DIR",
             new_callable=lambda: type(
                 "FakeDir", (), {
                     "__truediv__": lambda self, name: blog_path if "blog" in name else pin_path,

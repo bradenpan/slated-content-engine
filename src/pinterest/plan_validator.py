@@ -13,7 +13,7 @@ from typing import Optional
 
 from src.shared.paths import STRATEGY_DIR
 from src.shared.utils.content_log import load_content_log as _load_content_log
-from src.utils.content_memory import get_entry_date, parse_date
+from src.shared.content_memory import get_entry_date, parse_date
 from src.shared.utils.safe_get import safe_get
 
 logger = logging.getLogger(__name__)
