@@ -1,7 +1,7 @@
 # Multi-Channel Restructure — Execution Strategy
 
 **Date:** 2026-03-02
-**Status:** Active — Phase 1 complete, Phase 2 next
+**Status:** Active — Phases 1-5 complete, Phase 6 next
 
 ---
 
@@ -261,34 +261,37 @@ Files (9):
 
 ### Phase 3: Split planning into unified + channel-specific
 
-**Risk:** HIGH | **Effort:** 8-12 hours
+**Risk:** LOW-MEDIUM | **Effort:** 4-6 hours
 
-**This phase is broken into 4 sub-steps due to complexity.**
+**UPDATED (Phase 3 execution):** Original plan called for a two-step Claude call split (content plan → pin plan) and `pin_planner.py` creation. Both deferred to Phase 8a (TikTok) because: (1) the two-step split is a behavior change with quality risk, not a refactoring, (2) `pin_planner.py`'s intended contents already exist in `plan_validator.py` and `plan_utils.py`, (3) the file reorganization alone achieves the restructure goal. See Phase 8a pre-requisite in implementation-plan.md.
 
 #### Sub-step 3a: Extract shared planning functions → `src/shared/content_planner.py`
 - Extract from `generate_weekly_plan.py`: `load_strategy_context()`, `load_content_memory()`, `load_latest_analysis()`, `get_current_seasonal_window()`
 - These are the generic functions that any channel planner would need
 - No behavior change — just extraction
 
-#### Sub-step 3b: Extract Pinterest constraints → `src/pinterest/pin_planner.py`
-- Extract: board distribution, template distribution, scheduling logic
-- All Pinterest-specific validation and constraint checking
-- **NOTE (Phase 2 finding):** `validate_plan()`, `PILLAR_MIX_TARGETS`, `TOTAL_WEEKLY_PINS`, `MAX_PINS_PER_BOARD` are already in `src/pinterest/plan_validator.py` (moved Phase 1, imports updated Phase 2). Decide whether `pin_planner.py` absorbs `plan_validator.py` or calls it — do not duplicate.
-- **NOTE (Phase 2 finding):** `identify_replaceable_posts()`, `splice_replacements()`, `build_keyword_performance_data()`, `extract_recent_topics()` are already in `src/shared/utils/plan_utils.py` (moved Phase 1). Do not re-extract.
+#### Sub-step 3b: Move orchestrator → `src/pinterest/generate_weekly_plan.py`
+- Move `generate_plan()`, `_validate_plan_structure()`, `_build_reprompt_context()`, `generate_weekly_plan()`, `__main__` block
+- Update all imports to canonical `src.shared.*` / `src.pinterest.*` paths
+- Identical behavior — same single-shot Claude call, same prompt, same output
 
-#### Sub-step 3c: Rewrite orchestrator → `src/pinterest/generate_weekly_plan.py`
-- New file that calls `content_planner.generate_content_plan()` then `pin_planner.generate_pin_plan()`
-- Must produce structurally identical output to the old single-step approach
-- Keep old single-step as a fallback flag during transition
+#### Sub-step 3c: Move `regen_weekly_plan.py` → `src/pinterest/regen_weekly_plan.py`
+- Update imports to canonical paths
+- **Cross-dependency resolved:** `load_content_memory` imported from `src.shared.content_planner` instead of `src.generate_weekly_plan`
+- Consolidate late import of `TAB_WEEKLY_REVIEW`/`WR_CELL_PLAN_STATUS` into top-level imports
 
-#### Sub-step 3d: Side-by-side output comparison
-- Generate a plan with old code, generate with new code, diff
-- Verify constraint compliance, pin counts, blog topic quality
-- Move `regen_weekly_plan.py` → `src/pinterest/regen_weekly_plan.py`
-- **NOTE (Phase 2 finding):** `regen_weekly_plan.py` imports `load_content_memory` from `src.generate_weekly_plan`. This cross-dependency must be resolved during the split — likely by importing from `src.shared.content_planner` (where `load_content_memory` will live after sub-step 3a) instead.
+#### Sub-step 3d: Create backward-compat shims
+- `src/generate_weekly_plan.py` → shim with `import *`, private re-exports (`_validate_plan_structure`, `_build_reprompt_context`), shared function re-exports, `__main__` block
+- `src/regen_weekly_plan.py` → shim with `import *`, `__main__` block
+- Both invoked via `python -m` in workflows — `__main__` blocks required
 
-#### Sub-step 3e: Create `prompts/shared/content_strategy.md`
-- New prompt for unified planning (topics only, no pin specs)
+#### Sub-step 3e: Update tests
+- `tests/test_plan_structure_validation.py` — update import to `src.pinterest.generate_weekly_plan`
+
+#### Deferred to Phase 8a
+- `src/pinterest/pin_planner.py` — houses `generate_pin_plan()` for two-step Claude call
+- `prompts/shared/content_strategy.md` — unified planning prompt (topics only)
+- Two-step Claude call split: `content_planner.generate_content_plan()` → `pin_planner.generate_pin_plan()`
 
 ---
 
@@ -300,15 +303,38 @@ Files (9):
 - Create `prompts/shared/` and `prompts/pinterest/`
 
 #### Sub-step 4b: Move prompt files
-- To `prompts/shared/`: `blog_post_guide.md`, `blog_post_listicle.md`, `blog_post_recipe.md`, `blog_post_weekly_plan.md`, `image_prompt.md`, `content_strategy.md` (from Phase 3)
+- To `prompts/shared/`: `blog_post_guide.md`, `blog_post_listicle.md`, `blog_post_recipe.md`, `blog_post_weekly_plan.md`, `image_prompt.md`
+- **NOTE:** `content_strategy.md` was originally planned for Phase 3 but deferred to Phase 8a (TikTok). It will be created when the two-step Claude call is implemented. Do NOT create it in Phase 4.
 - To `prompts/pinterest/`: `weekly_plan.md`, `weekly_plan_replace.md`, `pin_copy.md`, `weekly_analysis.md`, `monthly_review.md`
 
 #### Sub-step 4c: Update all `load_prompt_template()` calls
-- Every `ClaudeAPI.load_prompt_template("X.md")` → `load_prompt_template("shared/X.md")` or `load_prompt_template("pinterest/X.md")`
+
+**All calls live in ONE file:** `src/shared/apis/claude_api.py`. No other file calls `load_prompt_template()`.
+
+The method resolves paths via `PROMPTS_DIR / template_name` (line 91 of `claude_api.py`). Since `PROMPTS_DIR` is `PROJECT_ROOT / "prompts"`, changing `"weekly_plan.md"` to `"pinterest/weekly_plan.md"` will resolve to `prompts/pinterest/weekly_plan.md`. No code change needed to the method itself — just update the template name strings passed to it.
+
+**Exact change map (8 call sites in `claude_api.py`):**
+
+| Line | Current | New | Method |
+|------|---------|-----|--------|
+| 158 | `"weekly_plan.md"` | `"pinterest/weekly_plan.md"` | `generate_weekly_plan()` |
+| 226 | `"pin_copy.md"` | `"pinterest/pin_copy.md"` | `generate_pin_copy()` |
+| 312-316 | `"blog_post_recipe.md"`, `"blog_post_weekly_plan.md"`, `"blog_post_guide.md"`, `"blog_post_listicle.md"` | `"shared/blog_post_recipe.md"`, etc. | `generate_blog_post()` template_map |
+| 387 | `"image_prompt.md"` | `"shared/image_prompt.md"` | `generate_image_prompt()` |
+| 461 | `"weekly_plan_replace.md"` | `"pinterest/weekly_plan_replace.md"` | `generate_replacement_posts()` |
+| 551 | `"weekly_analysis.md"` | `"pinterest/weekly_analysis.md"` | `generate_weekly_analysis()` |
+| 615 | `"monthly_review.md"` | `"pinterest/monthly_review.md"` | `generate_monthly_review()` |
+| 882 | `"weekly_plan.md"` | `"pinterest/weekly_plan.md"` | `__main__` smoke test |
+
+**Also update:** Line 877 `PROMPTS_DIR.glob("*.md")` in the `__main__` smoke test — after the move, prompts are in subdirectories, so this should become `PROMPTS_DIR.glob("**/*.md")` to find them.
+
+**No shims needed.** Prompt files aren't imported by Python — they're read from disk. Moving them is a straight `git mv` with no backward-compat concern.
 
 #### Sub-step 4d: Verify
-- Each prompt loads correctly via import test
-- All tests pass
+- Each prompt loads correctly: `python -c "from src.shared.apis.claude_api import ClaudeAPI; c = ClaudeAPI.__new__(ClaudeAPI); print(len(c.load_prompt_template('shared/image_prompt.md')))"` (repeat for all 10)
+- Verify no `.md` files remain in `prompts/` root (all should be in subdirectories)
+- All tests pass (`python -m pytest tests/`)
+- No `load_prompt_template()` calls use bare filenames without a subdirectory prefix
 
 ---
 
@@ -317,49 +343,212 @@ Files (9):
 **Risk:** MEDIUM | **Effort:** 2-3 hours
 
 #### Sub-step 5a: Update `python -m` invocations in all workflow files
-Full mapping documented in implementation-plan.md Phase 5 table.
 
-#### Sub-step 5b: Update inline Python in workflows
-- All `from src.apis.slack_notify import SlackNotify` → `from src.shared.apis.slack_notify import SlackNotify`
+**Complete change map (29 `python -m` invocations across 14 files + 1 action):**
 
-#### Sub-step 5c: Verify workflow syntax
+##### `weekly-review.yml` (5 changes)
+| Line | Current | New |
+|------|---------|-----|
+| 44 | `python -m src.token_manager` | `python -m src.pinterest.token_manager` |
+| 47 | `python -m src.pull_analytics` | `python -m src.pinterest.pull_analytics` |
+| 52 | `python -m src.utils.content_memory` | `python -m src.shared.content_memory` |
+| 56 | `python -m src.weekly_analysis` | `python -m src.pinterest.weekly_analysis` |
+| 62 | `python -m src.generate_weekly_plan` | `python -m src.pinterest.generate_weekly_plan` |
+
+##### `generate-content.yml` (4 changes)
+| Line | Current | New |
+|------|---------|-----|
+| 54 | `python -m src.token_manager` | `python -m src.pinterest.token_manager` |
+| 59 | `python -m src.generate_blog_posts` | `python -m src.shared.generate_blog_posts` |
+| 65 | `python -m src.generate_pin_content` | `python -m src.pinterest.generate_pin_content` |
+| 71 | `python -m src.publish_content_queue` | `python -m src.pinterest.publish_content_queue` |
+
+##### `deploy-and-schedule.yml` (1 change)
+| Line | Current | New |
+|------|---------|-----|
+| 42 | `python -m src.blog_deployer preview` | `python -m src.shared.blog_deployer preview` |
+
+##### `promote-and-schedule.yml` (3 changes)
+| Line | Current | New |
+|------|---------|-----|
+| 49 | `python -m src.token_manager` | `python -m src.pinterest.token_manager` |
+| 57 | `python -m src.blog_deployer promote` | `python -m src.shared.blog_deployer promote` |
+| 63 | `python -m src.redate_schedule "$PIN_START_DATE"` | `python -m src.pinterest.redate_schedule "$PIN_START_DATE"` |
+
+##### `daily-post-morning.yml` (2 changes)
+| Line | Current | New |
+|------|---------|-----|
+| 47 | `python -m src.token_manager` | `python -m src.pinterest.token_manager` |
+| 50 | `python -m src.post_pins morning ${{ ... date_override ... }}` | `python -m src.pinterest.post_pins morning ${{ ... date_override ... }}` |
+
+**IMPORTANT:** Line 50 has a `date_override` expression — only change the module path, preserve the rest. See "Notes for Phase 5 agent" below.
+
+##### `daily-post-afternoon.yml` (2 changes)
+| Line | Current | New |
+|------|---------|-----|
+| 47 | `python -m src.token_manager` | `python -m src.pinterest.token_manager` |
+| 50 | `python -m src.post_pins afternoon ${{ ... date_override ... }}` | `python -m src.pinterest.post_pins afternoon ${{ ... date_override ... }}` |
+
+**IMPORTANT:** Line 50 has a `date_override` expression — only change the module path, preserve the rest.
+
+##### `daily-post-evening.yml` (2 changes)
+| Line | Current | New |
+|------|---------|-----|
+| 49 | `python -m src.token_manager` | `python -m src.pinterest.token_manager` |
+| 52 | `python -m src.post_pins evening ${{ ... date_override ... }}` | `python -m src.pinterest.post_pins evening ${{ ... date_override ... }}` |
+
+**IMPORTANT:** Line 52 has a `date_override` expression — only change the module path, preserve the rest.
+
+##### `monthly-review.yml` (3 changes)
+| Line | Current | New |
+|------|---------|-----|
+| 66 | `python -m src.token_manager` | `python -m src.pinterest.token_manager` |
+| 70 | `python -m src.pull_analytics 30` | `python -m src.pinterest.pull_analytics 30` |
+| 78 | `python -m src.monthly_review` | `python -m src.pinterest.monthly_review` |
+
+##### `regen-plan.yml` (1 change)
+| Line | Current | New |
+|------|---------|-----|
+| 36 | `python -m src.regen_weekly_plan` | `python -m src.pinterest.regen_weekly_plan` |
+
+##### `regen-content.yml` (1 change)
+| Line | Current | New |
+|------|---------|-----|
+| 54 | `python -m src.regen_content` | `python -m src.pinterest.regen_content` |
+
+##### `regen-blogs-only.yml` (1 change)
+| Line | Current | New |
+|------|---------|-----|
+| 35 | `python -m src.generate_blog_posts` | `python -m src.shared.generate_blog_posts` |
+
+##### `setup-boards.yml` (2 changes)
+| Line | Current | New |
+|------|---------|-----|
+| 30 | `python -m src.token_manager` | `python -m src.pinterest.token_manager` |
+| 33 | `python -m src.setup_boards` | `python -m src.pinterest.setup_boards` |
+
+##### `recover-w9-pins.yml` (1 change — or delete entirely)
+| Line | Current | New |
+|------|---------|-----|
+| 45 | `python -m src.recover_w9_pins` | Delete workflow (header says "DELETE after W9 pins posted by Mar 4, 2026") |
+
+##### `.github/actions/notify-failure/action.yml` (1 change — highest leverage, fixes all 13+ workflows)
+| Line | Current | New |
+|------|---------|-----|
+| 22 | `python -m src.apis.slack_notify ...` | `python -m src.shared.apis.slack_notify ...` |
+
+#### Sub-step 5b: Update inline Python in workflows (1 change)
+- `year-wrap-reminder.yml` line 42: `from src.apis.slack_notify import SlackNotify` → `from src.shared.apis.slack_notify import SlackNotify`
+
+#### Sub-step 5c: Handle one-time workflows
+- `recover-w9-pins.yml` — header says "DELETE THIS WORKFLOW after W9 pins have posted successfully (by Mar 4, 2026)." Evaluate whether to delete it now or update its path. `src/recover_w9_pins.py` was never moved to `src/pinterest/` — it's still in `src/` root (non-shim). If kept, needs a move + shim + workflow path update.
+- `regen-blogs-only.yml` — header says "DELETE THIS WORKFLOW after W10 blogs have deployed successfully." Evaluate whether to delete.
+
+#### Sub-step 5d: Verify workflow syntax
 - `actionlint` or manual YAML validation
 - Trigger each workflow via `workflow_dispatch` if possible
 
+#### Notes for Phase 5 agent
+- **CLI arguments:** Several modules accept positional args (`blog_deployer preview|promote`, `post_pins morning|afternoon|evening`, `pull_analytics 30`, `redate_schedule "$PIN_START_DATE"`). After updating paths, verify the `__main__` block in each canonical file properly handles `sys.argv`. Shims already delegate via `runpy.run_module(..., alter_sys=True)` which preserves argv.
+- **`date_override` in daily-post workflows (CRITICAL — do not clobber):** The three `daily-post-*.yml` files have a `workflow_dispatch` input called `date_override` and a conditional `format()` expression on the `post_pins` run line. When updating the module path from `src.post_pins` to `src.pinterest.post_pins`, preserve the FULL run line including the `date_override` expression. The current line looks like:
+  ```yaml
+  run: python -m src.post_pins morning ${{ inputs.date_override && format('--date={0}', inputs.date_override) || '' }}
+  ```
+  After Phase 5, it should be:
+  ```yaml
+  run: python -m src.pinterest.post_pins morning ${{ inputs.date_override && format('--date={0}', inputs.date_override) || '' }}
+  ```
+  Only the module path changes. The `workflow_dispatch` inputs block, the `format()` expression, and the `--date=` flag must remain intact. These were added in Phase 19b (post-Phase 1 incident recovery) and are used for manual recovery of missed posting windows.
+- **`src.utils.content_memory` → `src.shared.content_memory`:** This is the only path that changes structurally (drops the `utils/` level). The shim at `src/utils/content_memory.py` already has a `__main__` block, but after Phase 5 the workflow should point directly to the canonical module.
+- **No `setup-pipeline/action.yml` or `commit-data/action.yml` changes needed** — neither references `src/` Python modules.
+- **No prompt file references in any workflow** — all prompt loading goes through `claude_api.py` (handled in Phase 4).
+- **After Phase 5, backward-compat shims are no longer needed by workflows.** Phase 6 can safely delete them — but only after verifying all workflows run successfully with the new paths.
+
 ---
 
-### Phase 6: Cleanup and burn-in
+### Phase 6: Cleanup
 
-**Risk:** LOW + 1-week gate | **Effort:** 2-3 hours + 1 week
+**Risk:** LOW | **Effort:** 2-3 hours
+
+#### Notes from Phase 5 (for the Phase 6 agent)
+
+**Shim status after Phase 5:** No workflow or action file references any shim path. All `python -m` invocations point directly to canonical modules in `src/shared/` or `src/pinterest/`. Shims are only needed by: (a) other shims that chain-import, (b) test files that haven't been updated yet, or (c) any Python files still using old `from src.X` imports. The Phase 6 agent should grep for all shim consumers before deleting.
+
+**Files already deleted in Phase 5:**
+- `.github/workflows/recover-w9-pins.yml` — workflow deleted, but `src/recover_w9_pins.py` (the Python script) still exists in `src/` root. It was never moved to `src/pinterest/` and has no shim. Phase 6 should delete this Python file too.
+- `.github/workflows/regen-blogs-only.yml` — workflow deleted, no orphaned Python files.
+- `regen-blogs-only.yml` and `recover-w9-pins.yml` have already been removed from ARCHITECTURE.md's workflow table.
+
+**`year-wrap-reminder.yml`:** This workflow was updated in Phase 5 (inline import changed from `src.apis.slack_notify` to `src.shared.apis.slack_notify`). It was already an untracked new file before Phase 5. It will be included in the Phase 5 commit.
+
+**Test files:** All 207 tests pass with the current shim setup. When Phase 6 deletes shims, any test that imports via old paths (e.g., `from src.apis.X`) will break. Phase 6 must update test imports to canonical paths before or alongside shim deletion.
 
 #### Sub-step 6a: Delete all backward-compat shim files
 - Remove shims from `src/`, `src/apis/`, `src/utils/`
-- Delete empty directories
+- Delete `src/recover_w9_pins.py` (orphaned — workflow deleted in Phase 5)
+- Delete empty directories (`src/apis/`, `src/utils/` if empty after shim removal)
 
-#### Sub-step 6b: Verify no old-path imports remain
+#### Sub-step 6b: Update test imports
+- Update any test files that import via old shim paths to use canonical `src.shared.*` / `src.pinterest.*` paths
+- Run `grep -rn "from src\." tests/ --include="*.py" | grep -v "src.shared\|src.pinterest"` to find them
+
+#### Sub-step 6c: Verify no old-path imports remain
 - `grep -r "from src\." src/ --include="*.py" | grep -v "src.shared\|src.pinterest"` should return nothing
+- `grep -r "from src\." tests/ --include="*.py" | grep -v "src.shared\|src.pinterest"` should return nothing
 
-#### Sub-step 6c: Update documentation
-- Update `ARCHITECTURE.md` directory structure section
+#### Sub-step 6d: Update documentation
+- Update `ARCHITECTURE.md` directory structure section (remove shim directories, remove `recover_w9_pins.py`)
 - Update `CLAUDE.md` key paths
 - Update `memory-bank/architecture/architecture-data-flows.md`
 
-#### Sub-step 6d: Burn-in (1 full weekly cycle)
-- Monday: weekly-review workflow runs
-- Plan approval → generate-content workflow
-- Content approval → promote-and-schedule
-- Tue-Mon: daily posting (4 pins/day)
-- Slack notifications arrive
-- No import errors in any workflow logs
+#### Sub-step 6e: Verify
+- **1 full day of posting** (all 3 daily slots fire successfully with no shim safety net)
+- If something breaks, it will be an immediate import error (not a silent no-op) — restore the shim file and investigate
+- No week-long gate — Phase 7 and TikTok pre-build can start in parallel (see below)
 
-**Do not proceed to Phase 7 until burn-in passes.**
+---
+
+## Parallel Work After Phase 5
+
+Once Phase 5 is deployed and verified (next scheduled pin posts successfully), the remaining work can be parallelized:
+
+### What can run in parallel
+
+| Work | Can start after | Why it's safe |
+|------|----------------|---------------|
+| **Phase 6** (delete shims) | Phase 5 verified (1 posting cycle) | Shims are no longer referenced by any workflow |
+| **Phase 7** (migrate TikTok docs, rename repo) | Phase 6 verified (1 full day of posting) | Pure file moves and rename — no Python code or workflow behavior changes |
+| **TikTok Pre-Build P1** (create account, 14-day warmup) | Immediately — human task | Zero code impact |
+| **TikTok Pre-Build P2** (Publer signup, API key) | Immediately — human task | Zero code impact |
+| **TikTok Pre-Build P3** (Google Sheet setup) | Immediately — human task | Zero code impact |
+
+### What must wait
+
+| Work | Must wait for | Why |
+|------|---------------|-----|
+| **TikTok Phase 1+** (building `src/tiktok/`) | Phase 7 complete (repo renamed) | Building in `pinterest-pipeline` then renaming is messy. Start clean in `slated-content-engine`. |
+
+### Verification per phase (no week-long gates)
+
+| After | Verify | Duration |
+|-------|--------|----------|
+| Phase 5 | Next scheduled pin posts successfully (any 1 of 3 daily slots) | Hours, not days. Shims still exist as safety net. |
+| Phase 6 | All 3 daily posting slots fire successfully | 1 day. If something breaks, it's an immediate import error — restore the shim and investigate. |
+| Phase 7 (repo rename) | Apps Script trigger fires, next posting cycle works | 1 posting cycle. |
+
+### Fastest possible timeline
+
+- Phase 5 deployed → verified by next posting slot (same day)
+- Phase 6 deployed → verified by end of next day
+- Phase 7 + TikTok pre-build → start that same day
+- TikTok Phase 1 (carousel rendering) → start once Phase 7 rename is done
 
 ---
 
 ## Folder and Repo Rename
 
 ### When to rename
-- **Local folder:** Safe to rename anytime after Phase 6 burn-in passes. The local folder name does not affect any code paths — Python imports use `src.`, not the folder name.
+- **Local folder:** Safe to rename anytime after Phase 6 is verified. The local folder name does not affect any code paths — Python imports use `src.`, not the folder name.
 - **GitHub repo:** Phase 7 of the implementation plan. Must update `src/apps-script/trigger.gs` line 71 first.
 
 ### Recommended name
@@ -368,7 +557,7 @@ Full mapping documented in implementation-plan.md Phase 5 table.
 - GitHub repo: `bradenpan/slated-content-engine`
 
 ### What must happen before rename
-1. Phase 6 burn-in passes (pipeline stable with new structure)
+1. Phase 6 verified (1 full day of posting without shims)
 2. Update `trigger.gs` line 71: `var repo = "bradenpan/slated-content-engine";`
 3. Deploy updated Apps Script to Google Sheets
 4. Rename on GitHub

@@ -14,11 +14,15 @@
 This is the Slated Pinterest automation pipeline. It generates blog posts and pins via AI, deploys them to goslated.com, posts pins to Pinterest, pulls analytics, and runs weekly/monthly reviews.
 
 ## Key Paths
+- `ARCHITECTURE.md` — **Start here.** Full system architecture, pipeline flow, file responsibilities, data schemas, gotchas
 - `src/` — Python pipeline scripts
-- `prompts/` — Claude prompt templates for content generation
-- `templates/pins/` — HTML/CSS pin templates
+- `src/apis/` — API wrappers (Claude, Pinterest, Sheets, GCS, GitHub, Slack, etc.)
+- `src/utils/` — Shared utilities (content log, plan helpers, safe_get, etc.)
+- `prompts/` — Claude/GPT prompt templates for content generation
+- `templates/pins/` — HTML/CSS pin templates (5 types × 3 variants)
 - `strategy/` — Content strategy files (keywords, CTAs, boards, brand voice)
 - `data/` — Runtime data (content log, token store — gitignored)
 - `.github/workflows/` — GitHub Actions workflow definitions
 - `.env.example` — Template showing required env vars (safe to read)
 - `.env` — Live credentials (NEVER read)
+- `memory-bank/architecture/architecture-data-flows.md` — Deep-dive data flow reference (schemas, column layouts, field mappings)

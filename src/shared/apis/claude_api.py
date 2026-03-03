@@ -93,7 +93,7 @@ class ClaudeAPI:
         if not template_path.exists():
             raise FileNotFoundError(
                 f"Prompt template not found: {template_path}. "
-                f"Available templates: {[f.name for f in PROMPTS_DIR.glob('*.md')]}"
+                f"Available templates: {[f.name for f in PROMPTS_DIR.glob('**/*.md')]}"
             )
 
         content = template_path.read_text(encoding="utf-8")
@@ -155,7 +155,7 @@ class ClaudeAPI:
             dict: Structured weekly plan with blog_posts and pins arrays.
         """
         from datetime import date as _date, timedelta as _td
-        template = self.load_prompt_template("weekly_plan.md")
+        template = self.load_prompt_template("pinterest/weekly_plan.md")
 
         today = week_start_date or _date.today()
 
@@ -223,7 +223,7 @@ class ClaudeAPI:
             list[dict]: Pin copy for each pin (title, description, alt_text,
                         text_overlay, image_search_queries or image_prompt).
         """
-        template = self.load_prompt_template("pin_copy.md")
+        template = self.load_prompt_template("pinterest/pin_copy.md")
         all_results = []
 
         # Process in batches of 5-7
@@ -310,10 +310,10 @@ class ClaudeAPI:
         from datetime import date as _date
         # Map post type to template file
         template_map = {
-            "recipe": "blog_post_recipe.md",
-            "weekly-plan": "blog_post_weekly_plan.md",
-            "guide": "blog_post_guide.md",
-            "listicle": "blog_post_listicle.md",
+            "recipe": "shared/blog_post_recipe.md",
+            "weekly-plan": "shared/blog_post_weekly_plan.md",
+            "guide": "shared/blog_post_guide.md",
+            "listicle": "shared/blog_post_listicle.md",
         }
 
         template_name = template_map.get(post_type)
@@ -384,7 +384,7 @@ class ClaudeAPI:
         Returns:
             str: AI image generation prompt.
         """
-        template = self.load_prompt_template("image_prompt.md")
+        template = self.load_prompt_template("shared/image_prompt.md")
 
         context = {
             "pin_topic": safe_get(pin_spec, "pin_topic") or safe_get(pin_spec, "topic", ""),
@@ -458,7 +458,7 @@ class ClaudeAPI:
             dict: {"blog_posts": [...], "pins": [...]} with replacement objects
                   using the same post_id/pin_id values as the originals.
         """
-        template = self.load_prompt_template("weekly_plan_replace.md")
+        template = self.load_prompt_template("pinterest/weekly_plan_replace.md")
 
         # Make copies to avoid mutating caller's data
         posts_to_replace = [dict(p) for p in posts_to_replace]
@@ -548,7 +548,7 @@ class ClaudeAPI:
         Returns:
             str: Structured weekly analysis markdown.
         """
-        template = self.load_prompt_template("weekly_analysis.md")
+        template = self.load_prompt_template("pinterest/weekly_analysis.md")
 
         context = {
             "this_week_data": {
@@ -612,7 +612,7 @@ class ClaudeAPI:
         """
         from datetime import date as _date
 
-        template = self.load_prompt_template("monthly_review.md")
+        template = self.load_prompt_template("pinterest/monthly_review.md")
 
         # Build the review period label (e.g., "February 2026")
         review_period = safe_get(monthly_data, "review_period", "")
@@ -874,12 +874,12 @@ if __name__ == "__main__":
 
     # List available prompt templates
     print("\nAvailable prompt templates:")
-    for f in sorted(PROMPTS_DIR.glob("*.md")):
+    for f in sorted(PROMPTS_DIR.glob("**/*.md")):
         print(f"  - {f.name}")
 
     # Test template loading
     try:
-        template = ClaudeAPI.load_prompt_template(None, "weekly_plan.md")
+        template = ClaudeAPI.load_prompt_template(None, "pinterest/weekly_plan.md")
         print(f"\nLoaded weekly_plan.md: {len(template)} chars")
     except FileNotFoundError as e:
         print(f"\n{e}")

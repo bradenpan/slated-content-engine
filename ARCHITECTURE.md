@@ -40,7 +40,7 @@ Plan → [Plan Regen] → Generate → Review → [Content Regen] → Deploy →
 
 ## 3. Directory Structure
 
-**Note: Multi-channel restructure in progress (Phases 1-2 complete).** Files are being migrated from `src/` into `src/shared/` (cross-channel) and `src/pinterest/` (Pinterest-specific). Backward-compat shims exist at old locations until Phase 6.
+**Note: Multi-channel restructure in progress (Phases 1-5 complete).** Files are being migrated from `src/` into `src/shared/` (cross-channel) and `src/pinterest/` (Pinterest-specific). Prompt templates reorganized into `prompts/shared/` and `prompts/pinterest/`. GitHub Actions workflows updated to use canonical module paths. Backward-compat shims exist at old locations until Phase 6.
 
 ```
 pinterest-pipeline/
@@ -55,12 +55,15 @@ pinterest-pipeline/
 │   │   ├── blog_deployer.py      # GitHub commit to goslated.com → Vercel deploy
 │   │   ├── generate_blog_posts.py # Blog post orchestrator
 │   │   ├── content_memory.py     # Content memory summary generation (Phase 2)
+│   │   ├── content_planner.py    # Shared planning utilities: strategy/memory/analysis loading (Phase 3)
 │   │   └── analytics_utils.py    # Channel-agnostic derived metrics + aggregation (Phase 2)
 │   ├── pinterest/                # Pinterest-specific code (Phase 1+)
 │   │   ├── apis/                 # Pinterest API wrapper
 │   │   ├── token_manager.py      # Pinterest OAuth 2.0 token auto-refresh
 │   │   ├── pin_assembler.py      # HTML/CSS template → PNG renderer
 │   │   ├── generate_pin_content.py # Pin copy + image generation
+│   │   ├── generate_weekly_plan.py # Weekly planning orchestrator (Phase 3)
+│   │   ├── regen_weekly_plan.py  # Plan-level regen orchestrator (Phase 3)
 │   │   ├── post_pins.py          # Daily Pinterest API posting
 │   │   ├── pull_analytics.py     # Pinterest Analytics API pull
 │   │   ├── weekly_analysis.py    # Claude-driven weekly performance analysis (Phase 2)
@@ -72,10 +75,10 @@ pinterest-pipeline/
 │   │   └── redate_schedule.py    # Pin schedule redating
 │   ├── apis/                     # Backward-compat shims → src/shared/apis/ or src/pinterest/apis/
 │   ├── utils/                    # Backward-compat shims → src/shared/utils/
-│   ├── generate_weekly_plan.py   # NOT YET MOVED (Phase 3) — Claude-driven weekly planning
-│   ├── regen_weekly_plan.py      # NOT YET MOVED (Phase 3)
 │   └── *.py                      # Backward-compat shims for moved files
-├── prompts/                      # Claude/GPT prompt templates (10 files)
+├── prompts/
+│   ├── shared/                  # Cross-channel prompts (blog generation, image prompts)
+│   └── pinterest/               # Pinterest-specific prompts (planning, analysis, review)
 ├── templates/pins/               # HTML/CSS pin templates (5 types × 3 variants)
 ├── strategy/                     # Content strategy, brand voice, keywords, CTAs
 ├── data/                         # Runtime data (gitignored except JSON results)
@@ -97,7 +100,7 @@ pinterest-pipeline/
 
 | File | Purpose |
 |------|---------|
-| `generate_weekly_plan.py` | Claude-driven weekly content planning (8-10 blog posts + 28 pin specs) |
+| `generate_weekly_plan.py` *(pinterest)* | Claude-driven weekly content planning (8-10 blog posts + 28 pin specs) |
 | `generate_blog_posts.py` | Blog post orchestrator — reads plan, generates MDX via `blog_generator.py` |
 | `blog_generator.py` | Individual blog MDX generation with frontmatter + Schema.org (4 types: recipe, guide, listicle, weekly-plan) |
 | `generate_pin_content.py` | Pin content pipeline: copy generation (GPT-5 Mini) → AI image generation → pin assembly/rendering |
@@ -110,8 +113,9 @@ pinterest-pipeline/
 | `monthly_review.py` | Claude Opus deep monthly strategy review |
 | `analytics_utils.py` *(shared)* | Channel-agnostic `compute_derived_metrics()` + `aggregate_by_dimension()` |
 | `content_memory.py` *(shared)* | Content memory summary generation (dedup, topic tracking, pillar mix) |
+| `content_planner.py` *(shared)* | Planning data loading: strategy context, content memory, latest analysis, seasonal windows |
 | `regen_content.py` | Selective content regeneration (image/copy/both) based on reviewer feedback |
-| `regen_weekly_plan.py` | Plan-level topic replacement based on reviewer feedback |
+| `regen_weekly_plan.py` *(pinterest)* | Plan-level topic replacement based on reviewer feedback |
 | `plan_validator.py` | Plan constraint validation (pin counts, board distribution, etc.) |
 | `redate_schedule.py` | Pin schedule redating utility |
 | `image_cleaner.py` | AI detection avoidance post-processing for generated images |
@@ -223,7 +227,6 @@ generate_pin_content → bare URL "https://goslated.com/blog/{slug}"
 | `generate-content.yml` | Dispatch: `generate-content` | Blog generation → pin generation → content queue publish |
 | `regen-plan.yml` | Dispatch: `regen-plan` | Plan-level topic replacement |
 | `regen-content.yml` | Dispatch: `regen-content` | Selective image/copy regeneration |
-| `regen-blogs-only.yml` | Manual | Blog-only regeneration |
 | `deploy-and-schedule.yml` | Dispatch: `deploy-to-preview` | Blog deploy to goslated.com develop branch |
 | `promote-and-schedule.yml` | Dispatch: `promote-and-schedule` | Merge develop→main, create pin schedule |
 | `daily-post-morning.yml` | Cron: 10am ET | Post scheduled pins (morning slot) |
@@ -284,7 +287,7 @@ Cost: ~$3-5/week for a full cycle (planning + 8-10 blogs + 28 pins + analysis).
 | [`memory-bank/Audit/dead-code-analysis.md`](memory-bank/Audit/dead-code-analysis.md) | Dead code tracking with line numbers |
 | [`architecture/codebase-review/synthesis.md`](architecture/codebase-review/synthesis.md) | Code quality: 24 findings across 8 dimensions, prioritized fix plan |
 | [`memory-bank/progress.md`](memory-bank/progress.md) | Chronological changelog of all pipeline phases and features |
-| [`architecture/multi-channel-restructure/`](architecture/multi-channel-restructure/) | Multi-channel restructure plan (Phases 1-2 complete, 3-6 remaining) |
+| [`architecture/multi-channel-restructure/`](architecture/multi-channel-restructure/) | Multi-channel restructure plan (Phases 1-5 complete, Phase 6 remaining) |
 | [`src/config.py`](src/config.py) | All hardcoded constants: model names, costs, URLs, dimensions, timing |
 | [`src/paths.py`](src/paths.py) | All path constants: PROJECT_ROOT, DATA_DIR, PROMPTS_DIR, etc. |
 

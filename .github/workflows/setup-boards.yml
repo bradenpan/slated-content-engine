@@ -27,10 +27,10 @@ jobs:
         uses: ./.github/actions/setup-pipeline
 
       - name: Refresh Pinterest token
-        run: python -m src.token_manager
+        run: python -m src.pinterest.token_manager
 
       - name: Create boards and sections
-        run: python -m src.setup_boards
+        run: python -m src.pinterest.setup_boards
 
       - name: Notify failure
         if: failure()

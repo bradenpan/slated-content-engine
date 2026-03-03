@@ -41,25 +41,25 @@ jobs:
         uses: ./.github/actions/setup-pipeline
 
       - name: Refresh Pinterest token
-        run: python -m src.token_manager
+        run: python -m src.pinterest.token_manager
 
       - name: Pull Pinterest analytics
-        run: python -m src.pull_analytics
+        run: python -m src.pinterest.pull_analytics
 
       - name: Generate content memory summary
         # Python computation only -- no LLM call
         # Reads content-log.jsonl, computes aggregates, writes content-memory-summary.md
-        run: python -m src.utils.content_memory
+        run: python -m src.shared.content_memory
 
       - name: Run weekly performance analysis
         # Calls Claude Sonnet to analyze last week's performance
-        run: python -m src.weekly_analysis
+        run: python -m src.pinterest.weekly_analysis
 
       - name: Generate weekly content plan
         # Calls Claude Sonnet with strategy + analysis + memory + seasonal context
         # Writes results to Google Sheet "Weekly Review" tab
         # Sends Slack notification internally
-        run: python -m src.generate_weekly_plan
+        run: python -m src.pinterest.generate_weekly_plan
 
       - name: Commit updated data files
         uses: ./.github/actions/commit-data

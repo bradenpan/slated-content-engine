@@ -1,0 +1,55 @@
+name: Year-Wrap Pin ID Reminder
+
+# Pin IDs use ISO week numbers without a year component (e.g., W9-01).
+# content-log.jsonl idempotency checks match on pin_id alone, so next
+# year's W1-01 would collide with this year's W1-01 and never post.
+#
+# This workflow fires once in December to warn about the issue before
+# it hits in January.
+#
+# FIX REQUIRED BEFORE JANUARY 2027:
+#   Option A: Add year to pin IDs (e.g., "26W9-01" -> "27W9-01")
+#             Requires changes to: weekly_plan.md prompt template,
+#             is_pin_posted() in content_log.py, and any code that
+#             parses pin_id format.
+#   Option B: Rotate content-log.jsonl at year boundary — archive the
+#             current file and start fresh so old pin_ids don't match.
+#
+# DELETE THIS WORKFLOW after the fix ships.
+on:
+  schedule:
+    - cron: '0 15 1 12 *'  # Dec 1, 10:00 AM ET (15:00 UTC)
+  workflow_dispatch:
+
+env:
+  SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pipeline
+        uses: ./.github/actions/setup-pipeline
+
+      - name: Send year-wrap reminder
+        run: |
+          python -c "
+          from src.shared.apis.slack_notify import SlackNotify
+          slack = SlackNotify()
+          slack.notify(
+              'ACTION REQUIRED BEFORE JANUARY: Pin IDs use ISO week numbers '
+              'without a year (e.g. W9-01). content-log.jsonl idempotency '
+              'checks match on pin_id alone, so next year W1 pins will '
+              'collide with this year W1 and be skipped as already posted. '
+              'Fix before the first weekly plan of 2027. Options: '
+              '(A) Add year prefix to pin IDs in the weekly_plan.md prompt '
+              'and update is_pin_posted() to scope by year, or '
+              '(B) Archive content-log.jsonl at year boundary and start fresh.',
+              level='warning',
+          )
+          "

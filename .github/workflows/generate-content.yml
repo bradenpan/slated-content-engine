@@ -51,24 +51,24 @@ jobs:
         run: npm install puppeteer
 
       - name: Refresh Pinterest token
-        run: python -m src.token_manager
+        run: python -m src.pinterest.token_manager
 
       - name: Generate blog posts (blog-first workflow)
         # Step 1: Generate all blog posts from approved plan
         # Must complete before pin generation (pins reference blog content)
-        run: python -m src.generate_blog_posts
+        run: python -m src.shared.generate_blog_posts
 
       - name: Generate pin content (copy + images + rendered PNGs)
         # Step 2: Generate pin titles, descriptions, alt text, overlay text
         # Generate AI images and render pin PNGs
         # Render final pin PNGs via Puppeteer
-        run: python -m src.generate_pin_content
+        run: python -m src.pinterest.generate_pin_content
 
       - name: Publish Content Queue for review
         # Uploads pin images to GCS (or Drive fallback) for inline Sheet preview
         # Writes Content Queue with IMAGE() formulas and blog summaries
         # Sends Slack notification that content is ready for review
-        run: python -m src.publish_content_queue
+        run: python -m src.pinterest.publish_content_queue
 
       - name: Commit generated content and image URLs
         uses: ./.github/actions/commit-data

@@ -39,7 +39,7 @@ jobs:
         # Vercel auto-creates a preview deployment for the develop branch
         # Writes PRODUCTION status to Sheet for promotion approval
         # Sends Slack notification with review instructions
-        run: python -m src.blog_deployer preview
+        run: python -m src.shared.blog_deployer preview
 
       - name: Commit updated data files
         uses: ./.github/actions/commit-data

@@ -75,7 +75,7 @@ Plan → Generate → Review → Deploy → Post → Analyze → (feeds next Pla
 - `daily-post-morning.yml`, `daily-post-afternoon.yml`, `daily-post-evening.yml`
 - `monthly-review.yml`, `regen-plan.yml`, `regen-content.yml`, `setup-boards.yml`
 
-**Prompt Templates (prompts/)** — 10 templates covering planning (weekly plan + replacement), blog generation (4 types), pin copy, image prompts, and performance analysis (weekly + monthly)
+**Prompt Templates (prompts/)** — 10 templates in `prompts/shared/` (blog generation, image prompts) and `prompts/pinterest/` (planning, pin copy, analysis, review)
 
 **Strategy (strategy/)** — Content strategy, brand voice, board structure, keyword lists, seasonal calendar, CTA variants, product overview
 
@@ -2330,3 +2330,175 @@ After Phase 2, only 3 original files remain in `src/` root:
 - `generate_weekly_plan.py` — Phase 3 (split into shared planner + Pinterest planner)
 - `regen_weekly_plan.py` — Phase 3
 - `recover_w9_pins.py` — Phase 6 (evaluate for deletion)
+
+---
+
+## Multi-Channel Restructure: Phase 3 — Split Planning into Shared + Pinterest-Specific
+**Date:** 2026-03-03
+
+### Goal
+Extract shared planning data-loading functions from `generate_weekly_plan.py` into `src/shared/content_planner.py`. Move the Pinterest orchestration logic to `src/pinterest/generate_weekly_plan.py`. Move `regen_weekly_plan.py` to `src/pinterest/`. Create backward-compat shims. No behavior change.
+
+### Scope Decision
+The original plan called for a two-step Claude call split (content plan → pin plan) and `pin_planner.py` creation. Both **deferred to Phase 8a** (TikTok) because: (1) the two-step split is a behavior change with quality risk, not a refactoring, (2) `pin_planner.py`'s intended contents already exist in `plan_validator.py` and `plan_utils.py`, (3) the file reorganization alone achieves the restructure goal. See Phase 8a pre-requisite in implementation-plan.md.
+
+### Sub-step 3a: Create `src/shared/content_planner.py`
+Extracted 4 pure data-loading functions from `generate_weekly_plan.py`:
+- `load_strategy_context()` — loads all strategy/brand-voice/keyword/seasonal files
+- `load_content_memory()` — reads content memory from disk, falls back to generating fresh
+- `load_latest_analysis()` — finds and reads latest `*-review.md` in `analysis/weekly/`
+- `get_current_seasonal_window()` — matches today's month to seasonal calendar publish windows
+
+These are channel-agnostic — any channel's planner needs them.
+
+### Sub-step 3b: Move orchestrator → `src/pinterest/generate_weekly_plan.py`
+Moved `generate_plan()`, `_validate_plan_structure()`, `_build_reprompt_context()`, `generate_weekly_plan()`, and `__main__` block. Updated all imports to canonical `src.shared.*` / `src.pinterest.*` paths. Identical behavior — same single-shot Claude call, same prompt, same output.
+
+### Sub-step 3c: Move `regen_weekly_plan.py` → `src/pinterest/regen_weekly_plan.py`
+Updated all imports. Key changes:
+- **Cross-dependency resolved:** `load_content_memory` now imported from `src.shared.content_planner` (was `src.generate_weekly_plan`)
+- **Late import consolidated:** `TAB_WEEKLY_REVIEW` and `WR_CELL_PLAN_STATUS` moved from late import (line 239) to top-level import from `src.shared.apis.sheets_api`
+
+### Sub-step 3d: Create backward-compat shims
+Both shims have `__main__` blocks with `runpy.run_module()` delegation (lesson from Phase 19b incident).
+
+| Shim | Key re-exports |
+|------|---------------|
+| `src/generate_weekly_plan.py` | `import *` from pinterest, private `_validate_plan_structure`/`_build_reprompt_context`, shared `load_content_memory`/`load_strategy_context`/`load_latest_analysis`/`get_current_seasonal_window` |
+| `src/regen_weekly_plan.py` | `import *` from pinterest |
+
+### Sub-step 3e: Update tests
+`tests/test_plan_structure_validation.py` — updated import from `src.generate_weekly_plan` to `src.pinterest.generate_weekly_plan`.
+
+### Verification
+- **207/207 tests pass** (0 failures)
+- **All canonical imports verified** via AST analysis (anthropic SDK not installed locally)
+- **Both shims structurally correct** with `__main__` + `runpy` delegation
+- **2 workflow references** found and verified (`weekly-review.yml` line 62, `regen-plan.yml` line 36)
+- **Zero stale old-path imports** in non-shim files
+- **Both modules discoverable** via `importlib.util.find_spec()`
+- **Code review (round 1): all 10 failure-mode checklist items PASS** — APPROVED
+- **Code review (round 2): all 10 checklist items PASS + 6 additional checks PASS** — APPROVED
+  - Additional checks verified: content_planner.py has no Pinterest-specific logic, all canonical imports correct, cross-dependency resolved, shim private re-exports correct, shim shared function re-exports correct, test imports canonical path
+  - 1 minor finding: unused `from pathlib import Path` in `regen_weekly_plan.py` — fixed
+  - Design note validated: `generate_weekly_plan.py` calls `generate_content_memory_summary()` directly (always fresh) while `regen_weekly_plan.py` uses `load_content_memory()` wrapper (reads cached) — this asymmetry is intentional
+- No pre-existing stale imports found (the `src/generate_weekly_plan.py` stale import noted in Phase 2 review is now resolved)
+
+### Files Changed Summary
+| Action | Count | Files |
+|--------|-------|-------|
+| Created | 3 | `shared/content_planner.py`, `pinterest/generate_weekly_plan.py`, `pinterest/regen_weekly_plan.py` |
+| Replaced with shims | 2 | `generate_weekly_plan.py`, `regen_weekly_plan.py` |
+| Modified | 3 | `tests/test_plan_structure_validation.py`, `ARCHITECTURE.md`, execution-strategy.md |
+
+### What's Left in src/ (Non-Shim)
+After Phase 3, only 1 original file remains in `src/` root:
+- `recover_w9_pins.py` — Phase 6 (evaluate for deletion)
+
+### Deferred to Phase 8a
+- Two-step Claude call: `content_planner.generate_content_plan()` → `pin_planner.generate_pin_plan()`
+- `src/pinterest/pin_planner.py` creation
+- `prompts/shared/content_strategy.md` creation
+
+---
+
+## Multi-Channel Restructure — Phase 4: Move Prompts into Subdirectories
+**Date:** 2026-03-03
+**Risk:** LOW | **Effort:** <1 hour
+**Status:** COMPLETE
+
+### Goal
+Reorganize `prompts/` into `prompts/shared/` (cross-channel) and `prompts/pinterest/` (Pinterest-specific). No logic changes — file moves + string updates only.
+
+### Sub-step 4a: Create prompt subdirectories
+- Created `prompts/shared/` and `prompts/pinterest/`
+
+### Sub-step 4b: Move prompt files (10 total)
+**To `prompts/shared/` (5 files):**
+- `blog_post_guide.md`, `blog_post_listicle.md`, `blog_post_recipe.md`, `blog_post_weekly_plan.md`, `image_prompt.md`
+
+**To `prompts/pinterest/` (5 files):**
+- `weekly_plan.md`, `weekly_plan_replace.md`, `pin_copy.md`, `weekly_analysis.md`, `monthly_review.md`
+
+**Not created:** `prompts/shared/content_strategy.md` — deferred to Phase 8a (two-step planning split).
+
+### Sub-step 4c: Update `src/shared/apis/claude_api.py`
+All `load_prompt_template()` calls updated with subdirectory prefixes (8 call sites + 2 glob patterns):
+- `"weekly_plan.md"` → `"pinterest/weekly_plan.md"` (2 sites: generate_weekly_plan + smoke test)
+- `"pin_copy.md"` → `"pinterest/pin_copy.md"`
+- `"weekly_plan_replace.md"` → `"pinterest/weekly_plan_replace.md"`
+- `"weekly_analysis.md"` → `"pinterest/weekly_analysis.md"`
+- `"monthly_review.md"` → `"pinterest/monthly_review.md"`
+- `"blog_post_recipe.md"` → `"shared/blog_post_recipe.md"` (+ guide, listicle, weekly_plan variants)
+- `"image_prompt.md"` → `"shared/image_prompt.md"`
+- `PROMPTS_DIR.glob("*.md")` → `PROMPTS_DIR.glob("**/*.md")` (2 sites: error message + smoke test)
+
+No shims needed — prompt files are read from disk, not imported by Python.
+
+### Verification
+- **207/207 tests pass** (0 failures)
+- **No `.md` files remain in `prompts/` root** — all in subdirectories
+- **No bare prompt filenames** in `load_prompt_template()` calls — all prefixed with `shared/` or `pinterest/`
+
+### Files Changed Summary
+| Action | Count | Files |
+|--------|-------|-------|
+| Moved | 5 | `prompts/*.md` → `prompts/shared/` (blog_post_guide, blog_post_listicle, blog_post_recipe, blog_post_weekly_plan, image_prompt) |
+| Moved | 5 | `prompts/*.md` → `prompts/pinterest/` (weekly_plan, weekly_plan_replace, pin_copy, weekly_analysis, monthly_review) |
+| Modified | 1 | `src/shared/apis/claude_api.py` (8 call sites + 2 glob patterns) |
+| Modified | 2 | `ARCHITECTURE.md`, `execution-strategy.md` (doc updates) |
+
+---
+
+## Multi-Channel Restructure — Phase 5: Update GitHub Actions Workflows
+**Date:** 2026-03-03
+**Risk:** MEDIUM | **Effort:** <1 hour
+**Status:** COMPLETE
+
+### Goal
+Update all `python -m` invocations in workflow and action YAML files to use canonical module paths (`src.pinterest.*` / `src.shared.*`). Remove dependency on backward-compat shims for workflow execution. Delete two expired one-time workflows.
+
+### Sub-step 5a: Update `python -m` invocations (26 changes across 11 workflows + 1 action)
+
+**Workflow changes:**
+| Workflow | Changes | New paths |
+|----------|---------|-----------|
+| `weekly-review.yml` (5) | L44, L47, L52, L56, L62 | `src.pinterest.token_manager`, `src.pinterest.pull_analytics`, `src.shared.content_memory`, `src.pinterest.weekly_analysis`, `src.pinterest.generate_weekly_plan` |
+| `generate-content.yml` (4) | L54, L59, L65, L71 | `src.pinterest.token_manager`, `src.shared.generate_blog_posts`, `src.pinterest.generate_pin_content`, `src.pinterest.publish_content_queue` |
+| `promote-and-schedule.yml` (3) | L49, L57, L63 | `src.pinterest.token_manager`, `src.shared.blog_deployer`, `src.pinterest.redate_schedule` |
+| `monthly-review.yml` (3) | L66, L70, L78 | `src.pinterest.token_manager`, `src.pinterest.pull_analytics`, `src.pinterest.monthly_review` |
+| `daily-post-morning.yml` (2) | L47, L50 | `src.pinterest.token_manager`, `src.pinterest.post_pins` (date_override expression preserved) |
+| `daily-post-afternoon.yml` (2) | L47, L50 | `src.pinterest.token_manager`, `src.pinterest.post_pins` (date_override expression preserved) |
+| `daily-post-evening.yml` (2) | L49, L52 | `src.pinterest.token_manager`, `src.pinterest.post_pins` (date_override expression preserved) |
+| `setup-boards.yml` (2) | L30, L33 | `src.pinterest.token_manager`, `src.pinterest.setup_boards` |
+| `deploy-and-schedule.yml` (1) | L42 | `src.shared.blog_deployer` |
+| `regen-plan.yml` (1) | L36 | `src.pinterest.regen_weekly_plan` |
+| `regen-content.yml` (1) | L54 | `src.pinterest.regen_content` |
+
+**Action file change:**
+| Action | Change |
+|--------|--------|
+| `notify-failure/action.yml` (1) | L22: `src.apis.slack_notify` → `src.shared.apis.slack_notify` |
+
+### Sub-step 5b: Update inline Python import (1 change)
+- `year-wrap-reminder.yml` L42: `from src.apis.slack_notify import SlackNotify` → `from src.shared.apis.slack_notify import SlackNotify`
+
+### Sub-step 5c: Delete expired one-time workflows (2 files)
+- `recover-w9-pins.yml` — header said "DELETE after W9 pins posted by Mar 4, 2026." Deleted.
+- `regen-blogs-only.yml` — header said "DELETE after W10 blogs have deployed successfully." Deleted.
+
+### Verification
+- **207/207 tests pass** (0 failures)
+- **Zero old-style `python -m src.` paths** remaining in YAML files — all use `src.pinterest.*` or `src.shared.*`
+- **Zero old-style inline imports** (`from src.apis.*` / `from src.utils.*`) in YAML files
+- **date_override expressions** on all 3 daily-post workflows fully preserved
+- **CLI arg passthrough** verified for: `blog_deployer preview|promote`, `post_pins morning|afternoon|evening`, `pull_analytics 30`, `redate_schedule "$PIN_START_DATE"`
+
+### Files Changed Summary
+| Action | Count | Files |
+|--------|-------|-------|
+| Modified | 11 | Workflow files: `weekly-review.yml`, `generate-content.yml`, `deploy-and-schedule.yml`, `promote-and-schedule.yml`, `daily-post-morning.yml`, `daily-post-afternoon.yml`, `daily-post-evening.yml`, `monthly-review.yml`, `regen-plan.yml`, `regen-content.yml`, `setup-boards.yml` |
+| Modified | 1 | Action file: `.github/actions/notify-failure/action.yml` |
+| Modified | 1 | Workflow (inline import): `year-wrap-reminder.yml` |
+| Deleted | 2 | `recover-w9-pins.yml`, `regen-blogs-only.yml` |
+| Modified | 4 | Doc updates: `ARCHITECTURE.md`, `execution-strategy.md`, `implementation-plan.md`, `memory-bank/progress.md` |

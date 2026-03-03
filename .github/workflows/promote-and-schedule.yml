@@ -46,7 +46,7 @@ jobs:
         uses: ./.github/actions/setup-pipeline
 
       - name: Refresh Pinterest token
-        run: python -m src.token_manager
+        run: python -m src.pinterest.token_manager
 
       - name: Merge develop to main, verify, and schedule pins
         # Merges develop -> main on goslated.com (triggers Vercel production deploy)
@@ -54,13 +54,13 @@ jobs:
         # Creates pin posting schedule (data/pin-schedule.json)
         # Appends entries to content-log.jsonl
         # Updates Sheet and sends Slack notification
-        run: python -m src.blog_deployer promote
+        run: python -m src.shared.blog_deployer promote
 
       - name: Override pin schedule dates (test mode)
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.override_pin_start_date != '' }}
         env:
           PIN_START_DATE: ${{ github.event.inputs.override_pin_start_date }}
-        run: python -m src.redate_schedule "$PIN_START_DATE"
+        run: python -m src.pinterest.redate_schedule "$PIN_START_DATE"
 
       - name: Commit updated data files
         uses: ./.github/actions/commit-data

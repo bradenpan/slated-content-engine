@@ -12,24 +12,20 @@ pin creation, posting, analytics, and review.
 - **Human review gates:** Plan approval and content approval via Google Sheets
 - **Monthly strategy review:** Deep analysis with strategy update recommendations
 
-## Plan Document
+## Architecture
 
-Full architecture and build plan:
-`C:\Users\brade\slated-research\channel-automation-research\pinterest\ai-automation-plan.md`
-
-Content strategy:
-`C:\Users\brade\slated-research\channel-automation-research\pinterest\pinterest-content-strategy.md`
+See **[ARCHITECTURE.md](ARCHITECTURE.md)** for the full system architecture: pipeline flow, file responsibilities, data schemas, external integrations, workflows, and critical gotchas.
 
 ## Directory Structure
 
 ```
 src/          - Pipeline scripts and API wrappers
-prompts/      - Prompt templates for Claude
-templates/    - Pin image templates (HTML/CSS) and blog post examples
+prompts/      - Prompt templates for Claude/GPT
+templates/    - Pin image templates (HTML/CSS)
 strategy/     - Strategy docs, keyword lists, board structure, seasonal calendar
-analysis/     - Weekly and monthly analysis outputs
-data/         - Content log, memory summary, token store
+data/         - Runtime data (content log, generated content — gitignored)
 .github/      - GitHub Actions workflow files
+analysis/     - Weekly and monthly analysis outputs
 ```
 
 ## Setup
@@ -38,7 +34,3 @@ data/         - Content log, memory summary, token store
 2. `pip install -r requirements.txt`
 3. `playwright install chromium` (for pin rendering)
 4. Run initial Pinterest OAuth flow via `python -m src.token_manager`
-
-## Status
-
-Skeleton repository. Implementation pending per the build sequence in the plan document.

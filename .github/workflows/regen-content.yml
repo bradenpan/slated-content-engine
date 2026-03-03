@@ -51,7 +51,7 @@ jobs:
         run: npm install puppeteer
 
       - name: Regenerate flagged content
-        run: python -m src.regen_content
+        run: python -m src.pinterest.regen_content
 
       - name: Commit regenerated content
         uses: ./.github/actions/commit-data

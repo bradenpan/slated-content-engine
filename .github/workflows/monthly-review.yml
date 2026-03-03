@@ -63,11 +63,11 @@ jobs:
 
       - name: Refresh Pinterest token
         if: steps.guard.outputs.skip != 'true'
-        run: python -m src.token_manager
+        run: python -m src.pinterest.token_manager
 
       - name: Pull 30-day analytics
         if: steps.guard.outputs.skip != 'true'
-        run: python -m src.pull_analytics 30
+        run: python -m src.pinterest.pull_analytics 30
 
       - name: Run monthly strategy review (Claude Opus)
         if: steps.guard.outputs.skip != 'true'
@@ -75,7 +75,7 @@ jobs:
         # posting cadence, template effectiveness, image source comparison,
         # strategy update recommendations
         # Writes results to Google Sheet and sends Slack notification internally
-        run: python -m src.monthly_review
+        run: python -m src.pinterest.monthly_review
 
       - name: Commit monthly analysis files
         if: steps.guard.outputs.skip != 'true'

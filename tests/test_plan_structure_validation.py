@@ -29,7 +29,7 @@ for _mod in _STUBS:
     if _mod not in sys.modules:
         sys.modules[_mod] = MagicMock()
 
-from src.generate_weekly_plan import _validate_plan_structure
+from src.pinterest.generate_weekly_plan import _validate_plan_structure
 
 
 # --- Valid plans ---
