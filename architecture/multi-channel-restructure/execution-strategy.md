@@ -271,9 +271,10 @@ Files (9):
 - No behavior change — just extraction
 
 #### Sub-step 3b: Extract Pinterest constraints → `src/pinterest/pin_planner.py`
-- Extract: `validate_plan()`, `PILLAR_MIX_TARGETS`, `TOTAL_WEEKLY_PINS`, `MAX_PINS_PER_BOARD`, board distribution, template distribution, scheduling
-- `identify_replaceable_posts()`, `splice_replacements()` for retry logic
+- Extract: board distribution, template distribution, scheduling logic
 - All Pinterest-specific validation and constraint checking
+- **NOTE (Phase 2 finding):** `validate_plan()`, `PILLAR_MIX_TARGETS`, `TOTAL_WEEKLY_PINS`, `MAX_PINS_PER_BOARD` are already in `src/pinterest/plan_validator.py` (moved Phase 1, imports updated Phase 2). Decide whether `pin_planner.py` absorbs `plan_validator.py` or calls it — do not duplicate.
+- **NOTE (Phase 2 finding):** `identify_replaceable_posts()`, `splice_replacements()`, `build_keyword_performance_data()`, `extract_recent_topics()` are already in `src/shared/utils/plan_utils.py` (moved Phase 1). Do not re-extract.
 
 #### Sub-step 3c: Rewrite orchestrator → `src/pinterest/generate_weekly_plan.py`
 - New file that calls `content_planner.generate_content_plan()` then `pin_planner.generate_pin_plan()`
@@ -284,6 +285,7 @@ Files (9):
 - Generate a plan with old code, generate with new code, diff
 - Verify constraint compliance, pin counts, blog topic quality
 - Move `regen_weekly_plan.py` → `src/pinterest/regen_weekly_plan.py`
+- **NOTE (Phase 2 finding):** `regen_weekly_plan.py` imports `load_content_memory` from `src.generate_weekly_plan`. This cross-dependency must be resolved during the split — likely by importing from `src.shared.content_planner` (where `load_content_memory` will live after sub-step 3a) instead.
 
 #### Sub-step 3e: Create `prompts/shared/content_strategy.md`
 - New prompt for unified planning (topics only, no pin specs)
