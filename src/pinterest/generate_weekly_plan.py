@@ -40,7 +40,7 @@ from typing import Optional
 from src.shared.apis.claude_api import ClaudeAPI
 from src.shared.apis.sheets_api import SheetsAPI
 from src.shared.apis.slack_notify import SlackNotify
-from src.shared.paths import DATA_DIR
+from src.shared.paths import DATA_DIR, STRATEGY_DIR
 from src.shared.content_planner import (
     load_strategy_context,
     load_latest_analysis,
@@ -139,7 +139,14 @@ def generate_plan(
 
     # Step 8: Validate against constraints
     content_log = _load_content_log()
-    board_structure = strategy_context.get("board_structure", {})
+    # Load Pinterest-specific board structure directly (not from shared context)
+    try:
+        board_structure = json.loads(
+            (STRATEGY_DIR / "pinterest" / "board-structure.json").read_text(encoding="utf-8")
+        )
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        logger.warning("Could not load board-structure.json: %s", e)
+        board_structure = {}
     violations = validate_plan(plan, content_memory, content_log, board_structure)
 
     # Step 9: Retry loop -- targeted replacement first, full regen as fallback

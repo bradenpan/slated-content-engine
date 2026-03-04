@@ -6,6 +6,10 @@ weekly planning prompt to prevent topic repetition and enforce treatment limits.
 This is the canonical implementation, consolidated from the two previous
 copies in generate_weekly_plan.py (comprehensive, 7-section) and
 weekly_analysis.py (simpler).
+
+Channel-aware: entries carry a "channel" field (defaults to "pinterest" for
+backward compatibility).  The summary includes channel attribution on entries
+so cross-channel planners can see what was published where and how it performed.
 """
 import json
 import logging
@@ -24,6 +28,11 @@ logger = logging.getLogger(__name__)
 # override these via function parameters.
 _DEFAULT_TOPIC_WINDOW_WEEKS = 10
 _DEFAULT_MAX_TREATMENTS = 5
+
+
+def _get_channel(entry: dict) -> str:
+    """Get the channel for a content log entry, defaulting to 'pinterest'."""
+    return safe_get(entry, "channel", "pinterest")
 
 
 def get_entry_date(entry: dict) -> str:
@@ -58,6 +67,7 @@ def generate_content_memory_summary(
     output_path: Path = None,
     topic_window_weeks: int = _DEFAULT_TOPIC_WINDOW_WEEKS,
     max_treatments: int = _DEFAULT_MAX_TREATMENTS,
+    channel: Optional[str] = None,
 ) -> str:
     """Generate the content memory summary markdown.
 
@@ -73,22 +83,38 @@ def generate_content_memory_summary(
     5. IMAGES USED RECENTLY (last 90 days IDs)
     6. FRESH PIN CANDIDATES (posts with no pin in 4+ weeks)
     7. TREATMENT TRACKER (URLs with treatment counts in last 60 days)
+    8. PERFORMANCE HISTORY (pillar lifetime with trends, top keywords
+       by saves, compounding signal, top performers)
 
     Args:
         content_log_path: Override the content log file path (for testing).
         output_path: Override the output file path (for testing).
         topic_window_weeks: Number of weeks for the recent-topics window.
         max_treatments: Maximum treatments per URL in 60 days.
+        channel: Optional channel filter.  When set, only entries for that
+            channel are included.  When None (default), all channels are
+            shown with channel attribution on each entry.
 
     Returns:
         The generated content memory summary markdown string.
     """
-    content_log = load_content_log(path=content_log_path)
+    all_entries = load_content_log(path=content_log_path)
 
-    if not content_log:
+    if not all_entries:
         empty_summary = "# Content Memory Summary\n\nNo content has been created yet.\n"
         _write_summary(empty_summary, output_path)
         return empty_summary
+
+    # Apply channel filter if specified
+    if channel:
+        content_log = [e for e in all_entries if _get_channel(e) == channel]
+    else:
+        content_log = all_entries
+
+    # Determine if we should show channel tags (when viewing all channels
+    # and more than one channel exists in the data)
+    all_channels = {_get_channel(e) for e in all_entries}
+    show_channel_tags = channel is None and len(all_channels) > 1
 
     today = date.today()
 
@@ -126,10 +152,12 @@ def generate_content_memory_summary(
             slug = safe_get(entry, "blog_slug", "")
             if slug and slug not in seen_slugs:
                 seen_slugs.add(slug)
+                channel_tag = f" [{_get_channel(entry)}]" if show_channel_tags else ""
                 section_lines.append(
                     f"- [{get_entry_date(entry)}] P{safe_get(entry, 'pillar', '?')}: "
                     f"{safe_get(entry, 'blog_title', slug)} "
                     f"({safe_get(entry, 'content_type', 'unknown')})"
+                    f"{channel_tag}"
                 )
     else:
         section_lines.append(
@@ -150,6 +178,7 @@ def generate_content_memory_summary(
             posts_by_type[ctype][pillar].append({
                 "slug": slug,
                 "title": safe_get(entry, "blog_title", slug),
+                "channel": _get_channel(entry),
             })
 
     if posts_by_type:
@@ -158,13 +187,24 @@ def generate_content_memory_summary(
             for pillar in sorted(posts_by_type[ctype].keys()):
                 section_lines.append(f"  Pillar {pillar}:")
                 for post in posts_by_type[ctype][pillar]:
-                    section_lines.append(f"    - {post['title']} ({post['slug']})")
+                    channel_tag = f" [{post['channel']}]" if show_channel_tags else ""
+                    section_lines.append(f"    - {post['title']} ({post['slug']}){channel_tag}")
     else:
         section_lines.append("No blog posts yet (first run).")
     sections.append("\n".join(section_lines))
 
     # --- Section 3: PILLAR MIX ---
     section_lines = ["## 3. PILLAR MIX\n"]
+
+    # Channel distribution (only when showing all channels)
+    if show_channel_tags:
+        channel_counts = Counter(_get_channel(e) for e in content_log)
+        section_lines.append("### Channel Distribution")
+        total_entries = sum(channel_counts.values()) or 1
+        for ch, count in channel_counts.most_common():
+            pct = count / total_entries * 100
+            section_lines.append(f"  {ch}: {count} entries ({pct:.0f}%)")
+        section_lines.append("")
 
     recent_pillar_counts = Counter(
         safe_get(e, "pillar", 0) for e in recent_entries
@@ -386,11 +426,16 @@ def generate_content_memory_summary(
 
     sections.append("\n".join(section_lines))
 
+    # --- Section 8: PERFORMANCE HISTORY ---
+    sections.append(_build_performance_history(content_log, today))
+
     # --- Assemble and write the summary ---
+    channel_note = f"Channel filter: {channel}" if channel else "Channels: all"
     header = (
         f"# Content Memory Summary\n"
         f"Generated: {today.isoformat()}\n"
         f"Content log entries: {len(content_log)}\n"
+        f"{channel_note}\n"
         f"---\n"
     )
 
@@ -398,6 +443,161 @@ def generate_content_memory_summary(
 
     _write_summary(summary, output_path)
     return summary
+
+
+def _build_performance_history(content_log: list[dict], today: date) -> str:
+    """Build Section 8: Performance History.
+
+    Four subsections providing lifetime performance context:
+    1. Per-Pillar Lifetime — totals + trend direction (incl. raw percentages)
+    2. Top Keywords by Saves (All-Time) — top 15
+    3. Compounding Signal — 3-bucket age analysis
+    4. Top All-Time Performers — top 10 by save_rate
+    """
+    four_weeks_ago = today - timedelta(weeks=4)
+    eight_weeks_ago = today - timedelta(weeks=8)
+
+    section_lines = ["## 8. PERFORMANCE HISTORY\n"]
+
+    # Precompute date-bucketed entries
+    recent_4wk = []
+    prior_4wk = []
+    for entry in content_log:
+        d = parse_date(get_entry_date(entry))
+        if not d:
+            continue
+        if d >= four_weeks_ago:
+            recent_4wk.append(entry)
+        elif d >= eight_weeks_ago:
+            prior_4wk.append(entry)
+
+    # --- 8a: Per-Pillar Lifetime ---
+    section_lines.append("### Per-Pillar Lifetime")
+    pillar_data: dict[int, dict] = defaultdict(
+        lambda: {"impressions": 0, "saves": 0, "count": 0}
+    )
+    for entry in content_log:
+        p = safe_get(entry, "pillar", 0)
+        pillar_data[p]["impressions"] += safe_get(entry, "impressions", 0)
+        pillar_data[p]["saves"] += safe_get(entry, "saves", 0)
+        pillar_data[p]["count"] += 1
+
+    # Per-pillar trend (recent 4wk vs prior 4wk save rate)
+    def _pillar_save_rate(entries, pillar):
+        impr = sum(safe_get(e, "impressions", 0) for e in entries if safe_get(e, "pillar", 0) == pillar)
+        saves = sum(safe_get(e, "saves", 0) for e in entries if safe_get(e, "pillar", 0) == pillar)
+        return saves / impr if impr > 0 else 0.0
+
+    for p in sorted(pillar_data.keys()):
+        d = pillar_data[p]
+        sr = d["saves"] / d["impressions"] * 100 if d["impressions"] > 0 else 0
+        recent_sr = _pillar_save_rate(recent_4wk, p)
+        prior_sr = _pillar_save_rate(prior_4wk, p)
+        if prior_sr > 0 and recent_sr > prior_sr * 1.1:
+            trend = "improving"
+        elif prior_sr > 0 and recent_sr < prior_sr * 0.9:
+            trend = "declining"
+        else:
+            trend = "stable"
+        section_lines.append(
+            f"  P{p}: {d['count']} pins, {d['impressions']:,} impr, "
+            f"{d['saves']:,} saves, save_rate={sr:.1f}%, trend={trend} "
+            f"(recent={recent_sr*100:.1f}%, prior={prior_sr*100:.1f}%)"
+        )
+
+    # --- 8b: Top Keywords by Saves (All-Time) ---
+    section_lines.append("\n### Top Keywords by Saves (All-Time)")
+    kw_perf: dict[str, dict] = defaultdict(
+        lambda: {"impressions": 0, "saves": 0, "count": 0}
+    )
+    for entry in content_log:
+        pk = safe_get(entry, "primary_keyword", "")
+        if pk:
+            kw_perf[pk]["impressions"] += safe_get(entry, "impressions", 0)
+            kw_perf[pk]["saves"] += safe_get(entry, "saves", 0)
+            kw_perf[pk]["count"] += 1
+
+    top_kws = sorted(kw_perf.items(), key=lambda x: x[1]["saves"], reverse=True)[:15]
+    for kw, d in top_kws:
+        sr = d["saves"] / d["impressions"] * 100 if d["impressions"] > 0 else 0
+        section_lines.append(
+            f"  {kw}: {d['count']} pins, {d['impressions']:,} impr, "
+            f"{d['saves']:,} saves, save_rate={sr:.1f}%"
+        )
+
+    # --- 8c: Compounding Signal ---
+    section_lines.append("\n### Compounding Signal")
+
+    age_buckets = {"<30d": [], "30-60d": [], "60-90d": [], "90+d": []}
+    for entry in content_log:
+        d = parse_date(get_entry_date(entry))
+        if not d:
+            continue
+        age = (today - d).days
+        if age < 30:
+            age_buckets["<30d"].append(entry)
+        elif age < 60:
+            age_buckets["30-60d"].append(entry)
+        elif age < 90:
+            age_buckets["60-90d"].append(entry)
+        else:
+            age_buckets["90+d"].append(entry)
+
+    bucket_avgs = {}
+    for bucket, entries in age_buckets.items():
+        if entries:
+            avg_impr = sum(safe_get(e, "impressions", 0) for e in entries) / len(entries)
+        else:
+            avg_impr = 0
+        bucket_avgs[bucket] = avg_impr
+        section_lines.append(
+            f"  {bucket}: {len(entries)} pins, avg_impressions={avg_impr:.0f}"
+        )
+
+    # Verdict
+    baseline = bucket_avgs.get("<30d", 0)
+    mid_range = bucket_avgs.get("60-90d", 0)
+    if baseline > 0 and mid_range > baseline * 0.5:
+        verdict = "active (60-90d avg > 50% of <30d)"
+    elif baseline > 0 and mid_range < baseline * 0.25:
+        verdict = "decaying (60-90d avg < 25% of <30d)"
+    else:
+        verdict = "flat"
+    section_lines.append(f"  Verdict: {verdict}")
+
+    # --- 8d: Top All-Time Performers ---
+    section_lines.append("\n### Top All-Time Performers")
+    qualified = [
+        e for e in content_log
+        if safe_get(e, "impressions", 0) >= 100
+    ]
+    # Dedup by pin_id
+    seen_pins: dict[str, dict] = {}
+    for entry in qualified:
+        pid = safe_get(entry, "pin_id", "")
+        if pid and pid not in seen_pins:
+            seen_pins[pid] = entry
+
+    top_performers = sorted(
+        seen_pins.values(),
+        key=lambda e: safe_get(e, "saves", 0) / safe_get(e, "impressions", 1),
+        reverse=True,
+    )[:10]
+
+    if top_performers:
+        for entry in top_performers:
+            impr = safe_get(entry, "impressions", 0)
+            saves = safe_get(entry, "saves", 0)
+            sr = saves / impr * 100 if impr > 0 else 0
+            title = safe_get(entry, "blog_title", safe_get(entry, "title", "untitled"))
+            section_lines.append(
+                f"  - {title[:60]} | save_rate={sr:.1f}%, "
+                f"{impr:,} impr, {saves:,} saves"
+            )
+    else:
+        section_lines.append("  No pins with 100+ impressions yet.")
+
+    return "\n".join(section_lines)
 
 
 def _write_summary(summary: str, output_path: Path = None) -> None:

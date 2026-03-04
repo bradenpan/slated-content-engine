@@ -23,6 +23,7 @@ Plan → [Plan Regen] → Generate → Review → [Content Regen] → Deploy →
 
 | # | Step | Trigger | Script(s) | Output |
 |---|------|---------|-----------|--------|
+| 0 | Collect Analytics | Monday 5:30am ET cron | `pull_analytics.py` → `content_memory.py` | Fresh analytics + content memory summary |
 | 1 | Weekly Plan | Monday 6am ET cron | `generate_weekly_plan.py` | Plan JSON + Weekly Review sheet |
 | 1b | Plan Regen *(optional)* | Sheet B5 = "regen" | `regen_weekly_plan.py` | Updated plan JSON + sheet |
 | 2 | Plan Approval | Sheet B3 = "approved" | Apps Script → `generate-content.yml` | — |
@@ -33,7 +34,7 @@ Plan → [Plan Regen] → Generate → Review → [Content Regen] → Deploy →
 | 6 | Production Approval | Sheet B4 = "approved" | Apps Script → `promote-and-schedule.yml` | — |
 | 7 | Promote & Schedule | Workflow | `blog_deployer.py` → `promote_to_production()` | Merge develop→main, `pin-schedule.json`, initial content log entries |
 | 8 | Daily Posting | 3x daily cron | `post_pins.py` | Live Pinterest pins, updated `content-log.jsonl` |
-| 9 | Weekly Analysis | Monday 6am (part of step 1) | `pull_analytics.py` → `weekly_analysis.py` | Updated metrics, analysis markdown |
+| 9 | Weekly Analysis | Monday 6am (after analytics collection) | `weekly_analysis.py` | Analysis markdown |
 | 10 | Monthly Review | 1st Monday of month | `monthly_review.py` | Strategy recommendations |
 
 ---
@@ -71,14 +72,18 @@ slated-content-engine/              # Renamed from pinterest-pipeline
 │   │   ├── plan_validator.py     # Plan constraint validation
 │   │   ├── setup_boards.py       # One-time board creation
 │   │   └── redate_schedule.py    # Pin schedule redating
+│   ├── tiktok/                  # TikTok-specific code
+│   │   └── carousel_assembler.py # HTML/CSS template → multi-slide PNG renderer
 │   └── apps-script/              # Google Apps Script source
 ├── prompts/
 │   ├── shared/                   # Cross-channel prompts (blog generation, image prompts)
 │   └── pinterest/                # Pinterest-specific prompts (planning, analysis, review)
-├── templates/pins/               # HTML/CSS pin templates (5 types × 3 variants)
-├── strategy/                     # Content strategy, brand voice, keywords, CTAs
-│   ├── pinterest/                # Pinterest-specific strategy (board-structure.json)
-│   └── tiktok/                   # TikTok strategy (archetypes, brand guidelines)
+├── templates/
+│   ├── pins/                    # HTML/CSS pin templates (5 types × 3 variants)
+│   └── tiktok/carousels/        # TikTok carousel templates (4 families × 3 slide types)
+├── strategy/                     # Content strategy, brand voice, keywords, CTAs, archetypes
+│   └── pinterest/                # Pinterest-specific strategy (board-structure.json)
+├── scripts/                      # One-time migration scripts (e.g., backfill_channel_field.py)
 ├── docs/
 │   └── research/
 │       └── tiktok/               # TikTok research docs + community/ subfolder
@@ -90,7 +95,7 @@ slated-content-engine/              # Renamed from pinterest-pipeline
 ├── memory-bank/                  # Project documentation and progress tracking
 ├── ARCHITECTURE.md               # ← This file
 ├── CLAUDE.md                     # Agent instructions and project rules
-└── render_pin.js                 # Puppeteer pin renderer (called by pin_assembler.py)
+└── render_pin.js                 # Puppeteer renderer (called by pin_assembler.py + carousel_assembler.py)
 ```
 
 ---
@@ -102,13 +107,13 @@ slated-content-engine/              # Renamed from pinterest-pipeline
 | File | Purpose |
 |------|---------|
 | `paths.py` | Centralized path constants (PROJECT_ROOT, DATA_DIR, PROMPTS_DIR, etc.) |
-| `config.py` | Centralized config: model names, costs, URLs, dimensions, timing constants |
+| `config.py` | Centralized config: model names, costs, URLs, dimensions (pin + TikTok slide), timing constants |
 | `blog_generator.py` | Individual blog MDX generation with frontmatter + Schema.org (4 types: recipe, guide, listicle, weekly-plan) |
 | `blog_deployer.py` | Commits blogs to goslated.com repo (Vercel deploy), URL verification, pin schedule creation |
 | `generate_blog_posts.py` | Blog post orchestrator — reads plan, generates MDX via `blog_generator.py` |
 | `image_cleaner.py` | AI detection avoidance post-processing for generated images |
-| `content_memory.py` | Content memory summary generation (dedup, topic tracking, pillar mix) |
-| `content_planner.py` | Planning data loading: strategy context, content memory, latest analysis, seasonal windows |
+| `content_memory.py` | Channel-aware content memory summary generation (8 sections: dedup, topic tracking, pillar mix, keyword frequency, images, fresh pins, treatments, performance history with compounding signal) |
+| `content_planner.py` | Shared planning data loading: strategy context, content memory, latest analysis, seasonal windows (no channel-specific files) |
 | `analytics_utils.py` | Channel-agnostic `compute_derived_metrics()` + `aggregate_by_dimension()` |
 
 ### Shared API Wrappers (`src/shared/apis/`)
@@ -128,9 +133,9 @@ slated-content-engine/              # Renamed from pinterest-pipeline
 
 | File | Purpose |
 |------|---------|
-| `content_log.py` | JSONL content log read/append operations |
+| `content_log.py` | JSONL content log read/append operations + channel-aware idempotency check (`is_content_posted()`) |
 | `plan_utils.py` | Plan loading, validation helpers, atomic pin-schedule writes |
-| `image_utils.py` | MIME detection + Drive file ID parsing |
+| `image_utils.py` | MIME detection, Drive file ID parsing, `image_to_data_uri()` for headless rendering |
 | `strategy_utils.py` | Brand voice loading |
 | `safe_get.py` | Safe dictionary access helper |
 
@@ -144,8 +149,8 @@ slated-content-engine/              # Renamed from pinterest-pipeline
 | `publish_content_queue.py` | Uploads images to GCS, writes Content Queue sheet, stores GCS URLs back to results JSON |
 | `post_pins.py` | Daily Pinterest API posting with anti-bot jitter, idempotency, retry logic. Supports `--date=YYYY-MM-DD` override for recovering missed slots (skips jitter when used). |
 | `pull_analytics.py` | Pinterest Analytics API pull (impressions, saves, clicks, outbound). Derived metrics computed via `shared/analytics_utils.py`. |
-| `weekly_analysis.py` | Claude-driven weekly performance analysis |
-| `monthly_review.py` | Claude Opus deep monthly strategy review |
+| `weekly_analysis.py` | Claude-driven weekly performance analysis (channel-filtered, strategy-aware, receives content memory + cross-channel context) |
+| `monthly_review.py` | Claude Opus deep monthly strategy review (receives content memory + cross-channel context) |
 | `regen_content.py` | Selective content regeneration (image/copy/both) based on reviewer feedback |
 | `regen_weekly_plan.py` | Plan-level topic replacement based on reviewer feedback |
 | `plan_validator.py` | Plan constraint validation (pin counts, board distribution, etc.) |
@@ -159,6 +164,12 @@ slated-content-engine/              # Renamed from pinterest-pipeline
 |------|---------|
 | `pinterest_api.py` | Pinterest v5 REST API (pins, boards, analytics) |
 
+### TikTok Scripts (`src/tiktok/`)
+
+| File | Purpose |
+|------|---------|
+| `carousel_assembler.py` | Multi-slide carousel renderer: loads HTML/CSS templates (4 families × 3 slide types), injects variables, renders all slides in one Puppeteer batch via `render_pin.js --manifest`. Output: 1080×1920px PNGs. |
+
 ---
 
 ## 5. Data Flow
@@ -171,7 +182,12 @@ slated-content-engine/              # Renamed from pinterest-pipeline
 | `data/blog-generation-results.json` | `blog_generator.py` | `generate_pin_content.py`, `publish_content_queue.py`, `blog_deployer.py`, `regen_content.py` |
 | `data/pin-generation-results.json` | `generate_pin_content.py` | `publish_content_queue.py` (adds GCS URLs), `regen_content.py` (updates), `blog_deployer.py` |
 | `data/pin-schedule.json` | `blog_deployer.py` | `post_pins.py`, `regen_content.py` |
-| `data/content-log.jsonl` | `blog_deployer.py` (initial), `post_pins.py` (posted) | `pull_analytics.py` (update), `weekly_analysis.py`, `monthly_review.py`, `generate_weekly_plan.py` |
+| `data/content-log.jsonl` | `blog_deployer.py` (initial), `post_pins.py` (posted) | `pull_analytics.py` (update), `content_memory.py`, `weekly_analysis.py`, `monthly_review.py`, `generate_weekly_plan.py` |
+| `data/content-memory-summary.md` | `content_memory.py` (8 sections incl. performance history) | `weekly_analysis.py`, `monthly_review.py`, `generate_weekly_plan.py` (via `load_content_memory()`) |
+
+> **Content log `channel` field:** Every entry carries a `channel` field (e.g., `"pinterest"`, `"tiktok"`). Missing channel defaults to `"pinterest"` on read for backward compatibility.
+>
+> **Weekly analysis channel filter:** `weekly_analysis.py` filters content log entries to the target channel before computing metrics. Default: `"pinterest"`.
 
 ### ID Conventions
 
@@ -233,7 +249,8 @@ generate_pin_content → bare URL "https://goslated.com/blog/{slug}"
 
 | Workflow | Trigger | What It Runs |
 |----------|---------|-------------|
-| `weekly-review.yml` | Cron: Monday 6am ET | Analytics pull → weekly analysis → plan generation |
+| `collect-analytics.yml` | Cron: Monday 5:30am ET | Analytics pull (all channels) → content memory refresh → commit data |
+| `pinterest-weekly-review.yml` | Cron: Monday 6am ET | Weekly analysis → plan generation (reads fresh analytics from collect step) |
 | `generate-content.yml` | Dispatch: `generate-content` | Blog generation → pin generation → content queue publish |
 | `regen-plan.yml` | Dispatch: `regen-plan` | Plan-level topic replacement |
 | `regen-content.yml` | Dispatch: `regen-content` | Selective image/copy regeneration |
@@ -297,7 +314,7 @@ Cost: ~$3-5/week for a full cycle (planning + 8-10 blogs + 28 pins + analysis).
 | [`memory-bank/Audit/dead-code-analysis.md`](memory-bank/Audit/dead-code-analysis.md) | Dead code tracking with line numbers |
 | [`architecture/codebase-review/synthesis.md`](architecture/codebase-review/synthesis.md) | Code quality: 24 findings across 8 dimensions, prioritized fix plan |
 | [`memory-bank/progress.md`](memory-bank/progress.md) | Chronological changelog of all pipeline phases and features |
-| [`architecture/multi-channel-restructure/`](architecture/multi-channel-restructure/) | Multi-channel restructure plan (Phases 1-6 complete) |
+| [`architecture/multi-channel-restructure/`](architecture/multi-channel-restructure/) | Multi-channel restructure plan (Phases 1-8 complete) |
 | [`src/shared/config.py`](src/shared/config.py) | All hardcoded constants: model names, costs, URLs, dimensions, timing |
 | [`src/shared/paths.py`](src/shared/paths.py) | All path constants: PROJECT_ROOT, DATA_DIR, PROMPTS_DIR, etc. |
 
@@ -308,7 +325,7 @@ Cost: ~$3-5/week for a full cycle (planning + 8-10 blogs + 28 pins + analysis).
 - **Language:** Python 3.11
 - **Orchestration:** GitHub Actions (cron + `repository_dispatch` from Apps Script)
 - **LLMs:** Anthropic Claude (Sonnet/Opus), OpenAI GPT-5 Mini, OpenAI gpt-image-1.5
-- **Pin rendering:** Puppeteer (via `render_pin.js`) — HTML/CSS templates → PNG
+- **Rendering:** Puppeteer (via `render_pin.js`) — HTML/CSS templates → PNG (pins: 1000×1500, TikTok carousel slides: 1080×1920)
 - **Blog hosting:** Vercel (auto-deploys from GitHub commits to goslated.com repo)
 - **Image hosting:** Google Cloud Storage (public URLs)
 - **Human review:** Google Sheets + Google Apps Script

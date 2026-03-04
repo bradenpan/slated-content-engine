@@ -71,7 +71,7 @@ Plan → Generate → Review → Deploy → Post → Analyze → (feeds next Pla
 - `token_manager.py` — Pinterest OAuth 2.0 token auto-refresh
 
 **Workflows (.github/workflows/)**
-- `weekly-review.yml`, `generate-content.yml`, `deploy-and-schedule.yml`, `promote-and-schedule.yml`
+- `collect-analytics.yml`, `pinterest-weekly-review.yml`, `generate-content.yml`, `deploy-and-schedule.yml`, `promote-and-schedule.yml`
 - `daily-post-morning.yml`, `daily-post-afternoon.yml`, `daily-post-evening.yml`
 - `monthly-review.yml`, `regen-plan.yml`, `regen-content.yml`, `setup-boards.yml`
 
@@ -2620,3 +2620,190 @@ Deep audit of `board-structure.json` references (5 breaking path refs in Python)
 | Added | 28 | TikTok research + strategy docs |
 | Moved | 1 | `board-structure.json` → `strategy/pinterest/` |
 | Modified | 20 | Path refs, concurrency groups, repo name refs, docs |
+
+---
+
+## Phase 8 — Multi-Channel Restructure: Shared Context Layer + Workflow Restructure (2026-03-03)
+
+### What changed
+
+**Content log: channel tagging**
+- Added `channel` field to content log entries in `blog_deployer.py` and `post_pins.py` (both tag as "pinterest")
+- Created `scripts/backfill_channel_field.py` — one-time migration script to add `channel: "pinterest"` to existing entries
+- Backward-compatible: missing `channel` field defaults to "pinterest" on read
+
+**Content memory: channel-aware output**
+- `generate_content_memory_summary()` gains `channel` parameter for filtering
+- Multi-channel mode: entries show `[channel]` tags when multiple channels exist in the log
+- Section 3 (PILLAR MIX) gains a "Channel Distribution" subsection
+- Header includes channel filter info
+
+**Content planner: remove Pinterest hardcoding**
+- Removed `board_structure` (pinterest/board-structure.json) from shared `load_strategy_context()`
+- Pinterest's `generate_weekly_plan.py` now loads board structure directly
+
+**Content log utility: generalized idempotency**
+- Added `is_content_posted(content_id, channel)` — maps channel to platform ID field (`pinterest_pin_id`, `publer_post_id`, etc.)
+- `is_pin_posted()` retained as backward-compatible wrapper
+
+**Workflow restructure: split analytics from planning**
+- **New:** `collect-analytics.yml` — runs Monday 5:30am ET. Pulls analytics (all channels), refreshes content memory, commits data files
+- **New:** `pinterest-weekly-review.yml` — runs Monday 6:00am ET. Performance analysis + plan generation only (reads fresh data from collection step)
+- **Deleted:** `weekly-review.yml` (replaced by the two workflows above)
+
+**Strategy file cleanup**
+- Moved `strategy/tiktok/archetypes.md` → `strategy/archetypes.md`
+- Moved `strategy/tiktok/brand-guidelines.md` → `strategy/brand-guidelines.md`
+- Deleted `strategy/tiktok/` directory (brand-level docs are not TikTok-specific)
+
+### Tests
+- Added `is_content_posted()` tests (Pinterest, TikTok, unknown channel, nonexistent file)
+- Added `test_content_memory.py` — channel attribution, channel filtering, channel distribution, missing channel defaults
+- All 217 tests pass
+
+### File counts
+
+| Action | Count | Details |
+|--------|-------|---------|
+| Added | 4 | `collect-analytics.yml`, `pinterest-weekly-review.yml`, `scripts/backfill_channel_field.py`, `tests/test_content_memory.py` |
+| Deleted | 1 | `weekly-review.yml` (replaced by collect-analytics + pinterest-weekly-review) |
+| Moved | 2 | `strategy/tiktok/archetypes.md` + `brand-guidelines.md` → `strategy/` root |
+| Modified | 8 | `content_log.py`, `content_memory.py`, `content_planner.py`, `blog_deployer.py`, `post_pins.py`, `generate_weekly_plan.py`, `test_content_log.py`, `ARCHITECTURE.md` |
+
+---
+
+## Phase 8b — Enrich Weekly Analysis with Strategy Context + Performance History (2026-03-04)
+
+### What changed
+
+**Content memory: Section 8 — Performance History**
+- Added Section 8 to `content_memory.py` with 5 subsections:
+  1. Per-Pillar Lifetime — totals + trend direction (last 4wk vs prior 4wk)
+  2. Top Keywords by Saves (All-Time) — top 15 by total saves
+  3. Compounding Signal — 3-bucket age analysis (<30d, 30-60d, 60-90d, 90+d), verdict: active/flat/decaying
+  4. Top All-Time Performers — top 10 by save_rate (min 100 impressions, deduped by pin_id)
+  5. Pillar Trend Direction — per-pillar last 4wk vs prior 4wk save rate comparison
+- Pure Python, no LLM call. Content memory grows from ~12K to ~15K total chars.
+- Flows automatically to planner (already loads content memory) — no changes to `generate_weekly_plan.py` needed.
+
+**Weekly analysis: strategy + content memory injection**
+- `weekly_analysis.py` gains `channel: str = "pinterest"` parameter
+- Channel filter applied before `compute_derived_metrics()` — ensures only target channel entries are analyzed
+- Loads `strategy_doc` via `load_strategy_context()` and `content_memory` via `load_content_memory()`
+- Both passed to `claude_api.analyze_weekly_performance()` as new params
+
+**Claude API: enriched signatures**
+- `analyze_weekly_performance()` gains `strategy_doc`, `content_memory`, `cross_channel_summary` params (all default to "")
+- Context dict gains `strategy_context`, `content_memory_summary`, `cross_channel_summary` keys
+- System prompt updated: evaluate performance against strategic intent, use content memory for keyword saturation/coverage gaps
+- `run_monthly_review()` gains `cross_channel_summary`, `content_memory` params (all default to "")
+- Context dict gains `cross_channel_summary`, `content_memory_summary` keys
+
+**Monthly review: content memory injection**
+- `monthly_review.py` imports `load_content_memory`, loads it, passes to `claude.run_monthly_review()`
+
+**Prompt templates: strategy-aware analysis + cross-channel readiness**
+- `weekly_analysis.md`:
+  - SYSTEM paragraph: strategic awareness, content memory connection, cross-channel context
+  - 3 new context sections: `{{strategy_context}}`, `{{content_memory_summary}}`, `{{cross_channel_summary}}`
+  - Step 5 (Trends): strategic validation — cross-reference underperformance with strategy expectations
+  - Step 6 (Recommendations): align with strategy, distinguish tactical vs strategic concerns
+  - New output sections: "Strategic Alignment Check" + "Cross-Channel Notes"
+- `weekly_plan.md`:
+  - Step 1: topic dedup scoped to Pinterest-only ("Topics only covered on other channels are NOT off-limits")
+  - Step 1: review Performance History section of content memory
+  - Cross-channel framing note after content memory section
+- `monthly_review.md`:
+  - 2 new context sections: `{{content_memory_summary}}`, `{{cross_channel_summary}}`
+  - Level 2 (Why It Happened): cross-channel pattern analysis
+  - Level 3 (What It Means): cross-channel efficiency question
+  - New output section: "Cross-Channel Observations"
+
+### Design decisions
+
+- **Separate calls preserved:** Analysis and planning remain separate Claude calls. Competing objectives, easier debugging, retry granularity, and token pressure all favor separation.
+- **Cross-channel params empty today:** `cross_channel_summary` defaults to "Single channel (Pinterest only). No cross-channel data." — ready for TikTok without code changes.
+- **3-bucket vs 5-bucket compounding:** Weekly gets simpler 3-bucket compounding signal via content memory. Deep 5-bucket forensic analysis stays monthly-only.
+- **This work was planned for Phase 10b but pulled forward** because the strategy vacuum in weekly analysis was causing the planner to receive under-informed recommendations.
+
+### Token budget impact
+
+| Call | Before | After | Annual cost |
+|------|--------|-------|-------------|
+| Weekly analysis (Sonnet) | ~10K input | ~31K input | +$3.30/year |
+| Monthly review (Opus) | ~25K input | ~40K input | +$0.90/year |
+
+### Tests
+- All 217 tests pass (no new tests needed — existing content_memory tests cover Section 8 implicitly)
+- Placeholder alignment verified: all `{{...}}` in prompts have matching context keys in claude_api.py
+
+### File counts
+
+| Action | Count | Details |
+|--------|-------|---------|
+| Modified | 7 | `content_memory.py`, `weekly_analysis.py`, `claude_api.py`, `monthly_review.py`, `weekly_analysis.md`, `weekly_plan.md`, `monthly_review.md` |
+
+---
+
+## Multi-Channel Restructure — Phase 9: Carousel Rendering Engine
+
+**Date:** 2026-03-04
+
+**Goal:** Build the TikTok carousel rendering infrastructure — HTML/CSS templates + Python assembler. Reuses the existing Puppeteer-based `render_pin.js` for rendering, but with TikTok-specific templates (1080x1920px, 9:16 vertical).
+
+### What was built
+
+**TikTok carousel templates** — 4 visual families × 3 slide types each (12 HTML + 4 CSS + 1 shared base CSS):
+- `clean-educational` — Light background, bold dark headlines, numbered slides (listicles, how-tos)
+- `dark-bold` — High-contrast white/accent on dark (bold claims, contrarian takes)
+- `photo-forward` — Real photo background with gradient text overlay (recipes, food photography)
+- `comparison-grid` — Split panels with before/after layout (comparisons, pros/cons)
+
+Each family has 3 slide types:
+- **Hook slide** — Attention-grabbing headline + subtitle
+- **Content slide** — Headline + body text + slide number indicator
+- **CTA slide** — Call-to-action + @handle + secondary text
+
+**`src/tiktok/carousel_assembler.py`** — `CarouselAssembler` class:
+- Loads HTML template per slide type + family
+- Inlines shared base CSS + family-specific CSS (same pattern as `pin_assembler.py`)
+- Injects `{{mustache}}` variables with HTML escaping
+- Converts local image paths to base64 data URIs
+- Builds a manifest JSON and calls `render_pin.js --manifest` (single Puppeteer browser session for all slides)
+- Validates output PNGs (exists, >10KB)
+
+**Config/paths additions:**
+- `config.py`: `TIKTOK_SLIDE_WIDTH = 1080`, `TIKTOK_SLIDE_HEIGHT = 1920`
+- `paths.py`: `TIKTOK_OUTPUT_DIR = DATA_DIR / "generated" / "tiktok"`
+- `src/tiktok/__init__.py` package init
+
+### Design decisions
+
+- **No variant system:** Unlike Pinterest's A/B/C variants per template, TikTok uses 3 distinct slide types (hook/content/CTA) per family. Simpler and more appropriate for multi-slide carousels.
+- **Reuse `render_pin.js`:** The existing Puppeteer renderer already supports custom dimensions and batch mode via `--manifest`. No new Node.js script needed.
+- **Safe zones:** top 100px, left/right 60px, bottom 280px — avoids TikTok UI overlay (status bar, caption, action buttons).
+- **`{{handle}}` is a template variable, not hardcoded:** The TikTok handle is injected at render time, so when Open Decision #2 is resolved, no template changes are needed.
+
+### Placeholder: TikTok handle
+
+**`@slated` is a placeholder.** The actual TikTok handle has not been finalized (Open Decision #2 in implementation-plan.md). When decided:
+1. Pass the correct handle to `carousel_assembler.render_carousel()` — no template edits needed
+2. Update Open Decision #2
+3. Grep for `@slated` in test fixtures/sample data and update
+
+### Code review cleanup
+
+After initial build, a code review identified and fixed:
+- **L1:** Extracted `_image_to_data_uri` from both assemblers to `src/shared/utils/image_utils.py` as `image_to_data_uri()` (public shared function). Both `pin_assembler.py` and `carousel_assembler.py` now import from shared.
+- **L3:** Updated implementation-plan.md Phase 9 section — `render_carousel.js` struck through, notes `render_pin.js` reuse. Reuse table updated from 60% → 100%.
+- **L5:** Optimized `wait_ms` — first slide 500ms (font loading), subsequent slides 100ms (fonts cached in browser session).
+- **L6:** All 4 family CSS files — replaced hardcoded `bottom: 300px` with `calc(var(--safe-bottom) + 20px)`. Photo-forward content panel padding now uses CSS variables.
+- **N5:** Moved `import subprocess` to top-level in `carousel_assembler.py`, removed stale deferred import.
+- **M1 (deferred to Phase 10):** Added explicit step 5 to Phase 10 spec for post-render `_optimize_image()` + `clean_image()` on carousel output PNGs.
+
+### File counts
+
+| Action | Count | Details |
+|--------|-------|---------|
+| Created | 18 | `src/tiktok/__init__.py`, `src/tiktok/carousel_assembler.py`, 12 HTML templates, 4 family CSS files, 1 shared base CSS |
+| Modified | 7 | `config.py` (TikTok dimensions), `paths.py` (TikTok output dir), `image_utils.py` (extracted `image_to_data_uri`), `pin_assembler.py` (import from shared), `implementation-plan.md` (Phase 9 status + placeholder notes + reuse table), `ARCHITECTURE.md` (TikTok sections), `progress.md` |

@@ -20,7 +20,6 @@ All pins are 1000x1500px (2:3 ratio) with text in the center 80%
 safe zone. Text must be readable at ~300px thumbnail width.
 """
 
-import base64
 import html as html_module
 import json
 import logging
@@ -32,6 +31,7 @@ from typing import Any, Optional
 
 from src.shared.paths import PROJECT_ROOT, TEMPLATES_DIR as _BASE_TEMPLATES_DIR
 from src.shared.config import PIN_WIDTH, PIN_HEIGHT, MAX_PNG_SIZE
+from src.shared.utils.image_utils import image_to_data_uri
 
 logger = logging.getLogger(__name__)
 
@@ -81,29 +81,6 @@ TEMPLATE_CONFIGS = {
 class PinAssemblerError(Exception):
     """Raised when pin assembly or rendering fails."""
     pass
-
-
-def _image_to_data_uri(image_path: str) -> str:
-    """Convert a local image file path to a base64 data URI.
-
-    This is critical for headless rendering — external file:// URLs
-    and network requests may not work reliably in headless mode.
-    """
-    path = Path(image_path)
-    if not path.exists():
-        logger.warning("Image not found at %s, using empty placeholder", image_path)
-        return ""
-
-    from src.shared.utils.image_utils import detect_mime_type
-    with open(path, "rb") as img_f:
-        header = img_f.read(12)
-    detected = detect_mime_type(header)
-    mime = detected if detected != "application/octet-stream" else "image/jpeg"
-
-    with open(path, "rb") as f:
-        encoded = base64.b64encode(f.read()).decode("ascii")
-
-    return f"data:{mime};base64,{encoded}"
 
 
 def _escape_html(text: str) -> str:
@@ -306,7 +283,7 @@ class PinAssembler:
                 value = context.get(var, "")
                 if value and not value.startswith(("data:", "http://", "https://")):
                     # Local file path — convert to data URI
-                    value = _image_to_data_uri(value)
+                    value = image_to_data_uri(value)
                 result = result.replace(placeholder, value or "")
 
         # Handle listicle list_items (array of strings -> HTML)

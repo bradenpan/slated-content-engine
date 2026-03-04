@@ -94,18 +94,36 @@ def append_content_log_entry(entry: dict, path: Path = None) -> None:
         raise
 
 
-def is_pin_posted(pin_id: str, path: Path = None) -> bool:
-    """Check if a pin has already been posted (idempotency guard).
+# Map channel names to the platform-specific ID field that confirms posting.
+_CHANNEL_PLATFORM_ID_FIELDS = {
+    "pinterest": "pinterest_pin_id",
+    "tiktok": "publer_post_id",
+}
 
-    Scans content-log.jsonl for an entry with this pin_id that has
-    a non-null pinterest_pin_id field.
+
+def is_content_posted(
+    content_id: str,
+    channel: str,
+    path: Path = None,
+) -> bool:
+    """Check if content has already been posted for a given channel (idempotency guard).
+
+    Scans content-log.jsonl for an entry with this content_id (pin_id field)
+    that has a non-null platform ID field for the given channel.
 
     Args:
-        pin_id: Internal pin ID (e.g., "W12-01").
+        content_id: Internal content ID (e.g., "W12-01").
+        channel: Channel name ("pinterest", "tiktok", etc.).
+        path: Override content log path (for testing).
 
     Returns:
-        bool: True if pin already has a pinterest_pin_id in the content log.
+        bool: True if content already has a platform ID in the content log.
     """
+    platform_id_field = _CHANNEL_PLATFORM_ID_FIELDS.get(channel)
+    if not platform_id_field:
+        logger.warning("Unknown channel '%s' for idempotency check", channel)
+        return False
+
     p = path or CONTENT_LOG_PATH
     if not p.exists():
         return False
@@ -118,7 +136,7 @@ def is_pin_posted(pin_id: str, path: Path = None) -> bool:
                     continue
                 try:
                     entry = json.loads(line)
-                    if entry.get("pin_id") == pin_id and entry.get("pinterest_pin_id"):
+                    if entry.get("pin_id") == content_id and entry.get(platform_id_field):
                         return True
                 except json.JSONDecodeError:
                     continue
@@ -126,3 +144,17 @@ def is_pin_posted(pin_id: str, path: Path = None) -> bool:
         logger.warning("Could not read content log for idempotency check: %s", e)
 
     return False
+
+
+def is_pin_posted(pin_id: str, path: Path = None) -> bool:
+    """Check if a pin has already been posted to Pinterest (idempotency guard).
+
+    Backward-compatible wrapper around is_content_posted().
+
+    Args:
+        pin_id: Internal pin ID (e.g., "W12-01").
+
+    Returns:
+        bool: True if pin already has a pinterest_pin_id in the content log.
+    """
+    return is_content_posted(pin_id, "pinterest", path=path)

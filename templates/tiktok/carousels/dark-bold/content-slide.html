@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=1080">
+    <title>Dark Bold — Content Slide</title>
+    {{styles}}
+</head>
+<body>
+    <!--
+    Dark Bold — Content Slide
+    ==========================
+    High-contrast content on dark background.
+
+    Variables:
+      {{headline}}      - Slide headline
+      {{body_text}}     - Main content text
+      {{slide_number}}  - Current slide number
+      {{total_slides}}  - Total slide count
+      {{list_items}}    - Optional: pre-built HTML list items
+    -->
+    <div class="slide-canvas db-content">
+        <div class="safe-zone">
+            <div class="db-content-header">
+                <div class="db-slide-badge">
+                    <span class="text-label color-primary">{{slide_number}} / {{total_slides}}</span>
+                </div>
+            </div>
+            <div class="db-content-body">
+                <h2 class="text-headline color-light db-content-headline">{{headline}}</h2>
+                <div class="db-content-accent-line"></div>
+                <div class="text-body db-content-text">{{body_text}}</div>
+                <div class="db-content-list">{{list_items}}</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

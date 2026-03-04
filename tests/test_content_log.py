@@ -1,9 +1,10 @@
-"""Tests for src/utils/content_log.py — content log CRUD operations."""
+"""Tests for src/shared/utils/content_log.py — content log CRUD operations."""
 
 import json
 
 from src.shared.utils.content_log import (
     append_content_log_entry,
+    is_content_posted,
     is_pin_posted,
     load_content_log,
     save_content_log,
@@ -69,6 +70,39 @@ def test_is_pin_posted_false_for_unknown_pin_id(tmp_path):
     ]
     save_content_log(entries, path=log_path)
     assert is_pin_posted("W4-99", path=log_path) is False
+
+
+def test_is_content_posted_pinterest(tmp_path):
+    log_path = tmp_path / "content-log.jsonl"
+    entries = [
+        {"pin_id": "W6-01", "channel": "pinterest", "pinterest_pin_id": "999"},
+    ]
+    save_content_log(entries, path=log_path)
+    assert is_content_posted("W6-01", "pinterest", path=log_path) is True
+    assert is_content_posted("W6-01", "tiktok", path=log_path) is False
+
+
+def test_is_content_posted_tiktok(tmp_path):
+    log_path = tmp_path / "content-log.jsonl"
+    entries = [
+        {"pin_id": "T1-01", "channel": "tiktok", "publer_post_id": "pub-123"},
+    ]
+    save_content_log(entries, path=log_path)
+    assert is_content_posted("T1-01", "tiktok", path=log_path) is True
+    assert is_content_posted("T1-01", "pinterest", path=log_path) is False
+
+
+def test_is_content_posted_unknown_channel(tmp_path):
+    log_path = tmp_path / "content-log.jsonl"
+    entries = [
+        {"pin_id": "X1-01", "channel": "unknown", "some_id": "abc"},
+    ]
+    save_content_log(entries, path=log_path)
+    assert is_content_posted("X1-01", "unknown", path=log_path) is False
+
+
+def test_is_content_posted_false_for_nonexistent_file(tmp_path):
+    assert is_content_posted("W99-01", "pinterest", path=tmp_path / "nope.jsonl") is False
 
 
 def test_load_skips_malformed_lines(tmp_path):

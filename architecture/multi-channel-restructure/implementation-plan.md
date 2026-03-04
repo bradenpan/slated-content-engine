@@ -1,7 +1,7 @@
 # Multi-Channel Content Pipeline — Implementation Plan
 
-**Date:** 2026-02-27 (updated 2026-03-03)
-**Status:** Active — Phases 1-7 complete, Phase 8 next
+**Date:** 2026-02-27 (updated 2026-03-04)
+**Status:** Active — Phases 1-9 complete, Phase 10b complete (pulled forward as Phase 8b), Phase 10 next
 
 ---
 
@@ -13,13 +13,13 @@
 - [Part 1: Restructure](#part-1-restructure-pinterest-stays-live-throughout)
   - [Phase 1: Create structure, move purely shared code](#phase-1-create-structure-move-purely-shared-code)
   - [Phase 2: Extract content memory and analytics utilities](#phase-2-extract-content-memory-and-analytics-utilities)
-  - [Phase 3: Split planning into unified + channel-specific](#phase-3-split-planning-into-unified--channel-specific)
+  - [Phase 3: Extract shared data-loading into content planner](#phase-3-extract-shared-data-loading-into-content-planner)
   - [Phase 4: Move prompts into subdirectories](#phase-4-move-prompts-into-subdirectories)
   - [Phase 5: Update GitHub Actions workflows](#phase-5-update-github-actions-workflows)
   - [Phase 6: Cleanup and burn-in](#phase-6-cleanup-and-burn-in)
 - [Part 2: TikTok Integration](#part-2-tiktok-integration)
   - [Phase 7: Migrate TikTok research + rename repo](#phase-7-migrate-tiktok-research--rename-repo)
-  - [Phase 8: Two-step planning split](#phase-8-two-step-planning-split)
+  - [Phase 8: Shared context layer + workflow restructure](#phase-8-shared-context-layer--workflow-restructure)
   - [Phase 9: Carousel rendering engine](#phase-9-carousel-rendering-engine)
   - [Phase 10: Content generation pipeline](#phase-10-content-generation-pipeline)
   - [Phase 11: Posting via Publer](#phase-11-posting-via-publer)
@@ -45,14 +45,14 @@
 
 ## Context
 
-The current `slated-content-engine` (formerly `pinterest-pipeline`) is a vertically integrated Pinterest automation being restructured into a multi-channel content engine that can serve Pinterest, TikTok, and eventually paid channels. Rather than building separate pipelines per channel, we're extracting content planning and blog generation into a shared layer, with channel-specific workflows branching off.
+The current `slated-content-engine` (formerly `pinterest-pipeline`) is a vertically integrated Pinterest automation being restructured into a multi-channel content engine that can serve Pinterest, TikTok, and eventually paid channels. Rather than building separate pipelines per channel, we're extracting shared data-loading utilities, content memory, and blog generation into a shared context layer, with each channel running independent planning and workflows informed by cross-channel data.
 
 **Decisions made:**
 - Monorepo structure (`src/shared/`, `src/pinterest/`, `src/tiktok/`, etc.)
 - Incremental migration — Pinterest pipeline stays live and posting daily throughout
 - Restructure first, verify Pinterest works, then build TikTok
 - Rename repo to `slated-content-engine` after restructure is stable
-- TikTok content is independent from blogs — the unified planner handles topic selection, but each channel owns its own format/creative decisions
+- TikTok content is independent from blogs — each channel owns its own topic selection, format, and creative decisions, informed by shared cross-channel context
 - Paid channels are a future concern, not addressed in this plan
 
 ---
@@ -60,29 +60,31 @@ The current `slated-content-engine` (formerly `pinterest-pipeline`) is a vertica
 ## Target Architecture
 
 ```
-Layer 1: Unified Content Planning (src/shared/)
-  ├── Topic selection: "what subjects to cover this week"
-  ├── Cross-channel content memory & dedup
+Layer 1: Shared Context Layer (src/shared/)
+  ├── Data-loading utilities: strategy context, content memory, seasonal windows
+  ├── Cross-channel content memory with channel attribution
   ├── Strategy + seasonal calendar + keyword targets
-  ├── Reads analytics from ALL active channels
-  └── Outputs: topic plan with pillar assignments and channel suitability hints
+  ├── Analytics collection runs before planning (collect-analytics.yml)
+  └── No unified topic plan — each channel plans independently
 
 Layer 2: Blog Generation & Deployment (src/shared/)
-  ├── Generates MDX blog posts (channel-agnostic)
+  ├── Generates MDX blog posts (Pinterest asset, not shared)
   └── Deploys to goslated.com
 
 Layer 3: Channel-Specific Workflows (fully independent per channel)
   ├── src/pinterest/ — pin planning, creation, posting, analytics
   └── src/tiktok/    — carousel/video planning, creation, posting, analytics
+  Each channel reads shared context + its own channel-specific context,
+  then runs its own planning call with its own prompt.
 ```
 
-### Two-Step Planning Design
+### Multi-Channel Planning Design
 
-The current `weekly_plan.md` prompt generates both blog topics AND 28 pin specs in one Claude call. This must be split:
+Each channel runs its own independent planning call with its own prompt, constraints, and output format. There is no shared topic plan or unified content strategy step. Instead, a **shared context layer** ensures every planner sees the same fresh data:
 
-1. **Unified Content Strategy** (`prompts/shared/content_strategy.md`) — "What topics should we cover this week?" Reads analytics from all channels, content memory, seasonal calendar. Outputs topic plan with pillar assignments and channel suitability hints. One Claude call.
+1. **Shared Context Layer** (`src/shared/`) — Provides data-loading utilities that all planners use: `load_strategy_context()` (brand voice, keywords, seasonal calendar), `generate_content_memory_summary()` (cross-channel content history with channel attribution and performance data), and `get_current_seasonal_window()`. A dedicated `collect-analytics.yml` workflow refreshes this data before any planner runs.
 
-2. **Channel-Specific Planning** (e.g., `prompts/pinterest/pin_planning.md`) — Each channel takes the topic plan and derives its own content. Pinterest: 28 pin specs with board distribution, template selection, scheduling. TikTok: carousel/video specs with format selection, hook styles, posting cadence. Each channel can also generate content with no topic-plan counterpart (e.g., TikTok trend-reactive posts).
+2. **Channel-Specific Planning** (e.g., `src/pinterest/generate_weekly_plan.py`, `src/tiktok/generate_weekly_plan.py`) — Each channel loads shared context, adds its own channel-specific context (Pinterest: board structure; TikTok: attribute taxonomy), and makes its own Claude call with its own prompt. Cross-channel awareness is informative, not prescriptive — planners see what other channels have published and how it performed, then make independent decisions.
 
 ---
 
@@ -96,7 +98,7 @@ slated-content-engine/                # Renamed from pinterest-pipeline
 │   │   ├── __init__.py
 │   │   ├── paths.py                  # Centralized PROJECT_ROOT, DATA_DIR, etc.
 │   │   ├── config.py                 # Models, costs, timeouts, batch sizes
-│   │   ├── content_planner.py        # NEW: unified topic selection
+│   │   ├── content_planner.py        # NEW: shared data-loading utilities (strategy context, content memory, seasonal windows)
 │   │   ├── content_memory.py         # Consolidated from 2 implementations
 │   │   ├── analytics_utils.py        # Extracted: load_content_log, aggregation
 │   │   ├── blog_generator.py         # Moved from src/
@@ -123,8 +125,7 @@ slated-content-engine/                # Renamed from pinterest-pipeline
 │   │
 │   ├── pinterest/
 │   │   ├── __init__.py
-│   │   ├── pin_planner.py            # NEW: extracted Pinterest constraints
-│   │   ├── generate_weekly_plan.py   # Orchestrator: content_planner → pin_planner
+│   │   ├── generate_weekly_plan.py   # Reads shared context + Pinterest-specific context, single-shot Claude call
 │   │   ├── generate_pin_content.py   # Moved from src/
 │   │   ├── pin_assembler.py          # Moved from src/
 │   │   ├── post_pins.py              # Moved from src/
@@ -147,14 +148,12 @@ slated-content-engine/                # Renamed from pinterest-pipeline
 │
 ├── prompts/
 │   ├── shared/
-│   │   ├── content_strategy.md       # NEW: unified planning prompt
 │   │   ├── blog_post_guide.md        # Moved from prompts/
 │   │   ├── blog_post_listicle.md
 │   │   ├── blog_post_recipe.md
 │   │   ├── blog_post_weekly_plan.md
 │   │   └── image_prompt.md
 │   ├── pinterest/
-│   │   ├── pin_planning.md           # NEW or refactored from weekly_plan.md
 │   │   ├── weekly_plan.md            # Moved from prompts/
 │   │   ├── weekly_plan_replace.md
 │   │   ├── pin_copy.md
@@ -329,49 +328,27 @@ Two different `generate_content_memory_summary()` implementations exist with sli
 
 ---
 
-### Phase 3: Split planning into unified + channel-specific
+### Phase 3: Extract shared data-loading into content planner
 
-**Goal:** Extract generic planning logic from `generate_weekly_plan.py` into `src/shared/content_planner.py`. Leave Pinterest-specific constraints in `src/pinterest/pin_planner.py`.
+**Goal:** Extract generic data-loading functions from `generate_weekly_plan.py` into `src/shared/content_planner.py`. The Pinterest planning call itself stays as a single-shot Claude call — no two-step split.
 
 **Effort:** 8-12 hours | **Risk:** HIGH (largest and most complex phase)
 
 #### What gets created
 
-1. **`src/shared/content_planner.py`** — unified content planning:
-   - `generate_content_plan()` — calls Claude with `prompts/shared/content_strategy.md`
+1. **`src/shared/content_planner.py`** — shared data-loading utilities:
    - Extracted from `generate_weekly_plan.py`: `load_strategy_context()`, `load_content_memory()`, `load_latest_analysis()`, `get_current_seasonal_window()`
-   - Outputs: topic plan with pillar assignments, keyword targets, funnel layers, content type recommendations
-   - Does NOT validate pin counts, board distribution, template distribution, or any channel-specific constraints
-   - Designed so TikTok (or any channel) can call the same function later
-
-2. **`src/pinterest/pin_planner.py`** — Pinterest-specific planning:
-   - `generate_pin_plan()` — takes unified content plan, calls Claude to derive 28 pin specs
-   - Contains all Pinterest constraints: `validate_plan()`, `PILLAR_MIX_TARGETS`, `TOTAL_WEEKLY_PINS`, `MAX_PINS_PER_BOARD`, board distribution, template distribution, scheduling
-   - `identify_replaceable_posts()`, `splice_replacements()` for retry logic
-
-3. **`prompts/shared/content_strategy.md`** — new prompt for unified planning (topics only, no pin specs)
-
-4. **`src/pinterest/generate_weekly_plan.py`** — orchestrator:
-   ```python
-   def generate_plan():
-       content_plan = content_planner.generate_content_plan()
-       full_plan = pin_planner.generate_pin_plan(content_plan)
-       # Write to Sheets, save JSON, notify Slack
-   ```
+   - Loads shared strategy files (brand voice, keywords, seasonal calendar, negative keywords)
+   - Does NOT contain any planning logic or Claude calls — purely data loading
+   - Designed so any channel's planner can call these functions to get shared context
 
 #### What moves
-- `src/generate_weekly_plan.py` → split into `src/shared/content_planner.py` + `src/pinterest/pin_planner.py` + `src/pinterest/generate_weekly_plan.py`
+- `src/generate_weekly_plan.py` → `src/pinterest/generate_weekly_plan.py` (with shared data-loading extracted to `content_planner.py`)
 - `src/regen_weekly_plan.py` → `src/pinterest/regen_weekly_plan.py`
-
-#### Critical file to split
-
-`src/generate_weekly_plan.py` (1395 lines) currently interleaves:
-- **Generic** (→ content_planner): strategy loading, content memory, seasonal calendar, keyword performance
-- **Pinterest-specific** (→ pin_planner): board validation, pillar mix targets, pin-per-day scheduling, template distribution, constraint validation with retry
 
 #### Key risk
 
-Two-step planning (content plan → pin plan) may change output quality vs the current single-step approach. **Mitigation:** Run side-by-side comparison of 2-3 generated plans. Keep old single-step as a fallback flag during transition.
+Extracting data-loading functions changes import paths and function boundaries. **Mitigation:** Verify Pinterest planning output is identical before and after extraction. No changes to the Claude call itself.
 
 #### Verify
 - Generated plan structurally equivalent to previous output (same blog topics, same pin count, same constraint compliance)
@@ -392,7 +369,7 @@ Two-step planning (content plan → pin plan) may change output quality vs the c
 **To `prompts/shared/` (5 files):**
 - `blog_post_guide.md`, `blog_post_listicle.md`, `blog_post_recipe.md`, `blog_post_weekly_plan.md`
 - `image_prompt.md`
-- ~~`content_strategy.md` (created in Phase 3)~~ **Deferred to Phase 8.** Do NOT create this file.
+- ~~`content_strategy.md`~~ **Cancelled.** No unified planning prompt needed — each channel uses its own planning prompt.
 
 **To `prompts/pinterest/` (5 files):**
 - `weekly_plan.md`, `weekly_plan_replace.md`
@@ -561,39 +538,63 @@ This is Pinterest-specific and should live under a channel subdirectory now that
 
 ---
 
-### Phase 8: Two-step planning split
+### Phase 8: Shared context layer + workflow restructure
 
-**Goal:** Split the single-shot Claude call (blog topics + pin specs) into a two-step process: unified content planning → channel-specific planning. This enables TikTok (and future channels) to share the content planning layer.
+**Goal:** Make the shared context layer channel-aware and restructure the weekly automation so cross-channel data is fresh when planners run. This enables TikTok (and future channels) to plug into the same shared data and workflow infrastructure.
 
-**Effort:** 8-12 hours | **Risk:** MEDIUM
+**Effort:** 5-7 hours | **Risk:** LOW-MEDIUM
 
-**Context:** Phase 3 extracted shared data-loading functions into `src/shared/content_planner.py` but kept the single-shot Claude call unchanged. Before TikTok can share the content planning layer, this must be split.
+**Context:** Phase 3 extracted shared data-loading functions into `src/shared/content_planner.py`. The shared context layer works but is Pinterest-specific in places (hardcoded board structure loading, no channel tagging on content log entries). Before TikTok can use this infrastructure, the shared layer needs to be channel-agnostic and analytics collection needs to run before any channel-specific planning.
 
 #### What gets built
 
-1. **Add `generate_content_plan()` to `src/shared/content_planner.py`** — new Claude call using `prompts/shared/content_strategy.md` that outputs topics only (pillar assignments, keyword targets, content type recommendations, no pin/channel specs)
-2. **Create `src/pinterest/pin_planner.py`** with `generate_pin_plan(content_plan)` — takes the topic plan and calls Claude to derive 28 pin specs (board distribution, template selection, scheduling). Calls existing `plan_validator.validate_plan()` for constraint checking.
-3. **Create `prompts/shared/content_strategy.md`** — unified planning prompt (topics only, no pin specs)
-4. **Update `src/pinterest/generate_weekly_plan.py`** to call `content_planner.generate_content_plan()` → `pin_planner.generate_pin_plan()` instead of the single-shot `claude.generate_weekly_plan()`
-5. **Side-by-side output comparison** — generate plans with old single-shot and new two-step, verify equivalent quality. Keep single-shot as a fallback flag during transition.
+1. **Content log: add channel tagging** — Add `channel` field to content log entries. Backfill existing entries as `"pinterest"`. Update `content_log.py` write functions to accept and include channel. Update `blog_deployer.py` and `post_pins.py` to tag entries with `"pinterest"`. Backward-compatible: missing `channel` field defaults to `"pinterest"` on read.
+
+2. **Content memory: channel-aware output** — The summary generated by `content_memory.py` includes channel attribution on entries — so a planner reading the summary can distinguish "this topic was covered on Pinterest and got 400 saves" from "this topic was covered on TikTok and got 50K views." Function signature gains an optional `channel` parameter for filtering, but defaults to showing all channels.
+
+3. **Content planner: remove Pinterest hardcoding** — `load_strategy_context()` currently hardcodes loading `pinterest/board-structure.json`. Refactor to load only shared strategy files by default (brand voice, keywords, seasonal calendar, negative keywords). Channel-specific planners load their own structure files directly.
+
+4. **Content log utility: generalize idempotency check** — Add `is_content_posted(content_id, channel)` that checks for the appropriate platform ID field (`pinterest_pin_id`, `publer_post_id`, etc.). Keep `is_pin_posted()` as a backward-compatible wrapper.
+
+5. **Workflow restructure: split analytics from planning** — Extract analytics pull + content memory refresh from `weekly-review.yml` into a new `collect-analytics.yml` workflow. `collect-analytics.yml` runs Monday ~5:30am ET: pulls analytics from all active channels, refreshes content memory, commits updated data files. Rename `weekly-review.yml` → `pinterest-weekly-review.yml`, runs Monday ~6:00am ET after `collect-analytics` completes (via `workflow_run` trigger or time offset). Contains only: weekly analysis → plan generation → Sheet write → Slack notify. This pattern is ready for `tiktok-weekly-review.yml` to plug in later (Phase 10).
+
+6. **Strategy file cleanup** — Move `strategy/tiktok/archetypes.md` and `strategy/tiktok/brand-guidelines.md` to `strategy/` root — they're brand-level docs, not TikTok-specific.
+
+#### What does NOT change
+- Pinterest planning logic (`generate_weekly_plan.py`) — untouched
+- `ClaudeAPI.generate_weekly_plan()` — untouched
+- `prompts/pinterest/weekly_plan.md` — untouched
+- Plan validator — stays Pinterest-specific in `src/pinterest/`
+- No new prompts or Claude calls
+- Pinterest weekly output is identical — same plan structure, same Sheet output
 
 #### Key risk
 
-Two-step planning (content plan → pin plan) may change output quality vs the current single-step approach. **Mitigation:** Run side-by-side comparison of 2-3 generated plans. Keep old single-step as a fallback flag during transition.
+Workflow restructure changes automation timing (planning runs before analytics completes). **Mitigation:** Use `workflow_run` trigger or sufficient time offset. Test end-to-end before merging.
 
 #### Verify
-- Generated plan structurally equivalent to previous output (same blog topics, same pin count, same constraint compliance)
-- All constraint validation passes
-- Retry/validation loop works
+- `collect-analytics.yml` runs cleanly, pulls Pinterest data, refreshes content memory
+- `pinterest-weekly-review.yml` runs after collection, produces identical plan output
 - `python -m pytest tests/`
+- Existing content log entries without `channel` field are treated as `"pinterest"` by default
+- Content memory summary includes channel attribution on entries
+- End-to-end: Monday automation produces the same Weekly Review Sheet output as before
 
 ---
 
 ### Phase 9: Carousel rendering engine
 
+**Status:** COMPLETE (2026-03-04)
+
 **Goal:** Render multi-slide TikTok carousels from HTML/CSS templates. No external APIs needed — purely local infrastructure.
 
 **Effort:** 35-50 hours | **Risk:** LOW
+
+> **PLACEHOLDER — must fix before first TikTok post:**
+> All CTA slide templates use `{{handle}}` with a default value of `@slated`. The actual TikTok handle has not been decided yet (see Open Decision #2 below). When the handle is finalized:
+> 1. The content generation pipeline (Phase 10) should pass the correct handle to `carousel_assembler.render_carousel()` — no template changes needed, the handle is a variable.
+> 2. Update Open Decision #2 to record the final choice.
+> 3. If the handle differs from `@slated`, grep for `@slated` in any test fixtures or sample data and update them.
 
 #### 1. Carousel HTML/CSS templates (4 visual families)
 
@@ -641,27 +642,21 @@ templates/tiktok/carousels/
 
 **Effort:** 15-20 hours
 
-#### 2. `render_carousel.js` — Puppeteer multi-slide renderer
+#### 2. ~~`render_carousel.js`~~ — Not needed (reuses `render_pin.js`)
 
-Adapt the existing Pinterest `render_pin.js` for multi-slide rendering:
-- Input: manifest JSON listing slides + output paths
-- For each slide: load HTML, set viewport to 1080x1920, screenshot to PNG
-- Validate output: minimum 10KB per slide, correct dimensions
-- Batch mode: render all slides for a carousel in one Puppeteer session (reuse browser instance)
+The existing `render_pin.js` already supports batch rendering via `--manifest` mode with configurable `width`/`height` per job. No new Node.js script was needed — `carousel_assembler.py` builds a manifest JSON with 1080×1920 dimensions and calls `render_pin.js --manifest` directly. All slides render in a single Puppeteer browser session.
 
-**Key difference from Pinterest:** Pinterest renders one image per pin. TikTok carousels need 3-10 slides per post, so batch rendering within a single browser session is important for performance.
-
-**Effort:** 10-15 hours
+**Effort:** ~~10-15 hours~~ 0 hours (reused existing infrastructure)
 
 #### 3. `src/tiktok/carousel_assembler.py`
 
 Orchestrates the rendering pipeline:
 - Select template family based on spec
 - Inject content variables (headline, body, CTA text, image URLs) into HTML
-- Convert images to base64 data URIs (same pattern as `pin_assembler.py`)
+- Convert images to base64 data URIs (via shared `image_to_data_uri()` in `src/shared/utils/image_utils.py`)
 - Write temporary HTML files
-- Call `render_carousel.js` via subprocess
-- Validate output PNGs
+- Call `render_pin.js --manifest` via subprocess (batch mode, one browser session)
+- Validate output PNGs (>10KB)
 - Return list of slide image paths
 
 **Effort:** 10-15 hours
@@ -676,9 +671,9 @@ Orchestrates the rendering pipeline:
 
 ### Phase 10: Content generation pipeline
 
-**Goal:** Generate 7-21 carousel specs per week via Claude, render them, and publish to Google Sheets for human review.
+**Goal:** Generate 7-21 carousel specs per week via Claude, render them, and publish to Google Sheets for human review. Also update Pinterest prompts to surface cross-channel context now that two channels exist.
 
-**Effort:** 55-75 hours | **Risk:** MEDIUM
+**Effort:** 60-83 hours | **Risk:** MEDIUM
 
 #### 4. Attribute taxonomy (`strategy/tiktok/attribute-taxonomy.json`)
 
@@ -741,24 +736,28 @@ Deterministic Python — no LLM calls. Reads performance data + taxonomy, output
 
 #### 7. `src/tiktok/generate_weekly_plan.py`
 
-Orchestrator that calls the shared content planner then derives TikTok-specific content:
+Independent TikTok planner that reads shared context and makes its own planning decisions:
 
 ```python
 def generate_plan():
-    # Get unified topic plan from shared layer
-    content_plan = content_planner.generate_content_plan()
+    # Load shared context (brand voice, keywords, seasonal calendar)
+    strategy_context = content_planner.load_strategy_context()
 
-    # Compute attribute allocations based on TikTok performance data
+    # Load cross-channel content memory (already fresh from collect-analytics)
+    # Includes Pinterest performance data with channel attribution
+    content_memory = content_memory_mod.generate_content_memory_summary()
+
+    # Load TikTok-specific context
+    attribute_taxonomy = load_attribute_taxonomy()
     weights = compute_attribute_weights.compute(week_number)
 
-    # Generate TikTok carousel specs via Claude
-    carousel_specs = call_claude(
-        prompt="prompts/tiktok/weekly_plan.md",
-        context={content_plan, weights, performance_data, content_memory}
+    # Generate TikTok carousel specs via Claude — independent planning call
+    carousel_specs = claude.generate_tiktok_plan(
+        strategy_context=strategy_context,
+        content_memory=content_memory,
+        attribute_weights=weights,
+        taxonomy=attribute_taxonomy
     )
-
-    # Can also generate independent content not tied to the content plan
-    # (trend-reactive, community engagement posts)
 
     # Validate and write to Sheets + JSON
     write_to_sheets(carousel_specs)
@@ -766,7 +765,7 @@ def generate_plan():
     slack_notify("TikTok plan ready for review")
 ```
 
-**Key design point:** The TikTok planner receives the shared content plan as *input context*, not as a rigid constraint. It can derive carousels from those topics, ignore topics that don't suit TikTok, or generate entirely independent content.
+**Key design point:** The TikTok planner reads shared context and cross-channel content memory, sees what's been published on other channels and how it performed, and makes independent planning decisions. There is no shared topic plan — the planner uses shared *data* (strategy, content history, performance metrics) but owns its own topic selection, driven by TikTok-specific signals (hooks, trends, attribute weights, explore/exploit ratio).
 
 **Effort:** 15-20 hours
 
@@ -777,10 +776,11 @@ Full orchestrator for rendering a week's carousels:
 For each approved carousel spec:
 1. Generate slide text + caption via Claude (`carousel_copy.md`)
 2. Generate images via DALL-E/Replicate (for photo-forward template; skip for text-only templates)
-3. Strip C2PA metadata from AI-generated images (reduces AI detection risk)
+3. Strip C2PA metadata from AI-generated images (reduces AI detection risk — see `docs/research/tiktok/07-ai-content-detection-technical-report.md`)
 4. Call `carousel_assembler.py` to render all slides
-5. Upload slide PNGs to GCS
-6. Write to Content Queue sheet with `IMAGE()` thumbnail formulas
+5. **Post-render cleaning on output PNGs:** Run `_optimize_image()` (Pillow re-save, JPEG fallback if over 500KB) + `clean_image()` from `src/shared/image_cleaner.py` (strips Puppeteer/Chromium metadata fingerprints, adds subtle noise to defeat pixel-level classifiers). Same pattern as `pin_assembler.py` lines 496-501. This must be added to `carousel_assembler.py` at build time — it is NOT there yet (Phase 9 deferred this to Phase 10).
+6. Upload slide PNGs to GCS
+7. Write to Content Queue sheet with `IMAGE()` thumbnail formulas
 
 **Effort:** 20-25 hours
 
@@ -801,12 +801,33 @@ Watch the Weekly Review tab for approval, fire `repository_dispatch` to trigger 
 
 **Effort:** 5-8 hours
 
+#### 10b. Cross-channel awareness in Pinterest prompts — COMPLETED (Phase 8b)
+
+**Status:** Done. Pulled forward into Phase 8b because the strategy vacuum in weekly analysis was causing under-informed recommendations. All changes below are implemented and tested.
+
+**What was done (Phase 8b, 2026-03-04):**
+- `weekly_analysis.py`: channel filter (`channel="pinterest"`), loads strategy context + content memory, passes to Claude
+- `claude_api.py`: `analyze_weekly_performance()` and `run_monthly_review()` gain `strategy_doc`, `content_memory`, `cross_channel_summary` params
+- `content_memory.py`: Section 8 (Performance History) — pillar lifetime, top keywords by saves, compounding signal, top performers
+- `weekly_analysis.md`: `{{strategy_context}}`, `{{content_memory_summary}}`, `{{cross_channel_summary}}` sections + strategic alignment check + cross-channel notes output
+- `weekly_plan.md`: Pinterest-scoped topic dedup + cross-channel framing note
+- `monthly_review.md`: `{{content_memory_summary}}`, `{{cross_channel_summary}}` sections + cross-channel observations output
+
+**What remains for Phase 10 (when TikTok actually launches):**
+- Wire a real `cross_channel_summary` generator (see Phase 12, item 15b) — currently defaults to "Single channel (Pinterest only)"
+- Verify cross-channel observations render correctly with live TikTok data
+
+**Effort:** 0 hours remaining (completed)
+
 #### Verify
 - Generate a test week of 7 carousel specs
 - Verify Claude output parses to valid JSON with correct attribute tags
 - Render all carousels, verify visual quality
 - Content Queue sheet populates correctly with thumbnails
 - Apps Script trigger fires on approval
+- Pinterest weekly analysis includes cross-channel observations section
+- Pinterest weekly plan correctly scopes topic dedup to Pinterest-only (TikTok topics don't block Pinterest topics)
+- Cross-channel summary renders correctly in analysis/review prompts
 
 ---
 
@@ -950,21 +971,57 @@ Publer post insights integration (uses the same `publer_api.py` from Phase 11):
 
 #### 15. `src/tiktok/weekly_analysis.py`
 
-Claude-powered weekly performance analysis:
-- Load performance summary + content log
-- Compute aggregate trends (which attributes improving/declining)
-- Call Claude with analysis prompt
-- Output: `analysis/tiktok/weekly/YYYY-wNN-review.md`
-- Feed into next week's content planner alongside Pinterest analytics
+Claude-powered weekly performance analysis — follows the same enriched pattern established for Pinterest in Phase 8b:
+
+**Data loading (via shared infrastructure):**
+- Filter `content-log.jsonl` to `channel="tiktok"` before computing metrics (same pattern as Pinterest's channel filter)
+- Load strategy context via `load_strategy_context()` — TikTok's analyzer should evaluate performance against strategic intent, not operate in a vacuum
+- Load content memory via `load_content_memory()` — cross-channel history with channel attribution (includes Pinterest data)
+- Generate a cross-channel summary (Pinterest performance digest) to pass as `cross_channel_summary`
+
+**Attribute-based aggregation (differs from Pinterest):**
+- Aggregate by TikTok's attribute taxonomy (topic, angle, structure, hook_type, visual_template) instead of Pinterest's pillars/boards/templates
+- Compute per-attribute trends (which attributes improving/declining)
+- No board analysis (TikTok doesn't have boards)
+
+**Compounding vs. virality:**
+- Pinterest content memory includes a "Compounding Signal" section (3.75-month evergreen half-life). TikTok content has fundamentally different dynamics — 48-72 hour peak, then rapid decay. The TikTok analysis prompt should assess explore/exploit effectiveness and virality patterns, not evergreen compounding.
+
+**Claude API integration:**
+- Add `analyze_tiktok_performance()` to `claude_api.py` (or use a channel-generic analysis method) with the same enriched signature pattern: `strategy_doc`, `content_memory`, `cross_channel_summary` params
+- New prompt: `prompts/tiktok/weekly_analysis.md` — must include `{{strategy_context}}`, `{{content_memory_summary}}`, `{{cross_channel_summary}}` context sections (same pattern as Pinterest's prompt)
+- Output sections should include "Strategic Alignment Check" and "Cross-Channel Notes" (same pattern)
+
+**Output:**
+- `analysis/tiktok/weekly/YYYY-wNN-review.md`
+- Feed into next week's TikTok content planner
+- Cross-channel summary also visible to Pinterest's weekly analysis
+
+**Monthly review (future consideration):**
+TikTok's faster feedback cycles may warrant a monthly strategy review equivalent. The shared infrastructure (`run_monthly_review()` signature with `cross_channel_summary` and `content_memory` params) is ready. Decide based on data volume and strategic complexity after MVP stabilizes.
 
 **Effort:** 10-15 hours
 
+#### 15b. Cross-channel summary generation
+
+When TikTok launches, both channels need a focused "other channels this week" digest for their `cross_channel_summary` param. Content memory already contains full cross-channel history, but `cross_channel_summary` should be a short, targeted summary:
+
+- Small Python function: filter content log to non-target channel entries from the last 7 days, compute quick aggregates (post count, top performer, engagement rate), return a 200-300 char summary
+- Pinterest's analyzer receives a TikTok digest; TikTok's analyzer receives a Pinterest digest
+- Alternative (simpler first pass): pass the full content memory as `cross_channel_summary` — the LLM can extract what it needs, at the cost of ~900 extra input tokens
+
+**Effort:** 2-3 hours
+
 #### 16. GitHub Actions analytics workflows
 
-| Workflow | Trigger | Steps |
-|----------|---------|-------|
-| `tiktok-weekly-analysis.yml` | Cron Sunday 7pm ET | Pull analytics → compute performance summary → update content memory |
-| `tiktok-weekly-generate.yml` | Cron Sunday 8pm ET (after analysis) | Compute attribute weights → generate plan → render carousels → publish to Sheets |
+TikTok analytics plug into the shared collection pattern established in Phase 8:
+
+| Workflow | Integration |
+|----------|-------------|
+| `collect-analytics.yml` (Phase 8) | Add TikTok analytics pull as a new step — runs alongside Pinterest pull before content memory refresh |
+| `tiktok-weekly-review.yml` | Runs after `collect-analytics` completes (parallel to `pinterest-weekly-review.yml`). Steps: compute attribute weights → generate plan → render carousels → publish to Sheets |
+
+No separate Sunday evening timing needed — TikTok review runs at the same time as Pinterest, both triggered after the shared analytics collection.
 
 **Effort:** 6-8 hours
 
@@ -975,7 +1032,7 @@ This is the integration work that makes the system self-improving:
 - `compute_attribute_weights.py` reads `performance-summary.json` and shifts allocation toward high performers
 - `generate_weekly_plan.py` receives shifted weights, generates content that reflects what's working
 - Content memory prevents topic repetition across the 2-week window
-- TikTok analytics also feed into `src/shared/content_planner.py` alongside Pinterest data
+- TikTok analytics flow into the content log with `channel: "tiktok"`, which automatically surfaces in content memory for all planners — no explicit wiring to content_planner needed
 
 **Effort:** 4-7 hours
 
@@ -995,7 +1052,7 @@ This is the integration work that makes the system self-improving:
 
 **MVP COMPLETE** — At this point (Phases 8-12), the pipeline is operational and self-improving: carousels generated weekly based on strategy + performance data, human reviews in Google Sheets, carousels post automatically (or via manual fallback), analytics feed back into next week's planning.
 
-**MVP effort total:** 148-210 hours (8-12 planning split + 140-198 build)
+**MVP effort total:** 145-205 hours (5-7 shared context layer + 140-198 build)
 **MVP monthly cost:** $30-52/mo (Claude + DALL-E + GCS + GitHub Actions + Publer $8/mo)
 
 ---
@@ -1169,7 +1226,7 @@ These decisions must be resolved before starting Phase 9 (carousel rendering). T
 | # | Decision | Options | Recommendation | Impact |
 |---|----------|---------|----------------|--------|
 | 1 | **Account type** | Creator vs. Business | **Creator** — 2.75-4.4x higher engagement; full trending sound access; switch to Business later at 10K+ followers | Affects API access, sound library, ad capabilities |
-| 2 | **TikTok handle** | e.g., @slated, @slatedapp, @slatedmeals | Short, brand-forward, no numbers, under 15 chars | Hardcoded in CTA templates |
+| 2 | **TikTok handle** | e.g., @slated, @slatedapp, @slatedmeals | Short, brand-forward, no numbers, under 15 chars | **PLACEHOLDER `@slated` in Phase 9 CTA templates** — passed as `{{handle}}` variable, no template edits needed when decided. Must resolve before first TikTok post. |
 | 3 | **First subcommunity** | #MomTok, #FoodTok, #MealPrep, #DinnerIdeas | Research scored these — need final pick | Drives initial content angles, hashtags, engagement targets |
 | 4 | **Starting posting cadence** | 3/week → 5/week → 7/week ramp | **3/week first 2 weeks, 5/week weeks 3-4, 7/week weeks 5+** — algorithm rewards consistency over volume | Template count, generation batch size, cost |
 | 5 | **Link-in-bio strategy** | Linktree, direct app store, goslated.com | Creator accounts get link-in-bio at 1K followers; pin app store link in comments until then | CTA slide copy, bio text |
@@ -1266,22 +1323,22 @@ Create TikTok-specific Google Sheet with 4 tabs:
 |-------|-------------|-------|------|------------|
 | 1 | Create structure, move shared code | 4-6 | LOW | — |
 | 2 | Extract content memory & analytics utils | 3-4 | MEDIUM | Phase 1 |
-| 3 | Split planning into unified + channel-specific | 8-12 | HIGH | Phase 2 |
+| 3 | Extract shared data-loading into content planner | 8-12 | HIGH | Phase 2 |
 | 4 | Move prompts into subdirectories | 2-3 | LOW | Phase 3 |
 | 5 | Update GitHub Actions workflows | 2-3 | MEDIUM | Phase 4 |
 | 6 | Cleanup (delete shims, update docs) | 2-3 | LOW | Phase 5 |
 | 7 | Migrate TikTok research + rename repo | 2-3 | LOW | Phase 6 |
 | | **Restructure total (Phases 1-7)** | **23-34** | | |
-| 8 | Two-step planning split | 8-12 | MEDIUM | Phase 7 |
+| 8 | Shared context layer + workflow restructure | 5-7 | LOW-MEDIUM | Phase 7 |
 | 9 | Carousel rendering engine | 35-50 | LOW | Phase 8 |
-| 10 | Content generation pipeline | 55-75 | MEDIUM | Phase 9 |
+| 10 | Content generation pipeline + cross-channel prompts | 60-83 | MEDIUM | Phase 9 |
 | 11 | Posting via Publer | 25-35 | MEDIUM | Phase 10 |
 | 12 | Analytics + feedback loop | 25-38 | LOW-MEDIUM | Phase 11 |
-| | **TikTok MVP total (Phases 8-12)** | **148-210** | | |
+| | **TikTok MVP total (Phases 8-12)** | **150-213** | | |
 | 13 | Video pipeline (Creatomate) | 45-70 | MEDIUM | MVP stable |
 | 14 | Engagement automation | 25-40 | LOW | MVP stable |
 | 15 | Remotion migration | 65-95 | MEDIUM-HIGH | Phase 13 stable |
-| | **Full build total (Phases 1-15)** | **341-494** | | |
+| | **Full build total (Phases 1-15)** | **343-497** | | |
 
 ## Reuse from Pinterest Pipeline
 
@@ -1292,12 +1349,12 @@ Create TikTok-specific Google Sheet with 4 tabs:
 | `src/shared/apis/gcs_api.py` | 100% | GCS upload identical |
 | `src/shared/apis/sheets_api.py` | 80% | Same patterns, TikTok-specific sheet config |
 | `src/shared/apis/slack_notify.py` | 80% | Add TikTok event types |
-| `src/shared/content_planner.py` | 100% | TikTok calls same unified planner |
-| `src/shared/content_memory.py` | 90% | Extend for TikTok content dedup |
+| `src/shared/content_planner.py` | 100% | TikTok uses same data-loading functions (strategy, memory, seasonal) |
+| `src/shared/content_memory.py` | 90% | Extend with channel attribution on entries |
 | `src/shared/analytics_utils.py` | 70% | Shared log format, TikTok-specific metrics |
 | `src/shared/image_cleaner.py` | 80% | Same validation, different dimensions |
-| `render_pin.js` → `render_carousel.js` | 60% | Puppeteer patterns reused, multi-slide is new |
-| `pin_assembler.py` → `carousel_assembler.py` | 50% | Template injection reused, multi-slide orchestration new |
+| `render_pin.js` — reused directly for carousel rendering | 100% | Batch rendering via `--manifest` mode already supported multi-slide; no new JS file needed |
+| `pin_assembler.py` → `carousel_assembler.py` | 50% | Template injection + shared `image_to_data_uri()` reused, multi-slide orchestration new |
 | `post_pins.py` → `post_content.py` | 50% | Posting patterns reused, Publer API simpler than Pinterest direct API |
 | `generate_weekly_plan.py` | 30% | Architecture reused, attribute system is new |
 | GitHub Actions workflow patterns | 70% | Same structure, TikTok-specific steps |
@@ -1377,20 +1434,20 @@ ENGAGEMENT_AUTOMATION_ENABLED=false
 ### Month 12
 - Established presence, 10,000-50,000+ followers
 - Content engine self-improving weekly
-- TikTok analytics feeding back into shared content planner alongside Pinterest
+- TikTok analytics feeding into content memory alongside Pinterest, surfacing cross-channel performance for all planners
 - Ready to evaluate paid promotion of top performers
 
 ---
 
 ## What This Enables
 
-After the restructure (Phases 1-7), adding any new channel means:
+After the restructure (Phases 1-8), adding any new channel means:
 
 1. Create `src/{channel}/` with channel-specific modules (planner, content creator, poster, analytics)
 2. Create `prompts/{channel}/` with channel-specific prompts
-3. The channel planner calls `src/shared/content_planner.generate_content_plan()` to get the weekly topic plan, then derives channel-specific content — or generates independent content
-4. Channel analytics feed back into the shared content planner alongside all other channels
-5. Content memory automatically deduplicates across all channels
+3. The channel planner reads shared context via `content_planner.load_strategy_context()` and cross-channel content memory (with channel attribution and performance data), then runs its own planning call — no shared topic plan
+4. Channel analytics plug into `collect-analytics.yml` — one new step per channel
+5. Content memory automatically surfaces cross-channel performance with channel attribution
 6. Add `.github/workflows/{channel}-*.yml` for channel-specific scheduling
 
 No changes needed to the shared layer or existing channel code.

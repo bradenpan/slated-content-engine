@@ -1,0 +1,183 @@
+/* =============================================================================
+ * Photo Forward — TikTok Carousel Template
+ * =============================================================================
+ * Real photo background with semi-transparent text overlay (~70% image).
+ * Best for: recipes, food photography, transformations.
+ * ========================================================================== */
+
+/* === Hook Slide === */
+.pf-hook {
+    background-color: #1C1917;
+}
+
+.pf-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.pf-gradient {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        to bottom,
+        rgba(28, 25, 23, 0.1) 0%,
+        rgba(28, 25, 23, 0.2) 40%,
+        rgba(28, 25, 23, 0.85) 100%
+    );
+}
+
+.pf-gradient-heavy {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        to bottom,
+        rgba(28, 25, 23, 0.3) 0%,
+        rgba(28, 25, 23, 0.5) 40%,
+        rgba(28, 25, 23, 0.92) 100%
+    );
+}
+
+.pf-hook .safe-zone {
+    justify-content: flex-end;
+    padding-bottom: calc(var(--safe-bottom) + 20px);
+}
+
+.pf-hook-content {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 0 20px;
+}
+
+.pf-hook-headline {
+    max-width: 900px;
+}
+
+.pf-hook-subtitle {
+    max-width: 800px;
+    opacity: 0.9;
+}
+
+.pf-hook-footer {
+    position: absolute;
+    bottom: calc(var(--safe-bottom) + 20px);
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+}
+
+/* === Content Slide === */
+.pf-content {
+    background-color: var(--brand-bg);
+}
+
+.pf-content-image {
+    width: 100%;
+    height: 55%;
+}
+
+.pf-content-panel {
+    width: 100%;
+    height: 45%;
+    background-color: var(--brand-bg);
+}
+
+.pf-content-panel-inner {
+    padding: 36px var(--safe-right) var(--safe-bottom);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.pf-content-indicator {
+    margin-bottom: 8px;
+}
+
+.pf-content-headline {
+    font-size: 46px;
+}
+
+.pf-content-text {
+    line-height: 1.5;
+}
+
+.pf-content-list:empty {
+    display: none;
+}
+
+.pf-content-list .list-item-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.pf-content-list .list-item-number {
+    font-family: var(--font-display);
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--brand-accent);
+    min-width: 36px;
+}
+
+.pf-content-list .list-item-text {
+    font-family: var(--font-primary);
+    font-size: 30px;
+    font-weight: 400;
+    line-height: 1.45;
+    color: var(--brand-text-dark);
+}
+
+/* === CTA Slide === */
+.pf-cta {
+    background-color: #1C1917;
+}
+
+.pf-cta .safe-zone {
+    justify-content: flex-end;
+    padding-bottom: calc(var(--safe-bottom) + 20px);
+}
+
+.pf-cta-content {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 0 20px;
+    text-align: center;
+    align-items: center;
+}
+
+.pf-cta-primary {
+    max-width: 850px;
+}
+
+.pf-cta-secondary {
+    max-width: 750px;
+    opacity: 0.85;
+}
+
+.pf-cta-handle {
+    margin-top: 24px;
+    padding: 14px 36px;
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    border-radius: 28px;
+}
+
+.pf-cta-footer {
+    position: absolute;
+    bottom: calc(var(--safe-bottom) + 20px);
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+}

@@ -223,6 +223,7 @@ def post_pins(
 
             # Success: update content log
             log_entry = {
+                "channel": "pinterest",
                 "pin_id": pin_id,
                 "pinterest_pin_id": pinterest_pin_id,
                 "posted_date": today_str,

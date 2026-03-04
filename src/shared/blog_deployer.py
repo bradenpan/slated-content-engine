@@ -637,6 +637,7 @@ class BlogDeployer:
                 continue
 
             entry = {
+                "channel": "pinterest",
                 "date": today_str,
                 "posted_date": today_str,  # weekly_analysis.py filters on this field
                 "schedule_id": pin_id,  # Per-pin unique ID (e.g., "W9-01") for dedup

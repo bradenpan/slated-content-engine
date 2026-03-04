@@ -1,0 +1,164 @@
+/* =============================================================================
+ * Dark Bold — TikTok Carousel Template
+ * =============================================================================
+ * High-contrast white/accent on dark. Dramatic, attention-grabbing.
+ * Best for: bold claims, contrarian takes, shocking stats.
+ * ========================================================================== */
+
+/* === Hook Slide === */
+.db-hook {
+    background-color: #0F0F0F;
+}
+
+.db-hook .safe-zone {
+    justify-content: center;
+    align-items: flex-start;
+}
+
+.db-hook-content {
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+    padding: 0 20px;
+}
+
+.db-accent-line {
+    width: 80px;
+    height: 5px;
+    border-radius: 3px;
+    background-color: var(--brand-primary);
+}
+
+.db-hook-headline {
+    max-width: 900px;
+}
+
+.db-hook-subtitle {
+    color: rgba(255, 255, 255, 0.6);
+    max-width: 800px;
+}
+
+.db-hook-footer {
+    position: absolute;
+    bottom: calc(var(--safe-bottom) + 20px);
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+}
+
+/* === Content Slide === */
+.db-content {
+    background-color: #0F0F0F;
+}
+
+.db-content .safe-zone {
+    justify-content: flex-start;
+    gap: 0;
+}
+
+.db-content-header {
+    margin-bottom: 40px;
+}
+
+.db-slide-badge {
+    display: inline-flex;
+    padding: 8px 20px;
+    border: 2px solid var(--brand-primary);
+    border-radius: 20px;
+}
+
+.db-content-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+}
+
+.db-content-headline {
+    font-size: 52px;
+}
+
+.db-content-accent-line {
+    width: 60px;
+    height: 4px;
+    border-radius: 2px;
+    background-color: var(--brand-primary);
+}
+
+.db-content-text {
+    color: rgba(255, 255, 255, 0.85);
+    line-height: 1.55;
+}
+
+.db-content-list:empty {
+    display: none;
+}
+
+.db-content-list .list-item-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.db-content-list .list-item-number {
+    font-family: var(--font-display);
+    font-size: 34px;
+    font-weight: 700;
+    color: var(--brand-primary);
+    min-width: 40px;
+}
+
+.db-content-list .list-item-text {
+    font-family: var(--font-primary);
+    font-size: 32px;
+    font-weight: 400;
+    line-height: 1.45;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+/* === CTA Slide === */
+.db-cta {
+    background-color: #0F0F0F;
+}
+
+.db-cta .safe-zone {
+    justify-content: center;
+    align-items: center;
+}
+
+.db-cta-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 24px;
+    padding: 0 20px;
+}
+
+.db-cta-primary {
+    max-width: 850px;
+}
+
+.db-cta-secondary {
+    color: rgba(255, 255, 255, 0.6);
+    max-width: 750px;
+}
+
+.db-cta-button {
+    margin-top: 32px;
+    padding: 16px 40px;
+    border: 2px solid var(--brand-primary);
+    border-radius: 28px;
+    background-color: rgba(217, 119, 6, 0.15);
+}
+
+.db-cta-footer {
+    position: absolute;
+    bottom: calc(var(--safe-bottom) + 20px);
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+}

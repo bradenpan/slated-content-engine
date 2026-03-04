@@ -39,6 +39,12 @@ You are rigorous and honest. You distinguish signal from noise, especially in th
 ### Seasonal Context
 {{seasonal_context}}
 
+### Content Memory Summary
+{{content_memory_summary}}
+
+### Cross-Channel Summary
+{{cross_channel_summary}}
+
 ---
 ## YOUR TASK
 
@@ -61,6 +67,7 @@ The output will be:
 - Example: "Pillar 2 save rate dropped this month, BUT only on problem-solution-pin templates. Recipe pins in Pillar 2 actually improved. The issue is template selection, not pillar relevance."
 - Look for time-based patterns: are certain days/time slots consistently outperforming?
 - Look for content age patterns: are older pins compounding or decaying?
+- When cross-channel data is available: look for cross-channel patterns — do topics that perform well on one channel also perform on Pinterest? Are there audience overlap or cannibalization signals?
 
 ### Level 3: What It Means (Strategic Implications)
 - Connect performance data to strategic questions:
@@ -69,6 +76,7 @@ The output will be:
   - Is the meal kit content pulling its weight? (Pillar 4 — high intent but low volume)
   - Are there keyword gaps we should fill?
   - Is the board architecture supporting or hindering distribution?
+  - When cross-channel data exists: Is content investment across channels efficient? Are there topics that should be prioritized on Pinterest based on cross-channel signal?
 
 ### Level 4: What To Do (Recommendations)
 - Specific, concrete, implementable changes.
@@ -284,6 +292,10 @@ and any pillar consistently underperforming its allocation.]
 
 [What seasonal content windows are approaching in the next 60-90 days?
 What content should be planned or accelerated?]
+
+## Cross-Channel Observations
+
+[When cross-channel data is available: note patterns across channels — shared top-performing topics, audience overlap signals, content format insights that transfer, and efficiency observations (e.g., "Recipe content performs 2x better on Pinterest than TikTok — prioritize recipes here"). When single-channel: "Pinterest only — no cross-channel data available yet."]
 
 ## Appendix: Raw Metric Tables
 

@@ -1,0 +1,212 @@
+/* =============================================================================
+ * Comparison Grid — TikTok Carousel Template
+ * =============================================================================
+ * Split panels, structured data, balanced layout.
+ * Best for: before/after, comparisons, pros/cons.
+ * ========================================================================== */
+
+/* === Hook Slide === */
+.cg-hook {
+    background-color: var(--brand-bg);
+}
+
+.cg-hook .safe-zone {
+    justify-content: center;
+    align-items: center;
+}
+
+.cg-hook-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 28px;
+    padding: 0 20px;
+}
+
+.cg-hook-vs-badge {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background-color: var(--brand-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+}
+
+.cg-hook-headline {
+    max-width: 900px;
+}
+
+.cg-hook-subtitle {
+    max-width: 800px;
+}
+
+.cg-swipe-hint {
+    margin-top: 32px;
+    padding: 12px 28px;
+    border: 2px solid var(--brand-accent);
+    border-radius: 24px;
+    opacity: 0.8;
+}
+
+.cg-hook-footer {
+    position: absolute;
+    bottom: calc(var(--safe-bottom) + 20px);
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+}
+
+/* === Content Slide === */
+.cg-content {
+    background-color: var(--brand-bg);
+}
+
+.cg-content .safe-zone {
+    gap: 24px;
+}
+
+.cg-content-header {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.cg-content-headline {
+    font-size: 46px;
+    text-align: center;
+    margin-bottom: 8px;
+}
+
+.cg-split-panels {
+    display: flex;
+    gap: 0;
+    flex: 1;
+    max-height: 900px;
+}
+
+.cg-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 28px;
+    border-radius: 16px;
+    background-color: #FFFFFF;
+}
+
+.cg-panel-left {
+    margin-right: 8px;
+}
+
+.cg-panel-right {
+    margin-left: 8px;
+}
+
+.cg-panel-divider {
+    width: 3px;
+    background-color: var(--brand-accent);
+    border-radius: 2px;
+    align-self: stretch;
+}
+
+.cg-panel-label {
+    display: inline-flex;
+    align-self: flex-start;
+    padding: 8px 20px;
+    border-radius: 16px;
+    background-color: var(--brand-text-muted);
+}
+
+.cg-panel-label-accent {
+    background-color: var(--brand-accent);
+}
+
+.cg-panel-text {
+    font-size: 28px;
+    line-height: 1.5;
+}
+
+/* Hide body_text when split panels are used */
+.cg-content-body:empty {
+    display: none;
+}
+
+.cg-content-list:empty {
+    display: none;
+}
+
+.cg-content-list .list-item-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.cg-content-list .list-item-number {
+    font-family: var(--font-display);
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--brand-accent);
+    min-width: 36px;
+}
+
+.cg-content-list .list-item-text {
+    font-family: var(--font-primary);
+    font-size: 30px;
+    font-weight: 400;
+    line-height: 1.45;
+    color: var(--brand-text-dark);
+}
+
+/* === CTA Slide === */
+.cg-cta {
+    background-color: var(--brand-bg);
+}
+
+.cg-cta .safe-zone {
+    justify-content: center;
+    align-items: center;
+}
+
+.cg-cta-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 24px;
+    padding: 0 20px;
+}
+
+.cg-verdict-badge {
+    padding: 10px 28px;
+    border-radius: 20px;
+    background-color: var(--brand-accent);
+    margin-bottom: 16px;
+}
+
+.cg-cta-primary {
+    max-width: 850px;
+}
+
+.cg-cta-secondary {
+    max-width: 750px;
+}
+
+.cg-cta-handle {
+    margin-top: 32px;
+    padding: 14px 36px;
+    background-color: rgba(5, 150, 105, 0.1);
+    border-radius: 28px;
+}
+
+.cg-cta-footer {
+    position: absolute;
+    bottom: calc(var(--safe-bottom) + 20px);
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+}

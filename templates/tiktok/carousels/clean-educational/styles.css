@@ -1,0 +1,172 @@
+/* =============================================================================
+ * Clean Educational — TikTok Carousel Template
+ * =============================================================================
+ * Light background, bold dark headlines, numbered slides.
+ * Best for: listicles, how-tos, tips.
+ * ========================================================================== */
+
+/* === Hook Slide === */
+.ce-hook {
+    background-color: var(--brand-bg);
+}
+
+.ce-hook .safe-zone {
+    justify-content: center;
+    align-items: center;
+}
+
+.ce-hook-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 32px;
+    padding: 0 20px;
+}
+
+.ce-hook-headline {
+    margin-top: 24px;
+    max-width: 900px;
+}
+
+.ce-hook-subtitle {
+    max-width: 800px;
+}
+
+.ce-swipe-hint {
+    margin-top: 40px;
+    padding: 12px 28px;
+    border: 2px solid var(--brand-accent);
+    border-radius: 24px;
+    opacity: 0.8;
+}
+
+.ce-hook-footer {
+    position: absolute;
+    bottom: calc(var(--safe-bottom) + 20px);
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+}
+
+/* === Content Slide === */
+.ce-content {
+    background-color: var(--brand-bg);
+}
+
+.ce-content .safe-zone {
+    justify-content: flex-start;
+    gap: 0;
+}
+
+.ce-content-header {
+    margin-bottom: 40px;
+}
+
+.ce-slide-number {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+}
+
+.ce-content-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+}
+
+.ce-content-headline {
+    font-size: 52px;
+}
+
+.ce-content-divider {
+    width: 60px;
+    height: 4px;
+    border-radius: 2px;
+    background-color: var(--brand-accent);
+}
+
+.ce-content-text {
+    line-height: 1.55;
+}
+
+/* Hide list_items container when empty */
+.ce-content-list:empty {
+    display: none;
+}
+
+/* List items within content slide */
+.ce-content-list .list-item-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.ce-content-list .list-item-number {
+    font-family: var(--font-display);
+    font-size: 34px;
+    font-weight: 700;
+    color: var(--brand-accent);
+    min-width: 40px;
+}
+
+.ce-content-list .list-item-text {
+    font-family: var(--font-primary);
+    font-size: 32px;
+    font-weight: 400;
+    line-height: 1.45;
+    color: var(--brand-text-dark);
+}
+
+.ce-content-footer {
+    padding-top: 20px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+/* === CTA Slide === */
+.ce-cta {
+    background-color: var(--brand-bg);
+}
+
+.ce-cta .safe-zone {
+    justify-content: center;
+    align-items: center;
+}
+
+.ce-cta-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 24px;
+    padding: 0 20px;
+}
+
+.ce-cta-primary {
+    max-width: 850px;
+}
+
+.ce-cta-secondary {
+    max-width: 750px;
+    margin-top: 8px;
+}
+
+.ce-cta-handle {
+    margin-top: 32px;
+    padding: 14px 36px;
+    background-color: rgba(5, 150, 105, 0.1);
+    border-radius: 28px;
+}
+
+.ce-cta-footer {
+    position: absolute;
+    bottom: calc(var(--safe-bottom) + 20px);
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+}

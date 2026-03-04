@@ -47,6 +47,7 @@ from typing import Optional
 from src.shared.apis.claude_api import ClaudeAPI
 from src.shared.apis.sheets_api import SheetsAPI
 from src.shared.apis.slack_notify import SlackNotify
+from src.shared.content_planner import load_content_memory
 from src.shared.utils.content_log import load_content_log
 from src.shared.analytics_utils import (
     compute_derived_metrics,
@@ -107,6 +108,9 @@ def run_monthly_review(month: Optional[int] = None, year: Optional[int] = None, 
     # Step 4b: Load seasonal context
     seasonal_context = _load_seasonal_context()
 
+    # Step 4c: Load content memory
+    content_memory = load_content_memory()
+
     # Step 5: Call Claude Opus for monthly review
     try:
         claude = claude or ClaudeAPI()
@@ -115,6 +119,7 @@ def run_monthly_review(month: Optional[int] = None, year: Optional[int] = None, 
             weekly_analyses=weekly_analyses,
             current_strategy=strategy_doc,
             seasonal_context=seasonal_context,
+            content_memory=content_memory,
         )
     except Exception as e:
         logger.error("Claude monthly review failed: %s", e)

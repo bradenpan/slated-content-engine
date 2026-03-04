@@ -42,6 +42,7 @@ from src.shared.analytics_utils import (
     compute_derived_metrics,
     aggregate_by_dimension,
 )
+from src.shared.content_planner import load_strategy_context, load_content_memory
 from src.shared.paths import ANALYSIS_DIR as _ANALYSIS_BASE, DATA_DIR
 from src.shared.utils.content_log import load_content_log
 
@@ -52,7 +53,7 @@ PIN_SCHEDULE_PATH = DATA_DIR / "pin-schedule.json"
 ANALYTICS_DIR = DATA_DIR / "analytics"
 
 
-def run_weekly_analysis(week_number: Optional[int] = None) -> str:
+def run_weekly_analysis(week_number: Optional[int] = None, channel: str = "pinterest") -> str:
     """
     Run the full weekly performance analysis.
 
@@ -80,11 +81,18 @@ def run_weekly_analysis(week_number: Optional[int] = None) -> str:
 
     # Step 1: Load content log with freshly updated analytics
     entries = load_content_log()
+    # Channel filter: only include entries for the target channel
+    entries = [e for e in entries if (e.get("channel") or "pinterest") == channel]
     entries = compute_derived_metrics(entries)
-    logger.info("Loaded %d content log entries", len(entries))
+    logger.info("Loaded %d %s content log entries", len(entries), channel)
 
     # Step 2: Load content plan (what was planned for this week)
     content_plan = _load_content_plan()
+
+    # Step 2b: Load strategy context and content memory
+    strategy_context = load_strategy_context()
+    strategy_doc = strategy_context.get("strategy_doc", "")
+    content_memory = load_content_memory()
 
     # Step 3: Load previous week's analysis
     previous_analysis = load_previous_analysis()
@@ -99,6 +107,8 @@ def run_weekly_analysis(week_number: Optional[int] = None) -> str:
             performance_data=analysis_context,
             previous_analysis=previous_analysis,
             content_plan=content_plan,
+            strategy_doc=strategy_doc,
+            content_memory=content_memory,
         )
     except Exception as e:
         logger.error("Claude analysis failed: %s", e)
@@ -515,11 +525,18 @@ if __name__ == "__main__":
     if "--demo" in sys.argv:
         print("=== Demo mode: weekly_analysis ===")
         entries = load_content_log()
+        # Apply channel filter
+        channel = "pinterest"
+        entries = [e for e in entries if (e.get("channel") or "pinterest") == channel]
         entries = compute_derived_metrics(entries)
-        print(f"Entries loaded: {len(entries)}")
+        print(f"Entries loaded ({channel}): {len(entries)}")
 
         context = build_analysis_context(entries)
         print(f"\nWeek summary: {json.dumps(context['week_summary'], indent=2)}")
+
+        print("\nLoading strategy context...")
+        strategy_ctx = load_strategy_context()
+        print(f"Strategy doc loaded: {len(strategy_ctx.get('strategy_doc', ''))} chars")
 
         print("\nGenerating content memory summary...")
         memory = generate_content_memory_summary()

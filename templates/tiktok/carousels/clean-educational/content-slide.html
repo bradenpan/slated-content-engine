@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=1080">
+    <title>Clean Educational — Content Slide</title>
+    {{styles}}
+</head>
+<body>
+    <!--
+    Clean Educational — Content Slide
+    ==================================
+    Numbered content with bold headline and body text.
+
+    Variables:
+      {{headline}}      - Slide headline
+      {{body_text}}     - Main content text
+      {{slide_number}}  - Current slide number (e.g., "2")
+      {{total_slides}}  - Total slide count (e.g., "7")
+      {{list_items}}    - Optional: pre-built HTML list items (replaces body_text)
+    -->
+    <div class="slide-canvas ce-content">
+        <div class="safe-zone">
+            <div class="ce-content-header">
+                <div class="ce-slide-number">
+                    <span class="text-display color-accent">{{slide_number}}</span>
+                    <span class="text-caption color-muted">/{{total_slides}}</span>
+                </div>
+            </div>
+            <div class="ce-content-body">
+                <h2 class="text-headline color-dark ce-content-headline">{{headline}}</h2>
+                <div class="ce-content-divider"></div>
+                <div class="text-body color-dark ce-content-text">{{body_text}}</div>
+                <div class="ce-content-list">{{list_items}}</div>
+            </div>
+            <div class="ce-content-footer">
+                <span class="slide-indicator color-muted">{{slide_number}} / {{total_slides}}</span>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

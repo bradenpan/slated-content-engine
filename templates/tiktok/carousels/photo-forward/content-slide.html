@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=1080">
+    <title>Photo Forward — Content Slide</title>
+    {{styles}}
+</head>
+<body>
+    <!--
+    Photo Forward — Content Slide
+    ===============================
+    Photo top ~60%, text panel bottom ~40%.
+
+    Variables:
+      {{headline}}              - Slide headline
+      {{body_text}}             - Main content text
+      {{slide_number}}          - Current slide number
+      {{total_slides}}          - Total slide count
+      {{background_image_url}}  - Photo for top portion
+      {{list_items}}            - Optional: pre-built HTML list items
+    -->
+    <div class="slide-canvas pf-content">
+        <div class="pf-content-image bg-image-cover" style="background-image: url('{{background_image_url}}');"></div>
+        <div class="pf-content-panel">
+            <div class="pf-content-panel-inner">
+                <div class="pf-content-indicator">
+                    <span class="slide-indicator color-accent">{{slide_number}} / {{total_slides}}</span>
+                </div>
+                <h2 class="text-headline color-dark pf-content-headline">{{headline}}</h2>
+                <div class="text-body color-dark pf-content-text">{{body_text}}</div>
+                <div class="pf-content-list">{{list_items}}</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

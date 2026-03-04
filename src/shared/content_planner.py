@@ -26,8 +26,9 @@ def load_strategy_context() -> dict:
 
     Returns:
         dict: Keys: strategy_doc, brand_voice, keyword_lists,
-              negative_keywords, board_structure, cta_variants,
-              seasonal_calendar.
+              negative_keywords, cta_variants, seasonal_calendar.
+              Channel-specific files (e.g., board-structure.json) are
+              loaded directly by each channel's planner.
     """
     context = {}
 
@@ -47,11 +48,11 @@ def load_strategy_context() -> dict:
         logger.warning("brand-voice.md not found")
         context["brand_voice"] = ""
 
-    # JSON strategy files
+    # JSON strategy files (shared/brand-level only — channel-specific files
+    # like pinterest/board-structure.json are loaded by each channel's planner)
     json_files = {
         "keyword_lists": "keyword-lists.json",
         "negative_keywords": "negative-keywords.json",
-        "board_structure": "pinterest/board-structure.json",
         "cta_variants": "cta-variants.json",
         "seasonal_calendar": "seasonal-calendar.json",
     }

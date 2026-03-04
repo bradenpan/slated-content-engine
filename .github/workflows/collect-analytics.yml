@@ -1,0 +1,69 @@
+name: Collect Analytics
+
+# Shared analytics collection: pulls performance data from all active channels,
+# refreshes content memory summary.  Runs before any channel-specific weekly review.
+#
+# Monday 5:30am ET (10:30 UTC) -- 30 min before pinterest-weekly-review.yml (6:00am ET)
+on:
+  schedule:
+    - cron: '30 10 * * 1'  # 10:30 UTC = 5:30 AM ET, Monday
+  workflow_dispatch:       # Manual fallback trigger via GitHub UI
+  workflow_call:           # Allow other workflows to call this
+
+concurrency:
+  group: slated-content-engine-analytics
+  cancel-in-progress: false
+
+env:
+  PINTEREST_APP_ID: ${{ secrets.PINTEREST_APP_ID }}
+  PINTEREST_APP_SECRET: ${{ secrets.PINTEREST_APP_SECRET }}
+  PINTEREST_ACCESS_TOKEN: ${{ secrets.PINTEREST_ACCESS_TOKEN }}
+  PINTEREST_REFRESH_TOKEN: ${{ secrets.PINTEREST_REFRESH_TOKEN }}
+  PINTEREST_ENVIRONMENT: production
+  ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+  GOOGLE_SHEETS_CREDENTIALS_JSON: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS_JSON }}
+  GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+  GOOGLE_SHEET_URL: ${{ secrets.GOOGLE_SHEET_URL }}
+  SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+jobs:
+  collect-analytics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup pipeline
+        uses: ./.github/actions/setup-pipeline
+
+      - name: Refresh Pinterest token
+        run: python -m src.pinterest.token_manager
+
+      - name: Pull Pinterest analytics
+        run: python -m src.pinterest.pull_analytics
+
+      # Future: Pull TikTok analytics (Phase 12)
+      # - name: Pull TikTok analytics
+      #   run: python -m src.tiktok.pull_analytics
+
+      - name: Generate content memory summary
+        # Python computation only -- no LLM call
+        # Reads content-log.jsonl (all channels), computes aggregates,
+        # writes content-memory-summary.md with channel attribution
+        run: python -m src.shared.content_memory
+
+      - name: Commit updated data files
+        uses: ./.github/actions/commit-data
+        with:
+          message: "chore: update analytics and data files [skip ci]"
+
+      - name: Notify failure
+        if: failure()
+        uses: ./.github/actions/notify-failure
+        with:
+          workflow_name: "Collect Analytics"
+          run_url: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

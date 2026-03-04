@@ -1,5 +1,33 @@
 """Shared image utilities."""
 
+import base64
+import logging
+from pathlib import Path
+
+logger = logging.getLogger(__name__)
+
+
+def image_to_data_uri(image_path: str) -> str:
+    """Convert a local image file path to a base64 data URI.
+
+    Critical for headless rendering — external file:// URLs and network
+    requests may not work reliably in headless Chromium.
+    """
+    path = Path(image_path)
+    if not path.exists():
+        logger.warning("Image not found at %s, using empty placeholder", image_path)
+        return ""
+
+    with open(path, "rb") as img_f:
+        header = img_f.read(12)
+    detected = detect_mime_type(header)
+    mime = detected if detected != "application/octet-stream" else "image/jpeg"
+
+    with open(path, "rb") as f:
+        encoded = base64.b64encode(f.read()).decode("ascii")
+
+    return f"data:{mime};base64,{encoded}"
+
 
 def extract_drive_file_id(url: str) -> str | None:
     """Extract the Google Drive file ID from a Drive URL.

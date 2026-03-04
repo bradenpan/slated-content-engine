@@ -1,7 +1,8 @@
-name: Weekly Review
+name: Pinterest Weekly Review
 
-# Runs Monday 6am ET (11:00 UTC) -- analytics + analysis + content plan -> Sheet
-# Ready before you sit down Monday morning
+# Pinterest-specific weekly review: performance analysis + content plan -> Sheet
+# Runs Monday 6am ET (11:00 UTC) -- after collect-analytics.yml (5:30am ET)
+# Analytics data and content memory are already fresh from the collection step.
 on:
   schedule:
     - cron: '0 11 * * 1'  # 11:00 UTC = 6:00 AM ET, Monday
@@ -27,7 +28,7 @@ env:
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
 jobs:
-  weekly-review:
+  pinterest-weekly-review:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -39,17 +40,6 @@ jobs:
 
       - name: Setup pipeline
         uses: ./.github/actions/setup-pipeline
-
-      - name: Refresh Pinterest token
-        run: python -m src.pinterest.token_manager
-
-      - name: Pull Pinterest analytics
-        run: python -m src.pinterest.pull_analytics
-
-      - name: Generate content memory summary
-        # Python computation only -- no LLM call
-        # Reads content-log.jsonl, computes aggregates, writes content-memory-summary.md
-        run: python -m src.shared.content_memory
 
       - name: Run weekly performance analysis
         # Calls Claude Sonnet to analyze last week's performance
@@ -64,11 +54,11 @@ jobs:
       - name: Commit updated data files
         uses: ./.github/actions/commit-data
         with:
-          message: "chore: update analytics and data files [skip ci]"
+          message: "chore: update post log [skip ci]"
 
       - name: Notify failure
         if: failure()
         uses: ./.github/actions/notify-failure
         with:
-          workflow_name: "Weekly Review"
+          workflow_name: "Pinterest Weekly Review"
           run_url: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

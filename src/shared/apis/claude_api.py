@@ -536,6 +536,9 @@ class ClaudeAPI:
         performance_data: dict,
         previous_analysis: str,
         content_plan: dict,
+        strategy_doc: str = "",
+        content_memory: str = "",
+        cross_channel_summary: str = "",
     ) -> str:
         """
         Analyze weekly performance data using Claude Sonnet.
@@ -544,6 +547,9 @@ class ClaudeAPI:
             performance_data: Pin-level and aggregate performance metrics.
             previous_analysis: Last week's analysis for trend comparison.
             content_plan: What was planned vs. what was posted.
+            strategy_doc: Full strategy document for strategic context.
+            content_memory: Content memory summary for historical context.
+            cross_channel_summary: Cross-channel data (empty until multi-channel).
 
         Returns:
             str: Structured weekly analysis markdown.
@@ -568,6 +574,9 @@ class ClaudeAPI:
             "per_board_metrics": safe_get(performance_data, "by_board", {}),
             "per_funnel_layer_metrics": safe_get(performance_data, "by_funnel_layer", {}),
             "account_trends": safe_get(performance_data, "account_trends", {}),
+            "strategy_context": strategy_doc or "No strategy document loaded.",
+            "content_memory_summary": content_memory or "No content memory available (first run).",
+            "cross_channel_summary": cross_channel_summary or "Single channel (Pinterest only). No cross-channel data.",
         }
 
         prompt = self._render_template(template, context)
@@ -575,6 +584,10 @@ class ClaudeAPI:
         system = (
             "You are a Pinterest analytics expert for Slated, a family meal planning app. "
             "Analyze the weekly performance data and produce a structured markdown report. "
+            "Evaluate performance against the content strategy — distinguish between "
+            "underperformance that the strategy predicts (e.g., low-volume pillars) and "
+            "genuine execution issues. Use the content memory to connect performance to "
+            "content decisions and identify keyword saturation or topic coverage gaps. "
             "Include: top/bottom performers with reasons, content type rankings, "
             "keyword insights, board performance, and specific recommendations for next week. "
             "Be evidence-based -- cite specific numbers. Flag declining trends."
@@ -595,6 +608,8 @@ class ClaudeAPI:
         weekly_analyses: list[str],
         current_strategy: str,
         seasonal_context: str = "",
+        cross_channel_summary: str = "",
+        content_memory: str = "",
     ) -> str:
         """
         Run the monthly strategy review using Claude Opus.
@@ -606,6 +621,8 @@ class ClaudeAPI:
             weekly_analyses: All weekly analyses from the past month.
             current_strategy: Current strategy document text.
             seasonal_context: Current seasonal window description.
+            cross_channel_summary: Cross-channel data (empty until multi-channel).
+            content_memory: Content memory summary for historical context.
 
         Returns:
             str: Monthly review markdown with strategy recommendations.
@@ -637,6 +654,8 @@ class ClaudeAPI:
             "image_source_performance": safe_get(monthly_data, "by_image_source", {}),
             "seasonal_context": seasonal_context or "No seasonal calendar data available.",
             "month_year": month_year,
+            "cross_channel_summary": cross_channel_summary or "Single channel (Pinterest only). No cross-channel data.",
+            "content_memory_summary": content_memory or "No content memory available.",
         }
 
         prompt = self._render_template(template, context)
