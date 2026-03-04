@@ -804,6 +804,69 @@ class SheetsAPI:
         self._clear_and_write(TAB_DASHBOARD, rows)
         logger.info("Dashboard updated.")
 
+    # === TikTok Content Queue Operations ===
+
+    # TikTok Content Queue column schema (14 columns, A-N)
+    TIKTOK_CQ_HEADERS = [
+        "ID", "Topic", "Angle", "Structure", "Hook Type", "Template Family",
+        "Hook Text", "Caption", "Hashtags", "Slide Count", "Preview",
+        "Schedule", "Status", "Notes",
+    ]
+
+    def write_tiktok_content_queue(
+        self,
+        carousels: list[dict],
+        slide_urls: dict = None,
+    ) -> None:
+        """Write TikTok carousels to the Content Queue tab.
+
+        Args:
+            carousels: List of enriched carousel dicts from generate_carousels().
+            slide_urls: Optional dict of carousel_id -> public URL for preview.
+        """
+        slide_urls = slide_urls or {}
+        self._validate_headers(TAB_CONTENT_QUEUE, self.TIKTOK_CQ_HEADERS)
+
+        logger.info("Writing TikTok content queue: %d carousels...", len(carousels))
+
+        rows = [list(self.TIKTOK_CQ_HEADERS)]
+
+        for carousel in carousels:
+            carousel_id = str(carousel.get("carousel_id", ""))
+            hashtags = carousel.get("hashtags", [])
+            hashtag_str = " ".join(hashtags) if isinstance(hashtags, list) else str(hashtags)
+
+            preview_url = slide_urls.get(carousel_id, "")
+            preview = f'=IMAGE("{preview_url}")' if preview_url else ""
+
+            notes = ""
+            if carousel.get("render_error"):
+                notes = f"RENDER ERROR: {carousel['render_error']}"
+
+            rows.append([
+                carousel_id,
+                str(carousel.get("topic", "")),
+                str(carousel.get("angle", "")),
+                str(carousel.get("structure", "")),
+                str(carousel.get("hook_type", "")),
+                str(carousel.get("template_family", "")),
+                str(carousel.get("hook_text", "")),
+                str(carousel.get("caption", "")),
+                hashtag_str,
+                str(carousel.get("slide_count", 0)),
+                preview,
+                str(carousel.get("scheduled_date", "")),
+                "pending_review",
+                notes,
+            ])
+
+        self._clear_and_write(TAB_CONTENT_QUEUE, rows, value_input_option="USER_ENTERED")
+        logger.info("TikTok content queue written: %d carousels.", len(carousels))
+
+    def write_tiktok_weekly_review(self, review_data: dict) -> None:
+        """Write TikTok weekly review data. Stub for Phase 12."""
+        logger.info("write_tiktok_weekly_review: stub (Phase 12)")
+
     # === Internal Helpers ===
 
     def _clear_and_write(

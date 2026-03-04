@@ -24,14 +24,23 @@ logger = logging.getLogger(__name__)
 
 
 def _add_gaussian_noise(image: Image.Image, sigma: float = 1.5) -> Image.Image:
-    """Add subtle Gaussian noise to an RGB image.
+    """Add subtle Gaussian noise to RGB channels only.
 
     Alters the pixel-level frequency fingerprint without visible quality loss.
-    Sigma of 1.5 is imperceptible at Pinterest display sizes.
+    Sigma of 1.5 is imperceptible at display sizes. For RGBA images, noise is
+    applied only to the RGB channels — the alpha channel is preserved intact.
     """
     arr = np.array(image, dtype=np.float32)
-    noise = np.random.normal(0.0, sigma, arr.shape).astype(np.float32)
-    arr = np.clip(arr + noise, 0.0, 255.0).astype(np.uint8)
+    if image.mode == "RGBA":
+        # Only add noise to RGB channels, preserve alpha
+        rgb = arr[:, :, :3]
+        alpha = arr[:, :, 3:4]
+        noise = np.random.normal(0.0, sigma, rgb.shape).astype(np.float32)
+        rgb = np.clip(rgb + noise, 0.0, 255.0)
+        arr = np.concatenate([rgb, alpha], axis=2).astype(np.uint8)
+    else:
+        noise = np.random.normal(0.0, sigma, arr.shape).astype(np.float32)
+        arr = np.clip(arr + noise, 0.0, 255.0).astype(np.uint8)
     return Image.fromarray(arr, mode=image.mode)
 
 
@@ -68,24 +77,38 @@ def clean_image(
         if jpeg_quality is None:
             jpeg_quality = random.randint(89, 94)
 
+        # Detect input format to preserve it (PNG carousel slides must stay PNG)
+        input_ext = input_path.suffix.lower()
+        is_png = input_ext == ".png"
+
         # Open and load pixel data — metadata is NOT carried over
         with Image.open(input_path) as img:
-            # Convert RGBA/P/LA to RGB (JPEG doesn't support alpha)
-            if img.mode in ("RGBA", "LA", "PA"):
-                background = Image.new("RGB", img.size, (255, 255, 255))
-                background.paste(img, mask=img.split()[-1])
-                img = background
-            elif img.mode != "RGB":
-                img = img.convert("RGB")
+            if is_png:
+                # Preserve RGBA for PNG (carousel slides need transparency support)
+                if img.mode not in ("RGB", "RGBA"):
+                    img = img.convert("RGBA")
+                else:
+                    img = img.copy()
             else:
-                img = img.copy()
+                # Convert to RGB for JPEG output
+                if img.mode in ("RGBA", "LA", "PA"):
+                    background = Image.new("RGB", img.size, (255, 255, 255))
+                    background.paste(img, mask=img.split()[-1])
+                    img = background
+                elif img.mode != "RGB":
+                    img = img.convert("RGB")
+                else:
+                    img = img.copy()
 
         if add_noise:
             img = _add_gaussian_noise(img, sigma=noise_sigma)
 
-        # Save as JPEG with no exif/metadata kwargs — Pillow writes clean JPEG
+        # Save in the same format as input — PNG stays PNG, JPEG stays JPEG
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        img.save(output_path, format="JPEG", quality=jpeg_quality)
+        if is_png:
+            img.save(output_path, format="PNG")
+        else:
+            img.save(output_path, format="JPEG", quality=jpeg_quality)
 
         logger.info(
             "Cleaned image: %s -> %s (quality=%d, noise=%s)",

@@ -2807,3 +2807,62 @@ After initial build, a code review identified and fixed:
 |--------|-------|---------|
 | Created | 18 | `src/tiktok/__init__.py`, `src/tiktok/carousel_assembler.py`, 12 HTML templates, 4 family CSS files, 1 shared base CSS |
 | Modified | 7 | `config.py` (TikTok dimensions), `paths.py` (TikTok output dir), `image_utils.py` (extracted `image_to_data_uri`), `pin_assembler.py` (import from shared), `implementation-plan.md` (Phase 9 status + placeholder notes + reuse table), `ARCHITECTURE.md` (TikTok sections), `progress.md` |
+
+---
+
+## Phase 10: TikTok Content Generation Pipeline (2026-03-04)
+
+TikTok content generation pipeline built on top of Phase 9's carousel rendering engine. Generates 7 carousel specs per week via Claude, renders them to slide PNGs, and publishes to a separate TikTok Google Sheet for human review.
+
+### Resolved decisions
+- **Handle:** @slatedapp, Creator account
+- **Subcommunity:** Invisible Labor (#MentalLoad, #FairPlay) bridging to Daily Question (#WhatsForDinner)
+- **Cadence:** 7 posts/week from day one (no ramp)
+- **AI disclosure:** `is_aigc: true` for photo-forward carousels only
+- **Image gen:** OpenAI gpt-image-1.5 (same as Pinterest)
+- **Google Sheet:** Separate TikTok spreadsheet (`TIKTOK_SPREADSHEET_ID`)
+- **GCS:** Same bucket, `tiktok/` prefix
+
+### What was built
+
+**Attribute taxonomy** (`strategy/tiktok/attribute-taxonomy.json`):
+4 dimensions × 20 total attributes for explore/exploit content optimization:
+- topic (6): invisible-labor, whats-for-dinner, meal-prep-hack, picky-eaters, budget-meals, weeknight-speed
+- angle (5): empathy-first, tactical-tip, myth-bust, hot-take, relatable-rant
+- structure (5): listicle, before-after, story-arc, step-by-step, comparison
+- hook_type (4): question, bold-claim, pattern-interrupt, curiosity-gap
+
+Cold-start even weights, Bayesian updates via `compute_attribute_weights.py` (65/35 exploit/explore split, Phase 12 activates this).
+
+**3 Claude prompt templates** (`prompts/tiktok/`):
+- `weekly_plan.md` — Generates 7 carousel specs with taxonomy attributes, subcommunity targeting, posting schedule. Slim taxonomy injection (weights only, not full metrics).
+- `carousel_copy.md` — Reserved for two-step copy expansion (not wired into pipeline yet).
+- `image_prompt.md` — Generates DALL-E prompts for photo-forward carousel backgrounds. Brand visual guidelines embedded in template.
+
+**3 Claude API methods** (`claude_api.py`):
+- `generate_tiktok_plan()` — Sonnet, 8192 tokens, taxonomy pre-processed to slim format
+- `generate_carousel_copy()` — GPT-5 Mini primary / Sonnet fallback (reserved stub)
+- `generate_tiktok_image_prompt()` — GPT-5 Mini primary / Sonnet fallback
+
+**Main orchestrator** (`src/tiktok/generate_weekly_plan.py`):
+Mirrors Pinterest pattern: load shared context → load taxonomy → call Claude → validate (3 layers: structural/taxonomy/quality) → generate image prompts for photo-forward → render carousels → save JSON → publish to Sheet → Slack notify. Supports `--dry-run` flag.
+
+**Carousel rendering** (`src/tiktok/generate_carousels.py`):
+Handles family name translation (taxonomy underscores → assembler hyphens), background image generation for photo-forward via OpenAI (1024×1536), CarouselAssembler rendering, image cleaning (metadata strip + noise on final slides only, no double-noising).
+
+**Sheet publishing** (`src/tiktok/publish_content_queue.py` + `sheets_api.py`):
+14-column TikTok Content Queue schema (ID, Topic, Angle, Structure, Hook Type, Template Family, Hook Text, Caption, Hashtags, Slide Count, Preview, Schedule, Status, Notes). `SheetsAPI.write_tiktok_content_queue()` method with header validation. `=IMAGE()` formula previews via `USER_ENTERED`.
+
+**Apps Script trigger** (`src/apps-script/tiktok-trigger.gs`):
+Watches column M (Status) in TikTok Content Queue. When all rows have terminal status (approved/rejected), fires `tiktok-batch-approved` repository_dispatch event.
+
+**image_cleaner.py fixes:**
+- PNG format preservation (carousel slides stay PNG, JPEG stays JPEG)
+- Alpha-safe Gaussian noise (only RGB channels get noise, alpha preserved)
+
+### File counts
+
+| Action | Count | Details |
+|--------|-------|---------|
+| Created | 9 | `strategy/tiktok/attribute-taxonomy.json`, `src/tiktok/compute_attribute_weights.py`, `src/tiktok/generate_weekly_plan.py`, `src/tiktok/generate_carousels.py`, `src/tiktok/publish_content_queue.py`, `prompts/tiktok/weekly_plan.md`, `prompts/tiktok/carousel_copy.md`, `prompts/tiktok/image_prompt.md`, `src/apps-script/tiktok-trigger.gs` |
+| Modified | 4 | `claude_api.py` (3 TikTok methods), `sheets_api.py` (`write_tiktok_content_queue` + `write_tiktok_weekly_review` stub), `image_cleaner.py` (PNG preservation + alpha-safe noise), `ARCHITECTURE.md` (TikTok Phase 10 sections) |

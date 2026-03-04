@@ -2,6 +2,14 @@
 ## Slated App -- "Invisible Labor" Cluster Account
 ### Brand: Slated | Voice: Kitchen Chief of Staff | Tagline: "Dinner, Done."
 
+> **Status: CONFIRMED STRATEGY (2026-03-04)**
+>
+> Invisible Labor is the confirmed initial TikTok targeting cluster, with Daily Question as the bridge pillar. This is not a draft — follow this playbook as written.
+>
+> **Why Invisible Labor:** (1) Highest save/share potential — saves and shares are weighted 1.4x in TikTok's 2026 algorithm, and mental load content gets forwarded to partners (built-in sharing mechanic). (2) Strongest differentiation — the #DinnerIdeas space is saturated with recipe creators; no one occupies the "emotional burden of dinner planning" angle. (3) Natural bridge — "what's for dinner?" IS invisible labor, so rotating between emotional framing and practical answers doesn't confuse the algorithm. (4) Conversion path — emotional content creates need, practical content shows the solution (Slated).
+>
+> **Future expansion:** Executive Function (#ADHDTok) is reserved as a potential second account at 25-50K followers if analytics show audience divergence. Parenting Life-Stages content folds into whichever cluster fits per-post.
+
 ---
 
 ## Table of Contents

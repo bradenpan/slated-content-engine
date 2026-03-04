@@ -1,0 +1,189 @@
+{
+  "version": "1.0",
+  "description": "TikTok carousel attribute taxonomy for explore/exploit content optimization. Each dimension has attributes with Bayesian weights updated by Phase 12 analytics feedback loop.",
+  "exploit_ratio": 0.65,
+  "explore_ratio": 0.35,
+  "cold_start_threshold": 5,
+  "dimensions": {
+    "topic": {
+      "description": "Content topic category — what the carousel is about",
+      "attributes": {
+        "invisible-labor": {
+          "weight": 1.0,
+          "impressions": 0,
+          "saves": 0,
+          "shares": 0,
+          "completions": 0,
+          "post_count": 0
+        },
+        "whats-for-dinner": {
+          "weight": 1.0,
+          "impressions": 0,
+          "saves": 0,
+          "shares": 0,
+          "completions": 0,
+          "post_count": 0
+        },
+        "meal-prep-hack": {
+          "weight": 1.0,
+          "impressions": 0,
+          "saves": 0,
+          "shares": 0,
+          "completions": 0,
+          "post_count": 0
+        },
+        "picky-eaters": {
+          "weight": 1.0,
+          "impressions": 0,
+          "saves": 0,
+          "shares": 0,
+          "completions": 0,
+          "post_count": 0
+        },
+        "budget-meals": {
+          "weight": 1.0,
+          "impressions": 0,
+          "saves": 0,
+          "shares": 0,
+          "completions": 0,
+          "post_count": 0
+        },
+        "weeknight-speed": {
+          "weight": 1.0,
+          "impressions": 0,
+          "saves": 0,
+          "shares": 0,
+          "completions": 0,
+          "post_count": 0
+        }
+      }
+    },
+    "angle": {
+      "description": "Content angle — the emotional/rhetorical approach",
+      "attributes": {
+        "empathy-first": {
+          "weight": 1.0,
+          "impressions": 0,
+          "saves": 0,
+          "shares": 0,
+          "completions": 0,
+          "post_count": 0
+        },
+        "tactical-tip": {
+          "weight": 1.0,
+          "impressions": 0,
+          "saves": 0,
+          "shares": 0,
+          "completions": 0,
+          "post_count": 0
+        },
+        "myth-bust": {
+          "weight": 1.0,
+          "impressions": 0,
+          "saves": 0,
+          "shares": 0,
+          "completions": 0,
+          "post_count": 0
+        },
+        "hot-take": {
+          "weight": 1.0,
+          "impressions": 0,
+          "saves": 0,
+          "shares": 0,
+          "completions": 0,
+          "post_count": 0
+        },
+        "relatable-rant": {
+          "weight": 1.0,
+          "impressions": 0,
+          "saves": 0,
+          "shares": 0,
+          "completions": 0,
+          "post_count": 0
+        }
+      }
+    },
+    "structure": {
+      "description": "Carousel structure — how the content is organized across slides",
+      "attributes": {
+        "listicle": {
+          "weight": 1.0,
+          "impressions": 0,
+          "saves": 0,
+          "shares": 0,
+          "completions": 0,
+          "post_count": 0
+        },
+        "before-after": {
+          "weight": 1.0,
+          "impressions": 0,
+          "saves": 0,
+          "shares": 0,
+          "completions": 0,
+          "post_count": 0
+        },
+        "story-arc": {
+          "weight": 1.0,
+          "impressions": 0,
+          "saves": 0,
+          "shares": 0,
+          "completions": 0,
+          "post_count": 0
+        },
+        "step-by-step": {
+          "weight": 1.0,
+          "impressions": 0,
+          "saves": 0,
+          "shares": 0,
+          "completions": 0,
+          "post_count": 0
+        },
+        "comparison": {
+          "weight": 1.0,
+          "impressions": 0,
+          "saves": 0,
+          "shares": 0,
+          "completions": 0,
+          "post_count": 0
+        }
+      }
+    },
+    "hook_type": {
+      "description": "Hook style — how the first slide grabs attention",
+      "attributes": {
+        "question": {
+          "weight": 1.0,
+          "impressions": 0,
+          "saves": 0,
+          "shares": 0,
+          "completions": 0,
+          "post_count": 0
+        },
+        "bold-claim": {
+          "weight": 1.0,
+          "impressions": 0,
+          "saves": 0,
+          "shares": 0,
+          "completions": 0,
+          "post_count": 0
+        },
+        "pattern-interrupt": {
+          "weight": 1.0,
+          "impressions": 0,
+          "saves": 0,
+          "shares": 0,
+          "completions": 0,
+          "post_count": 0
+        },
+        "curiosity-gap": {
+          "weight": 1.0,
+          "impressions": 0,
+          "saves": 0,
+          "shares": 0,
+          "completions": 0,
+          "post_count": 0
+        }
+      }
+    }
+  }
+}

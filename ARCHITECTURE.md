@@ -73,16 +73,22 @@ slated-content-engine/              # Renamed from pinterest-pipeline
 │   │   ├── setup_boards.py       # One-time board creation
 │   │   └── redate_schedule.py    # Pin schedule redating
 │   ├── tiktok/                  # TikTok-specific code
+│   │   ├── generate_weekly_plan.py # Weekly planning orchestrator (7 carousels)
+│   │   ├── generate_carousels.py  # Carousel rendering + image gen orchestrator
+│   │   ├── publish_content_queue.py # Content Queue sheet publisher
+│   │   ├── compute_attribute_weights.py # Explore/exploit weight updater
 │   │   └── carousel_assembler.py # HTML/CSS template → multi-slide PNG renderer
 │   └── apps-script/              # Google Apps Script source
 ├── prompts/
 │   ├── shared/                   # Cross-channel prompts (blog generation, image prompts)
-│   └── pinterest/                # Pinterest-specific prompts (planning, analysis, review)
+│   ├── pinterest/                # Pinterest-specific prompts (planning, analysis, review)
+│   └── tiktok/                   # TikTok prompts (weekly_plan, carousel_copy, image_prompt)
 ├── templates/
 │   ├── pins/                    # HTML/CSS pin templates (5 types × 3 variants)
 │   └── tiktok/carousels/        # TikTok carousel templates (4 families × 3 slide types)
 ├── strategy/                     # Content strategy, brand voice, keywords, CTAs, archetypes
-│   └── pinterest/                # Pinterest-specific strategy (board-structure.json)
+│   ├── pinterest/                # Pinterest-specific strategy (board-structure.json)
+│   └── tiktok/                   # TikTok-specific strategy (attribute-taxonomy.json)
 ├── scripts/                      # One-time migration scripts (e.g., backfill_channel_field.py)
 ├── docs/
 │   └── research/
@@ -111,7 +117,7 @@ slated-content-engine/              # Renamed from pinterest-pipeline
 | `blog_generator.py` | Individual blog MDX generation with frontmatter + Schema.org (4 types: recipe, guide, listicle, weekly-plan) |
 | `blog_deployer.py` | Commits blogs to goslated.com repo (Vercel deploy), URL verification, pin schedule creation |
 | `generate_blog_posts.py` | Blog post orchestrator — reads plan, generates MDX via `blog_generator.py` |
-| `image_cleaner.py` | AI detection avoidance post-processing for generated images |
+| `image_cleaner.py` | AI detection avoidance post-processing. Preserves input format (PNG stays PNG, JPEG stays JPEG). Alpha-safe noise for RGBA images. |
 | `content_memory.py` | Channel-aware content memory summary generation (8 sections: dedup, topic tracking, pillar mix, keyword frequency, images, fresh pins, treatments, performance history with compounding signal) |
 | `content_planner.py` | Shared planning data loading: strategy context, content memory, latest analysis, seasonal windows (no channel-specific files) |
 | `analytics_utils.py` | Channel-agnostic `compute_derived_metrics()` + `aggregate_by_dimension()` |
@@ -120,9 +126,9 @@ slated-content-engine/              # Renamed from pinterest-pipeline
 
 | File | Purpose |
 |------|---------|
-| `claude_api.py` | Claude Sonnet/Opus + GPT-5 Mini integration, prompt template loading, cost tracking |
+| `claude_api.py` | Claude Sonnet/Opus + GPT-5 Mini integration, prompt template loading, cost tracking. TikTok methods: `generate_tiktok_plan()`, `generate_carousel_copy()` (reserved), `generate_tiktok_image_prompt()` |
 | `openai_chat_api.py` | GPT-5 Mini HTTP wrapper (used by claude_api.py for pin copy + image prompts) |
-| `sheets_api.py` | Google Sheets CRUD (Weekly Review, Content Queue, Post Log, Dashboard tabs) |
+| `sheets_api.py` | Google Sheets CRUD (Weekly Review, Content Queue, Post Log, Dashboard tabs). TikTok: `write_tiktok_content_queue()` writes 14-column carousel schema to separate TikTok spreadsheet (`TIKTOK_SPREADSHEET_ID`) |
 | `gcs_api.py` | Google Cloud Storage uploads (primary image hosting for Sheet previews + Pinterest) |
 | `drive_api.py` | Google Drive uploads (fallback if GCS fails) |
 | `github_api.py` | GitHub Git Data API (atomic multi-file blog commits to goslated.com) |
@@ -168,6 +174,10 @@ slated-content-engine/              # Renamed from pinterest-pipeline
 
 | File | Purpose |
 |------|---------|
+| `generate_weekly_plan.py` | TikTok weekly planning orchestrator: loads shared context + attribute taxonomy, calls Claude for 7 carousel specs, validates, renders via `generate_carousels.py`, publishes to TikTok Google Sheet. Supports `--dry-run`. |
+| `generate_carousels.py` | Carousel rendering orchestrator: translates taxonomy family names (underscores) to assembler names (hyphens), generates background images for photo-forward carousels via OpenAI, renders slides via `carousel_assembler.py`, cleans output PNGs. |
+| `publish_content_queue.py` | Publishes rendered carousels to TikTok Google Sheet "Content Queue" tab via `SheetsAPI.write_tiktok_content_queue()`. |
+| `compute_attribute_weights.py` | Bayesian attribute weight updater for explore/exploit feedback loop. 65/35 exploit/explore split, cold-start even distribution until 5+ posts per attribute. Called by Phase 12 analytics. |
 | `carousel_assembler.py` | Multi-slide carousel renderer: loads HTML/CSS templates (4 families × 3 slide types), injects variables, renders all slides in one Puppeteer batch via `render_pin.js --manifest`. Output: 1080×1920px PNGs. |
 
 ---
@@ -184,6 +194,8 @@ slated-content-engine/              # Renamed from pinterest-pipeline
 | `data/pin-schedule.json` | `blog_deployer.py` | `post_pins.py`, `regen_content.py` |
 | `data/content-log.jsonl` | `blog_deployer.py` (initial), `post_pins.py` (posted) | `pull_analytics.py` (update), `content_memory.py`, `weekly_analysis.py`, `monthly_review.py`, `generate_weekly_plan.py` |
 | `data/content-memory-summary.md` | `content_memory.py` (8 sections incl. performance history) | `weekly_analysis.py`, `monthly_review.py`, `generate_weekly_plan.py` (via `load_content_memory()`) |
+| `data/tiktok/weekly-plan-{date}.json` | `src/tiktok/generate_weekly_plan.py` | (Phase 11 posting pipeline) |
+| `strategy/tiktok/attribute-taxonomy.json` | `compute_attribute_weights.py` (Phase 12 updates weights) | `src/tiktok/generate_weekly_plan.py` (reads weights for planning prompt) |
 
 > **Content log `channel` field:** Every entry carries a `channel` field (e.g., `"pinterest"`, `"tiktok"`). Missing channel defaults to `"pinterest"` on read for backward compatibility.
 >
@@ -193,6 +205,7 @@ slated-content-engine/              # Renamed from pinterest-pipeline
 
 - **Post IDs:** `W{week}-P{seq}` (e.g., `W12-P01`) — identify blog posts within a week
 - **Pin IDs:** `W{week}-{seq}` (e.g., `W12-01`) — identify pins within a week
+- **TikTok Carousel IDs:** `TK-W{week}-{seq}` (e.g., `TK-W12-01`) — identify TikTok carousels within a week
 - **Pin-to-Blog link:** Pin's `source_post_id` field → parent blog's `post_id`
 - **Blog slugs:** lowercase-hyphenated (e.g., `easy-weeknight-chicken-tacos`) — used as filename AND URL path
 

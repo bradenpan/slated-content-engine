@@ -681,8 +681,10 @@ Every TikTok post is tagged with attributes for the feedback loop:
 
 ```json
 {
-  "topics": ["grocery_savings", "meal_prep", "weeknight_dinners", "picky_eaters",
-             "kitchen_hacks", "batch_cooking", "family_meals", "seasonal_recipes"],
+  "topics": ["mental_load", "invisible_labor", "fair_play", "decision_fatigue",
+             "dinner_default_parent", "whats_for_dinner", "weeknight_dinners",
+             "meal_prep", "family_meals", "picky_eaters", "kitchen_hacks",
+             "batch_cooking", "grocery_savings", "seasonal_recipes"],
   "angles": ["contrarian", "transformation", "social_proof", "problem_solution",
              "comparison", "lifestyle", "data_driven"],
   "structures": ["listicle", "tutorial", "comparison", "story_arc",
@@ -722,11 +724,20 @@ Deterministic Python — no LLM calls. Reads performance data + taxonomy, output
 5. Content constraints: brand voice, no repeats from last 2 weeks, variety rules
 6. Cold-start handling: if <3 weeks of data, use even distribution
 
+**Community targeting context (include in all TikTok prompts):**
+- **Primary cluster:** Invisible Labor (#MentalLoad, #FairPlay, #InvisibleLabor, #MarriageTok)
+- **Bridge cluster:** Daily Question (#DinnerIdeas, #WhatsForDinner, #MealPlanning)
+- **Voice:** Empathetic, validating, solution-oriented. The tone of a friend who gets the struggle and has figured out the system — NOT a brand lecturing, NOT guilt-inducing, NOT preachy. "Dinner shouldn't be this hard" is the unifying narrative.
+- **Emotional register:** Content should make the viewer feel *seen* first, then offer the solution. Lead with the pain point ("You planned dinner, shopped for dinner, prepped dinner, cooked dinner, and someone still asked 'what's for dinner?'"), land on the relief ("There's an app that makes this someone else's problem too").
+- **Hashtag discipline:** Tag each carousel for its specific cluster. Invisible Labor posts get #MentalLoad #FairPlay #InvisibleLabor. Daily Question posts get #DinnerIdeas #WhatsForDinner #MealPlanning. Do NOT mix all hashtags on every post — let TikTok's content classification route each post to the right audience.
+
 **`prompts/tiktok/carousel_copy.md`** — Per-carousel slide text + caption generation:
 - Hook rules: capture attention in 1.5-3 seconds of reading, text overlay required
 - TikTok-native voice: conversational, not blog-like, save-worthy
-- Caption: max 2,200 chars, 2-3 searchable keywords, 3-5 hashtags
+- Invisible Labor tone: empathetic validation → practical solution. Never guilt, never preach.
+- Caption: max 2,200 chars, 2-3 searchable keywords, 3-5 cluster-specific hashtags
 - "Save this for later" encouragement (high-weight algorithm signal)
+- Shareability prompt: Invisible Labor content has a built-in sharing mechanic — people forward it to partners. Lean into this ("Send this to the person who asks 'what's for dinner?' every night").
 
 **`prompts/tiktok/image_prompt.md`** — Adapt from Pinterest `image_prompt.md`:
 - Food photography style for photo-forward template
@@ -1221,18 +1232,18 @@ Only worth doing once the video pipeline is proven and running consistently. Cre
 
 ## Open Decisions
 
-These decisions must be resolved before starting Phase 9 (carousel rendering). They can be resolved in parallel with Phases 5-8.
+These decisions were scoped for resolution before Phase 9 (now complete). Remaining open decisions must be resolved before Phase 11 (automated posting). Status updated 2026-03-04.
 
 | # | Decision | Options | Recommendation | Impact |
 |---|----------|---------|----------------|--------|
-| 1 | **Account type** | Creator vs. Business | **Creator** — 2.75-4.4x higher engagement; full trending sound access; switch to Business later at 10K+ followers | Affects API access, sound library, ad capabilities |
-| 2 | **TikTok handle** | e.g., @slated, @slatedapp, @slatedmeals | Short, brand-forward, no numbers, under 15 chars | **PLACEHOLDER `@slated` in Phase 9 CTA templates** — passed as `{{handle}}` variable, no template edits needed when decided. Must resolve before first TikTok post. |
-| 3 | **First subcommunity** | #MomTok, #FoodTok, #MealPrep, #DinnerIdeas | Research scored these — need final pick | Drives initial content angles, hashtags, engagement targets |
-| 4 | **Starting posting cadence** | 3/week → 5/week → 7/week ramp | **3/week first 2 weeks, 5/week weeks 3-4, 7/week weeks 5+** — algorithm rewards consistency over volume | Template count, generation batch size, cost |
+| 1 | **Account type** | Creator vs. Business | **Creator** — 2.75-4.4x higher engagement; full trending sound access; switch to Business later at 10K+ followers | ✅ **RESOLVED (2026-03-04):** Creator account confirmed active. Consistent with strategy recommendation. |
+| 2 | **TikTok handle** | e.g., @slated, @slatedapp, @slatedmeals | Short, brand-forward, no numbers, under 15 chars | ✅ **RESOLVED (2026-03-04):** Handle is `@slatedapp`. Placeholder `@slated` in Phase 9 CTA templates updated. |
+| 3 | **First subcommunity** | #MomTok, #FoodTok, #MealPrep, #DinnerIdeas | Invisible Labor cluster — highest save/share signals, strongest differentiation, natural bridge to Daily Question | ✅ **RESOLVED (2026-03-04):** Invisible Labor cluster (#MentalLoad, #FairPlay, #InvisibleLabor, #MarriageTok). Bridges to Daily Question (#DinnerIdeas, #WhatsForDinner) as secondary content pillar. Rationale: (1) optimizes for saves/shares (1.4x algorithm weight), (2) differentiates from saturated recipe space, (3) "what's for dinner" IS invisible labor — natural bridge, (4) built-in sharing mechanic (people forward mental load content to partners). Executive Function (#ADHDTok) reserved as potential second account if/when splitting at 25-50K followers. Parenting Life-Stages folded into primary clusters per-post, not a standalone target. See `docs/research/tiktok/community/tiktok-account-strategy-research.md` §7 and warmup playbook. |
+| 4 | **Starting posting cadence** | 3/week → 5/week → 7/week ramp | **7/week from day one of automated posting** — pipeline maintains consistent quality at volume, more posts = faster data collection for feedback loop | ✅ **RESOLVED (2026-03-04):** 7/week (1/day) from first automated post. No ramp needed — quality is pipeline-controlled, not human-constrained. |
 | 5 | **Link-in-bio strategy** | Linktree, direct app store, goslated.com | Creator accounts get link-in-bio at 1K followers; pin app store link in comments until then | CTA slide copy, bio text |
-| 6 | **AI content disclosure** | Always label / label realistic only / never label | **Label realistic images, skip for text-on-background carousels** — unlabeled AI content gets -73% reach suppression | `is_aigc` flag in API calls, image generation approach |
+| 6 | **AI content disclosure** | Always label / label realistic only / never label | **Label realistic images, skip for text-on-background carousels** — unlabeled AI content gets -73% reach suppression | ✅ **RESOLVED (2026-03-04):** Photo-forward carousels (AI-generated food images): set `is_aigc: true`. Text-on-background templates (clean-educational, dark-bold, comparison-grid): do NOT label — these are designed templates, not AI-generated imagery. Rationale: (1) label penalty < caught-unlabeled penalty, (2) no appeals process for strikes, (3) text-on-background is legitimately "AI-assisted" not "AI-generated" per TikTok policy. |
 | 7 | **Engagement staffing** | Human only / automated / hybrid | **Automated with human escalation** — NapoleonCat + Claude for replies, human reviews negative comments | Phase order, tooling cost |
-| 8 | **Initial topic taxonomy** | Needs niche-specific topics defined | Start with 8-10 topics derived from Pinterest strategy pillars, expand based on performance | Attribute weights, prompt templates |
+| 8 | **Initial topic taxonomy** | Needs niche-specific topics defined | Start with 14 topics: 5 Invisible Labor-primary (`mental_load`, `invisible_labor`, `fair_play`, `decision_fatigue`, `dinner_default_parent`), 5 Daily Question bridge (`whats_for_dinner`, `weeknight_dinners`, `meal_prep`, `family_meals`, `picky_eaters`), 4 general (`kitchen_hacks`, `batch_cooking`, `grocery_savings`, `seasonal_recipes`). Cold-start: weight Invisible Labor topics ~50%, Daily Question ~35%, general ~15%. | ✅ **RESOLVED (2026-03-04):** Taxonomy aligned to Invisible Labor primary cluster. See Phase 10 attribute taxonomy. |
 | 9 | **"Face" of the account** | Faceless / founder / hired creator | Research says accounts with a consistent face dramatically outperform faceless — but this is a staffing decision | Video approach, content authenticity |
 
 ## Pre-Build Parallel Track
@@ -1243,25 +1254,37 @@ These can and should start during or before the restructure completes. They have
 
 **Timeline:** 14 days | **Effort:** 30-60 min/day | **Owner:** Human
 
-The algorithm needs to learn the account's niche before posting. Per the warmup playbook:
+**Status (2026-03-04):** Account exists (Creator type). Some following/liking activity done ~2 weeks ago, but no posts yet. Warmup is partially complete — needs to **resume daily engagement** (Days 1-3 activity) and then progress through Days 4-14 before automated posting begins. The 14-day clock should restart from when daily engagement resumes consistently.
 
-- **Day 0:** Create account. Username, logo profile photo (200x200px min), bio (80-120 chars describing value prop).
-- **Days 1-3:** Pure consumption. Spend 30-60 min/day consuming content in target niches (#MealPrep, #DinnerIdeas, etc.). Like and comment on 10-15 videos. Follow 20-30 creators in target niche. Do NOT post.
-- **Days 4-7:** Light posting. Post 2-3 test videos/carousels (manual, testing formats). Continue 30-40 min daily engagement. Comment on 15-20 videos daily.
-- **Days 8-14:** Ramp up. Post 3-5 pieces. Monitor which formats drive saves/shares. Participate in trending sounds/hashtags relevant to niche.
+The algorithm needs to learn the account's niche before posting. The target community is **Invisible Labor** (#MentalLoad, #FairPlay, #InvisibleLabor, #MarriageTok) with **Daily Question** (#DinnerIdeas, #WhatsForDinner, #EasyRecipes, #MealPlanning) as the bridge pillar. The full warmup playbook is at `docs/research/tiktok/community/tiktok-warmup-playbook.md` — follow it day-by-day.
+
+**Key warmup targets (from playbook):**
+- **Primary hashtags to consume/engage:** #MentalLoad, #FairPlay, #InvisibleLabor, #MarriageTok, #DefaultParent, #EmotionalLabor
+- **Bridge hashtags:** #DinnerIdeas, #WhatsForDinner, #MealPlanning, #FamilyMeals, #WeekdayDinners
+- **Creators to engage with:** Search the playbook's "Target Communities & Creators" section for specific accounts in the mental load / fair play / family dinner space
+- **Comment voice:** Empathetic, validating, solution-oriented. "This is so real" energy, not "here's how to fix it" energy. See playbook §6 for the full comment playbook.
+
+**Day-by-day summary:**
+- **Day 0:** ✅ Create account. Username, logo profile photo (200x200px min), bio (80-120 chars describing value prop).
+- **Days 1-3:** ⚠️ Pure consumption. Spend 30-60 min/day consuming Invisible Labor and Daily Question content. Like and comment on 10-15 videos in those communities. Follow 20-30 creators in the mental load / family dinner space. Do NOT post. *(Some engagement done ~2 weeks ago, needs to resume.)*
+- **Days 4-7:** Light posting. Post 2-3 test carousels (manual). Focus on mental load / "what's for dinner" angles. Continue 30-40 min daily engagement. Comment on 15-20 videos daily.
+- **Days 8-14:** Ramp up. Post 3-5 pieces. Monitor which formats drive saves/shares. Participate in trending sounds/hashtags in #MentalLoad and #DinnerIdeas.
 
 ### P2. Set up Publer account + API access
 
 **Timeline:** Same day (no audit) | **Effort:** 30-60 min | **Cost:** $8/mo (Business plan, annual billing, 1 TikTok account)
 
+**Status (2026-03-04):** TikTok account is already connected to Publer. Business plan is **not yet active** — only needed when Phase 11 (automated posting) is ready for testing. Activate the Business plan (14-day free trial) at that point.
+
 Steps:
-1. Sign up for Publer Business plan (14-day free trial available)
-2. Connect TikTok account to Publer workspace
-3. Generate API key: Settings > Access & Log In > API Key > Manage API Keys
-4. Note your Workspace ID (from Settings or `GET /api/v1/workspaces`)
-5. Note your TikTok Account ID (from `GET /api/v1/accounts` or the Publer dashboard)
-6. Add to `.env`: `PUBLER_API_KEY`, `PUBLER_WORKSPACE_ID`, `PUBLER_TIKTOK_ACCOUNT_ID`
-7. Verify: test `GET /api/v1/accounts` returns your TikTok account
+1. ✅ ~~Sign up for Publer Business plan (14-day free trial available)~~ *(Account exists, TikTok connected)*
+2. ✅ ~~Connect TikTok account to Publer workspace~~
+3. Activate Business plan (defer until Phase 11 testing)
+4. Generate API key: Settings > Access & Log In > API Key > Manage API Keys
+5. Note your Workspace ID (from Settings or `GET /api/v1/workspaces`)
+6. Note your TikTok Account ID (from `GET /api/v1/accounts` or the Publer dashboard)
+7. Add to `.env`: `PUBLER_API_KEY`, `PUBLER_WORKSPACE_ID`, `PUBLER_TIKTOK_ACCOUNT_ID`
+8. Verify: test `GET /api/v1/accounts` returns your TikTok account
 
 **Confirm during trial:** (a) Business plan includes API access, (b) TikTok carousel posting works via API, (c) post insights endpoint returns TikTok metrics.
 
@@ -1296,17 +1319,16 @@ Create TikTok-specific Google Sheet with 4 tabs:
 - Confirm TikTok **saves** are returned in post insights (critical for feedback loop)
 - Confirm `is_aigc` (AI content disclosure) flag is available through Publer's TikTok options
 
-## Cadence Ramp Plan
+## Cadence Plan
 
 | Week | Posts/week | Mix | Notes |
 |------|-----------|-----|-------|
-| 1-2 | 3 | 3 carousels | Warmup period. Manual posting likely (API audit pending). |
-| 3-4 | 5 | 5 carousels | Automated posting live. Cold-start attribute allocation. |
-| 5-6 | 7 | 7 carousels | 1/day. First performance data feeding back into planner. |
+| 1+ | 7 | 7 carousels | 1/day from first automated post. Cold-start attribute allocation. |
+| 5-6 | 7 | 7 carousels | First performance data feeding back into planner. |
 | 7-8 | 10-14 | 7-10 carousels + 2-4 videos | Video pipeline online (Phase 13). Mixed content. |
 | 9+ | 14-21 | 10-14 carousels + 4-7 videos | Full cadence. Feedback loop mature. Scale based on performance data. |
 
-**Don't rush to 21/week.** The research says 3-5/week is the data-optimal range for engagement per post. Scale only when content quality and engagement signals justify it.
+**Scale beyond 7/week** only when video pipeline is online and performance data supports it.
 
 ## Cost Summary
 

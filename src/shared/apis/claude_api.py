@@ -531,6 +531,160 @@ class ClaudeAPI:
 
         return self._parse_json_response(response_text, "topic replacement")
 
+    # === TikTok Methods ===
+
+    def generate_tiktok_plan(
+        self,
+        strategy_doc: str,
+        content_memory: str,
+        latest_analysis: str,
+        seasonal_context: str,
+        taxonomy: dict,
+        week_number: int,
+        posting_dates: str,
+    ) -> dict:
+        """Generate a weekly TikTok carousel plan using Claude Sonnet.
+
+        Args:
+            strategy_doc: Full text of strategy/current-strategy.md.
+            content_memory: Content memory summary markdown.
+            latest_analysis: Latest weekly analysis markdown.
+            seasonal_context: Current seasonal window description.
+            taxonomy: Attribute taxonomy dict with current weights.
+            week_number: ISO week number for carousel ID generation.
+            posting_dates: Formatted posting date list string.
+
+        Returns:
+            dict: Plan with "carousels" array of 7 carousel specs.
+        """
+        template = self.load_prompt_template("tiktok/weekly_plan.md")
+
+        # Pre-process taxonomy to only include weights (reduce prompt tokens)
+        slim_taxonomy = {}
+        for dim_name, dim in taxonomy.get("dimensions", {}).items():
+            slim_taxonomy[dim_name] = {
+                attr_name: attr.get("weight", 1.0)
+                for attr_name, attr in dim.get("attributes", {}).items()
+            }
+
+        context = {
+            "strategy_summary": strategy_doc,
+            "content_memory_summary": content_memory or "No content history yet (first run).",
+            "last_week_analysis": latest_analysis or "No previous analysis available (first run).",
+            "seasonal_window": seasonal_context,
+            "attribute_taxonomy": slim_taxonomy,
+            "week_number": str(week_number),
+            "posting_dates": posting_dates,
+        }
+
+        prompt = self._render_template(template, context)
+
+        system = (
+            "You are a TikTok content strategist for Slated, a family meal planning app. "
+            "Generate a weekly plan of 7 TikTok carousel posts. "
+            "The plan targets the Invisible Labor subcommunity bridging to Daily Question. "
+            "Follow the attribute taxonomy for content variety. "
+            "IMPORTANT: Output ONLY valid JSON. No explanations, reasoning, or text "
+            "before or after the JSON. Your response must start with { and end with }."
+        )
+
+        logger.info("Generating TikTok weekly plan (week %s)...", week_number)
+        response_text = self._call_api(
+            prompt=prompt,
+            system=system,
+            model=MODEL_ROUTINE,
+            max_tokens=8192,
+            temperature=0.7,
+        )
+
+        return self._parse_json_response(response_text, "TikTok weekly plan")
+
+    def generate_carousel_copy(
+        self,
+        carousel_spec: dict,
+        brand_context: str,
+    ) -> dict:
+        """Generate expanded slide-by-slide copy for a TikTok carousel.
+
+        Reserved for two-step copy expansion: the weekly plan prompt generates
+        inline content slides, but this method can be called separately to
+        produce higher-quality, detailed slide-by-slide copy when needed.
+
+        Uses GPT-5 Mini as primary with Claude Sonnet fallback.
+
+        Args:
+            carousel_spec: Single carousel specification from the weekly plan.
+            brand_context: Brand voice guidelines text.
+
+        Returns:
+            dict: Expanded copy with slides array.
+        """
+        template = self.load_prompt_template("tiktok/carousel_copy.md")
+
+        context = {
+            "carousel_spec": carousel_spec,
+            "brand_voice": brand_context or "",
+        }
+
+        prompt = self._render_template(template, context)
+
+        system = (
+            "You are a TikTok content writer for Slated, a family meal planning app. "
+            "Expand the carousel specification into detailed slide-by-slide copy. "
+            "Write conversationally — like a friend who gets it, not a brand. "
+            "IMPORTANT: Output ONLY valid JSON."
+        )
+
+        logger.info("Generating carousel copy for: %s", safe_get(carousel_spec, "carousel_id", "unknown"))
+        try:
+            response_text = call_gpt5_mini(prompt=prompt, system=system, max_tokens=2048, temperature=0.7, timeout=60)
+            return self._parse_json_response(response_text, "carousel copy")
+        except (OpenAIChatAPIError, ValueError, requests.HTTPError) as e:
+            logger.warning("GPT-5 Mini failed for carousel copy, falling back to Claude Sonnet: %s", str(e))
+            response_text = self._call_api(prompt=prompt, system=system, model=MODEL_ROUTINE, max_tokens=2048, temperature=0.7)
+            return self._parse_json_response(response_text, "carousel copy")
+
+    def generate_tiktok_image_prompt(
+        self,
+        carousel_spec: dict,
+    ) -> dict:
+        """Generate a DALL-E image prompt for a photo-forward TikTok carousel.
+
+        Uses GPT-5 Mini as primary with Claude Sonnet fallback.
+        Brand visual guidelines are embedded directly in the prompt template.
+
+        Args:
+            carousel_spec: Carousel specification (must be photo-forward family).
+
+        Returns:
+            dict: {"image_prompt": str, "style": str}
+        """
+        template = self.load_prompt_template("tiktok/image_prompt.md")
+
+        context = {
+            "topic": safe_get(carousel_spec, "topic", ""),
+            "angle": safe_get(carousel_spec, "angle", ""),
+            "hook_text": safe_get(carousel_spec, "hook_text", ""),
+        }
+
+        prompt = self._render_template(template, context)
+
+        system = (
+            "You are an image prompt specialist for food and lifestyle photography. "
+            "Generate a detailed DALL-E image prompt for a TikTok carousel background. "
+            "The image should be portrait orientation (9:16), warm and inviting. "
+            "IMPORTANT: Output ONLY valid JSON."
+        )
+
+        logger.info("Generating image prompt for: %s", safe_get(carousel_spec, "carousel_id", "unknown"))
+        try:
+            response_text = call_gpt5_mini(prompt=prompt, system=system, max_tokens=500, temperature=0.8)
+            return self._parse_json_response(response_text, "TikTok image prompt")
+        except (OpenAIChatAPIError, ValueError, requests.HTTPError) as e:
+            logger.warning("GPT-5 Mini failed for image prompt, falling back to Claude Sonnet: %s", str(e))
+            response_text = self._call_api(prompt=prompt, system=system, model=MODEL_ROUTINE, max_tokens=500, temperature=0.8)
+            return self._parse_json_response(response_text, "TikTok image prompt")
+
     def analyze_weekly_performance(
         self,
         performance_data: dict,
