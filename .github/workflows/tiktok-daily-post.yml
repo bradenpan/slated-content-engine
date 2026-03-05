@@ -1,0 +1,83 @@
+name: TikTok Daily Post
+
+on:
+  schedule:
+    - cron: '0 15 * * *'   # 10am ET (morning slot)
+    - cron: '0 21 * * *'   # 4pm ET (afternoon slot)
+    - cron: '0 0 * * *'    # 7pm ET (evening slot, midnight UTC next day)
+  workflow_dispatch:
+    inputs:
+      time_slot:
+        description: 'Time slot to post (morning/afternoon/evening)'
+        required: true
+        type: choice
+        options:
+          - morning
+          - afternoon
+          - evening
+      date_override:
+        description: 'Override date (YYYY-MM-DD) for recovery posting'
+        required: false
+        type: string
+
+concurrency:
+  group: slated-tiktok-posting
+  cancel-in-progress: false
+
+env:
+  PUBLER_API_KEY: ${{ secrets.PUBLER_API_KEY }}
+  PUBLER_WORKSPACE_ID: ${{ secrets.PUBLER_WORKSPACE_ID }}
+  TIKTOK_POSTING_ENABLED: ${{ secrets.TIKTOK_POSTING_ENABLED }}
+  TIKTOK_SPREADSHEET_ID: ${{ secrets.TIKTOK_SPREADSHEET_ID }}
+  GOOGLE_SHEETS_CREDENTIALS_JSON: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS_JSON }}
+  SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+jobs:
+  post-tiktok:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup pipeline
+        uses: ./.github/actions/setup-pipeline
+
+      - name: Determine time slot
+        id: slot
+        run: |
+          if [ -n "${{ inputs.time_slot }}" ]; then
+            echo "slot=${{ inputs.time_slot }}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event.schedule }}" = "0 15 * * *" ]; then
+            echo "slot=morning" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event.schedule }}" = "0 21 * * *" ]; then
+            echo "slot=afternoon" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event.schedule }}" = "0 0 * * *" ]; then
+            echo "slot=evening" >> "$GITHUB_OUTPUT"
+          else
+            echo "slot=morning" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Post TikTok content
+        run: |
+          SLOT="${{ steps.slot.outputs.slot }}"
+          DATE_ARG=""
+          if [ -n "${{ inputs.date_override }}" ]; then
+            DATE_ARG="--date=${{ inputs.date_override }}"
+          fi
+          python -m src.tiktok.post_content "$SLOT" $DATE_ARG
+
+      - name: Commit updated data files
+        uses: ./.github/actions/commit-data
+        with:
+          message: "chore: update tiktok post log [skip ci]"
+
+      - name: Notify failure
+        if: failure()
+        uses: ./.github/actions/notify-failure
+        with:
+          workflow_name: "TikTok Daily Post"
+          run_url: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

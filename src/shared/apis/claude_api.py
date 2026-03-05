@@ -833,6 +833,72 @@ class ClaudeAPI:
             temperature=0.5,
         )
 
+    def analyze_tiktok_performance(
+        self,
+        performance_data: dict,
+        previous_analysis: str,
+        strategy_doc: str = "",
+        content_memory: str = "",
+        cross_channel_summary: str = "",
+    ) -> str:
+        """Analyze weekly TikTok performance data using Claude Sonnet.
+
+        Args:
+            performance_data: Post-level and aggregate performance metrics.
+            previous_analysis: Last week's analysis for trend comparison.
+            strategy_doc: Full strategy document for strategic context.
+            content_memory: Content memory summary for historical context.
+            cross_channel_summary: Other channels' recent digest.
+
+        Returns:
+            str: Structured weekly analysis markdown.
+        """
+        template = self.load_prompt_template("tiktok/weekly_analysis.md")
+
+        context = {
+            "this_week_data": {
+                "week_summary": safe_get(performance_data, "week_summary", {}),
+                "top_posts": safe_get(performance_data, "top_posts", []),
+                "bottom_posts": safe_get(performance_data, "bottom_posts", []),
+                "by_template_family": safe_get(performance_data, "by_template_family", {}),
+            },
+            "last_week_analysis": previous_analysis or "No previous analysis available (first run).",
+            "per_attribute_metrics": {
+                "by_topic": safe_get(performance_data, "by_topic", {}),
+                "by_angle": safe_get(performance_data, "by_angle", {}),
+                "by_structure": safe_get(performance_data, "by_structure", {}),
+                "by_hook_type": safe_get(performance_data, "by_hook_type", {}),
+            },
+            "account_trends": safe_get(performance_data, "account_trends", {}),
+            "strategy_context": strategy_doc or "No strategy document loaded.",
+            "content_memory_summary": content_memory or "No content memory available (first run).",
+            "cross_channel_summary": cross_channel_summary or "Single channel (TikTok only). No cross-channel data.",
+            "week_number": safe_get(performance_data, "week_number", ""),
+            "date_range": safe_get(performance_data, "date_range", ""),
+        }
+
+        prompt = self._render_template(template, context)
+
+        system = (
+            "You are a TikTok analytics expert for Slated, a family meal planning app. "
+            "Analyze the weekly performance data and produce a structured markdown report. "
+            "Evaluate performance against the content strategy and attribute taxonomy. "
+            "Assess explore/exploit effectiveness — are high-weight attributes actually "
+            "outperforming? Are cold-start attributes getting enough exploration? "
+            "Include: top/bottom performers with reasons, per-attribute rankings, "
+            "virality patterns, and specific recommendations for next week. "
+            "Be evidence-based — cite specific numbers. Flag declining trends."
+        )
+
+        logger.info("Running TikTok weekly performance analysis...")
+        return self._call_api(
+            prompt=prompt,
+            system=system,
+            model=MODEL_ROUTINE,
+            max_tokens=4096,
+            temperature=0.5,
+        )
+
     def _call_api(
         self,
         prompt: str,

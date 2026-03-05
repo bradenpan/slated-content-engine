@@ -136,7 +136,10 @@ def is_content_posted(
                     continue
                 try:
                     entry = json.loads(line)
-                    if entry.get("pin_id") == content_id and entry.get(platform_id_field):
+                    platform_id = entry.get(platform_id_field, "")
+                    if (entry.get("pin_id") == content_id
+                            and platform_id
+                            and platform_id != "PENDING"):
                         return True
                 except json.JSONDecodeError:
                     continue

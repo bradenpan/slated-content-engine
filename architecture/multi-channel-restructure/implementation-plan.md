@@ -1,7 +1,7 @@
 # Multi-Channel Content Pipeline — Implementation Plan
 
-**Date:** 2026-02-27 (updated 2026-03-04)
-**Status:** Active — Phases 1-9 complete, Phase 10b complete (pulled forward as Phase 8b), Phase 10 next
+**Date:** 2026-02-27 (updated 2026-03-05)
+**Status:** Active — Phases 1-12 complete (MVP complete). Post-MVP enhancements next.
 
 ---
 
@@ -705,7 +705,7 @@ Every TikTok post is tagged with attributes for the feedback loop:
 
 #### 5. `src/tiktok/compute_attribute_weights.py`
 
-Deterministic Python — no LLM calls. Reads performance data + taxonomy, outputs 7-21 allocated slots:
+Deterministic Python — no LLM calls. Reads performance data + taxonomy, outputs 7 allocated slots (scales to 14-21 when video pipeline adds volume in Phase 13):
 - Load `data/tiktok/performance-summary.json` (or use cold-start defaults)
 - For each attribute dimension, compute performance-weighted probabilities
 - Allocate N slots with 65/35 exploit/explore split
@@ -888,7 +888,7 @@ Publer uses a static API key. No OAuth flow, no token refresh, no token store. T
 
 #### 12. `src/tiktok/post_content.py`
 
-Daily posting orchestrator (called 1-3x daily depending on cadence ramp):
+Daily posting orchestrator (called once daily):
 - Read from `data/tiktok/carousel-schedule.json`
 - Idempotency check against `data/tiktok/content-log.jsonl`
 - Add random jitter (0-120 seconds before API call)
@@ -907,7 +907,7 @@ Daily posting orchestrator (called 1-3x daily depending on cadence ramp):
 | Workflow | Trigger | Steps |
 |----------|---------|-------|
 | `tiktok-promote-and-schedule.yml` | `repository_dispatch` (Sheet approval) | Read approved carousels → distribute across 7 days → write schedule JSON |
-| `tiktok-daily-post.yml` | Cron 3x daily (10am, 4pm, 7pm ET) | Read schedule → post via Publer (or log manual) → update logs → Slack |
+| `tiktok-daily-post.yml` | Cron daily (optimal time TBD from analytics) | Read schedule → post via Publer (or log manual) → update logs → Slack |
 
 Each workflow: single concurrency group, Slack failure notifications, timeout guards.
 

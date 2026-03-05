@@ -46,9 +46,29 @@ jobs:
       - name: Pull Pinterest analytics
         run: python -m src.pinterest.pull_analytics
 
-      # Future: Pull TikTok analytics (Phase 12)
-      # - name: Pull TikTok analytics
-      #   run: python -m src.tiktok.pull_analytics
+      - name: Pull TikTok analytics
+        id: tiktok-analytics
+        continue-on-error: true  # Don't block Pinterest data commit if Publer creds missing
+        env:
+          PUBLER_API_KEY: ${{ secrets.PUBLER_API_KEY }}
+          PUBLER_WORKSPACE_ID: ${{ secrets.PUBLER_WORKSPACE_ID }}
+          PUBLER_ACCOUNT_ID: ${{ secrets.PUBLER_ACCOUNT_ID }}  # Optional — omit for workspace-level
+        run: python -m src.tiktok.pull_analytics
+
+      - name: Warn on TikTok analytics failure
+        if: steps.tiktok-analytics.outcome == 'failure'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          python -c "
+          import os
+          try:
+              from src.shared.apis.slack_notify import SlackNotify
+              s = SlackNotify()
+              s.notify('TikTok analytics pull failed (non-blocking). Check workflow logs.', level='warning')
+          except Exception:
+              pass
+          "
 
       - name: Generate content memory summary
         # Python computation only -- no LLM call

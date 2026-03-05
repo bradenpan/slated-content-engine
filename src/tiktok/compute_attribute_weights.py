@@ -6,7 +6,7 @@ top-performing attributes, 35% ensures even exploration of untested ones.
 
 Cold-start behavior: until an attribute has 5+ posts, it receives equal
 weight (pure exploration). After threshold, weights reflect a composite
-performance score based on saves, shares, completions, and impressions.
+performance score based on saves, shares, likes, and impressions.
 
 Called by Phase 12 analytics pipeline after weekly performance data is collected.
 """
@@ -21,11 +21,13 @@ logger = logging.getLogger(__name__)
 
 TAXONOMY_PATH = STRATEGY_DIR / "tiktok" / "attribute-taxonomy.json"
 
-# Composite score weights — saves and shares matter most on TikTok
+# Composite score weights — saves and shares matter most on TikTok.
+# Completions excluded: Publer insights API doesn't provide watch-through
+# data. Revisit if TikTok Display API is added (Phase 12 future upgrade).
 METRIC_WEIGHTS = {
-    "saves": 0.35,
-    "shares": 0.30,
-    "completions": 0.25,
+    "saves": 0.40,
+    "shares": 0.35,
+    "likes": 0.15,
     "impressions": 0.10,
 }
 
@@ -38,9 +40,17 @@ def load_taxonomy(path: Path = TAXONOMY_PATH) -> dict:
 def save_taxonomy(taxonomy: dict, path: Path = TAXONOMY_PATH) -> None:
     """Save the updated taxonomy JSON (atomic write)."""
     tmp = path.with_suffix(".tmp")
-    tmp.write_text(json.dumps(taxonomy, indent=2, ensure_ascii=False), encoding="utf-8")
-    tmp.replace(path)
-    logger.info("Saved updated taxonomy to %s", path)
+    try:
+        tmp.write_text(json.dumps(taxonomy, indent=2, ensure_ascii=False), encoding="utf-8")
+        tmp.replace(path)
+        logger.info("Saved updated taxonomy to %s", path)
+    except OSError as e:
+        logger.error("Failed to save taxonomy: %s", e)
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise
 
 
 def _composite_score(attr: dict) -> float:
@@ -142,17 +152,28 @@ def compute_weights(taxonomy: dict) -> dict:
 
 
 def update_taxonomy_from_performance(post_log_entries: list[dict]) -> dict:
-    """Load taxonomy, accumulate performance data, recompute weights, save.
+    """Load taxonomy, recompute performance data from scratch, update weights, save.
+
+    Resets all attribute counters before accumulating, so this function is
+    idempotent — calling it multiple times with the same full entry list
+    produces the same result (no double-counting).
 
     Args:
         post_log_entries: List of post log dicts, each with keys:
-            topic, angle, structure, hook_type, impressions, saves, shares, completions.
+            topic, angle, structure, hook_type, impressions, saves, shares, likes.
 
     Returns:
         The updated taxonomy dict.
     """
     taxonomy = load_taxonomy()
     dimensions = taxonomy.get("dimensions", {})
+
+    # Reset all counters to avoid double-counting on repeated runs
+    for dim in dimensions.values():
+        for attr in dim.get("attributes", {}).values():
+            attr["post_count"] = 0
+            for metric in METRIC_WEIGHTS:
+                attr[metric] = 0
 
     for entry in post_log_entries:
         for dim_name in dimensions:
@@ -165,9 +186,9 @@ def update_taxonomy_from_performance(post_log_entries: list[dict]) -> dict:
                 continue
 
             attr = attrs[attr_value]
-            attr["post_count"] = attr.get("post_count", 0) + 1
+            attr["post_count"] += 1
             for metric in METRIC_WEIGHTS:
-                attr[metric] = attr.get(metric, 0) + entry.get(metric, 0)
+                attr[metric] += entry.get(metric, 0)
 
     taxonomy = compute_weights(taxonomy)
     save_taxonomy(taxonomy)
@@ -175,11 +196,40 @@ def update_taxonomy_from_performance(post_log_entries: list[dict]) -> dict:
 
 
 if __name__ == "__main__":
+    import sys
+
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
-    tax = load_taxonomy()
-    print(f"Loaded taxonomy v{tax.get('version')}")
-    for dim_name, dim in tax.get("dimensions", {}).items():
-        attrs = dim.get("attributes", {})
-        print(f"\n{dim_name} ({len(attrs)} attributes):")
-        for attr_name, attr in attrs.items():
-            print(f"  {attr_name}: weight={attr['weight']}, posts={attr['post_count']}")
+
+    PERFORMANCE_SUMMARY_PATH = Path(__file__).parent.parent.parent / "data" / "tiktok" / "performance-summary.json"
+
+    if "--update" in sys.argv:
+        # Feed performance data into taxonomy weights
+        if not PERFORMANCE_SUMMARY_PATH.exists():
+            print(f"No performance summary found at {PERFORMANCE_SUMMARY_PATH}")
+            print("Run pull_analytics.py first to generate performance data.")
+            sys.exit(1)
+
+        perf = json.loads(PERFORMANCE_SUMMARY_PATH.read_text(encoding="utf-8"))
+        entries = perf.get("entries", [])
+        if not entries:
+            print("Performance summary has no entries. Nothing to update.")
+            sys.exit(0)
+
+        print(f"Updating taxonomy from {len(entries)} performance entries...")
+        tax = update_taxonomy_from_performance(entries)
+        print(f"Updated taxonomy v{tax.get('version')}")
+        for dim_name, dim in tax.get("dimensions", {}).items():
+            attrs = dim.get("attributes", {})
+            print(f"\n{dim_name} ({len(attrs)} attributes):")
+            for attr_name, attr in attrs.items():
+                print(f"  {attr_name}: weight={attr['weight']}, posts={attr.get('post_count', 0)}")
+    else:
+        # Display current taxonomy (no update)
+        tax = load_taxonomy()
+        print(f"Loaded taxonomy v{tax.get('version')}")
+        for dim_name, dim in tax.get("dimensions", {}).items():
+            attrs = dim.get("attributes", {})
+            print(f"\n{dim_name} ({len(attrs)} attributes):")
+            for attr_name, attr in attrs.items():
+                print(f"  {attr_name}: weight={attr['weight']}, posts={attr.get('post_count', 0)}")
+        print("\nTip: Run with --update to feed performance data into weights.")

@@ -1,0 +1,68 @@
+name: TikTok Weekly Review
+
+# TikTok-specific weekly review: performance analysis + attribute weight update + content plan
+# Runs Monday 6:30am ET (11:30 UTC) -- 30 min after Pinterest (6:00am ET), 1h after analytics (5:30am ET)
+# Analytics data and content memory are already fresh from the collection step.
+on:
+  schedule:
+    - cron: '30 11 * * 1'  # 11:30 UTC = 6:30 AM ET, Monday (30 min after Pinterest)
+  workflow_dispatch:       # Manual fallback trigger via GitHub UI
+
+concurrency:
+  group: slated-content-engine-tiktok
+  cancel-in-progress: false
+
+env:
+  ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+  GOOGLE_SHEETS_CREDENTIALS_JSON: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS_JSON }}
+  TIKTOK_SPREADSHEET_ID: ${{ secrets.TIKTOK_SPREADSHEET_ID }}
+  SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+  PUBLER_API_KEY: ${{ secrets.PUBLER_API_KEY }}
+  PUBLER_WORKSPACE_ID: ${{ secrets.PUBLER_WORKSPACE_ID }}
+  PUBLER_ACCOUNT_ID: ${{ secrets.PUBLER_ACCOUNT_ID }}
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+  GCS_BUCKET_NAME: ${{ secrets.GCS_BUCKET_NAME }}
+
+jobs:
+  tiktok-weekly-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup pipeline
+        uses: ./.github/actions/setup-pipeline
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Puppeteer
+        run: npm install puppeteer
+
+      - name: Run TikTok weekly performance analysis
+        run: python -m src.tiktok.weekly_analysis
+
+      - name: Update attribute weights from performance data
+        continue-on-error: true  # Plan can use stale weights if update fails
+        run: python -m src.tiktok.compute_attribute_weights --update
+
+      - name: Generate weekly content plan
+        run: python -m src.tiktok.generate_weekly_plan
+
+      - name: Commit updated data files
+        uses: ./.github/actions/commit-data
+        with:
+          message: "chore: update TikTok analytics and plan [skip ci]"
+
+      - name: Notify failure
+        if: failure()
+        uses: ./.github/actions/notify-failure
+        with:
+          workflow_name: "TikTok Weekly Review"
+          run_url: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

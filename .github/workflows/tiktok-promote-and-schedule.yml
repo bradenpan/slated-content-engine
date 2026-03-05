@@ -1,0 +1,45 @@
+name: TikTok Promote & Schedule
+
+on:
+  repository_dispatch:
+    types: [tiktok-promote-and-schedule]
+  workflow_dispatch:
+
+concurrency:
+  group: slated-tiktok-scheduling
+  cancel-in-progress: false
+
+env:
+  TIKTOK_SPREADSHEET_ID: ${{ secrets.TIKTOK_SPREADSHEET_ID }}
+  GOOGLE_SHEETS_CREDENTIALS_JSON: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS_JSON }}
+  SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+  GCS_BUCKET_NAME: ${{ secrets.GCS_BUCKET_NAME }}
+
+jobs:
+  promote-and-schedule:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup pipeline
+        uses: ./.github/actions/setup-pipeline
+
+      - name: Promote approved carousels and write schedule
+        run: python -m src.tiktok.promote_and_schedule
+
+      - name: Commit updated data files
+        uses: ./.github/actions/commit-data
+        with:
+          message: "chore: update tiktok schedule [skip ci]"
+
+      - name: Notify failure
+        if: failure()
+        uses: ./.github/actions/notify-failure
+        with:
+          workflow_name: "TikTok Promote & Schedule"
+          run_url: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

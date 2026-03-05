@@ -1,6 +1,6 @@
 # Pinterest Pipeline — Architecture
 
-**Last verified:** 2026-03-04
+**Last verified:** 2026-03-05
 **Update this doc when:** a file is added/removed from `src/`, a workflow is added/removed, an external integration changes, a major feature is added/removed, or data schemas change.
 
 ---
@@ -36,6 +36,25 @@ Plan → [Plan Regen] → Generate → Review → [Content Regen] → Deploy →
 | 8 | Daily Posting | 3x daily cron | `post_pins.py` | Live Pinterest pins, updated `content-log.jsonl` |
 | 9 | Weekly Analysis | Monday 6am (after analytics collection) | `weekly_analysis.py` | Analysis markdown |
 | 10 | Monthly Review | 1st Monday of month | `monthly_review.py` | Strategy recommendations |
+
+### TikTok Pipeline Flow
+
+```
+Plan → Render → GCS Upload → Sheet → [Human Review] → Schedule → Post (3x daily)
+```
+
+| # | Step | Trigger | Script(s) | Output |
+|---|------|---------|-----------|--------|
+| 1 | Weekly Plan | `tiktok-weekly-plan.yml` | `tiktok/generate_weekly_plan.py` | 7 carousel specs + rendered PNGs + GCS upload + TikTok Content Queue sheet |
+| 2 | Human Review | Manual in Sheet | — | Status per row in Column M (approved/rejected) |
+| 3 | Promote & Schedule | `repository_dispatch: tiktok-promote-and-schedule` | `tiktok/promote_and_schedule.py` | `carousel-schedule.json` (7d × 3 slots), Sheet status → "scheduled" |
+| 4 | Daily Posting | 3x daily cron (10am/4pm/7pm ET) | `tiktok/post_content.py` | Posts via Publer API, updated `content-log.jsonl` |
+
+**Posting modes:** `TIKTOK_POSTING_ENABLED=true` posts via Publer automatically. `=false` sends Slack alerts with GCS links for manual upload.
+
+**Schedule format:** `data/tiktok/carousel-schedule.json` — flat array of carousel objects with `scheduled_date`, `scheduled_slot` (morning/afternoon/evening), `scheduled_at` (ISO datetime with timezone), and `slide_urls`.
+
+**Idempotency:** `is_content_posted(carousel_id, "tiktok")` checks `content-log.jsonl` before posting. Safe to re-run.
 
 ---
 
@@ -73,9 +92,13 @@ slated-content-engine/              # Renamed from pinterest-pipeline
 │   │   ├── setup_boards.py       # One-time board creation
 │   │   └── redate_schedule.py    # Pin schedule redating
 │   ├── tiktok/                  # TikTok-specific code
+│   │   ├── apis/                 # TikTok API wrappers
+│   │   │   └── publer_api.py    # Publer REST API wrapper (media import → post)
 │   │   ├── generate_weekly_plan.py # Weekly planning orchestrator (7 carousels)
 │   │   ├── generate_carousels.py  # Carousel rendering + image gen orchestrator
 │   │   ├── publish_content_queue.py # Content Queue sheet publisher
+│   │   ├── promote_and_schedule.py # Approved → scheduled (7d×3 slots, schedule JSON)
+│   │   ├── post_content.py       # Daily posting via Publer (3x daily cron)
 │   │   ├── compute_attribute_weights.py # Explore/exploit weight updater
 │   │   └── carousel_assembler.py # HTML/CSS template → multi-slide PNG renderer
 │   └── apps-script/              # Google Apps Script source
@@ -274,6 +297,9 @@ generate_pin_content → bare URL "https://goslated.com/blog/{slug}"
 | `daily-post-evening.yml` | Cron: 8pm ET | Post scheduled pins (evening slot) |
 | `monthly-review.yml` | Cron: 1st Monday | Monthly deep strategy review |
 | `setup-boards.yml` | Manual only | One-time Pinterest board creation |
+| **TikTok Workflows** | | |
+| `tiktok-promote-and-schedule.yml` | Dispatch: `tiktok-promote-and-schedule` | Read approved carousels → schedule JSON → Sheet status "scheduled" |
+| `tiktok-daily-post.yml` | Cron: 10am/4pm/7pm ET | Post scheduled carousels via Publer (or Slack fallback) |
 
 **Dispatch triggers** come from Google Apps Script watching cell edits in the Google Sheet.
 
@@ -315,6 +341,18 @@ Cost: ~$3-5/week for a full cycle (planning + 8-10 blogs + 28 pins + analysis).
 9. **Evening posting slots.** The weekly plan assigns `evening-1` and `evening-2` slots. The evening posting workflow matches both via `startswith("evening")`.
 
 10. **`regen_content.py` imports private functions** from `generate_pin_content.py` (`_source_ai_image`, `_load_brand_voice`, `_load_keyword_targets`). These are tightly coupled — changes to the private functions affect regen.
+
+11. **TikTok slide URLs use deterministic GCS paths.** Convention: `tiktok/{carousel_id}/slide-{i}.png`. `promote_and_schedule.py` reconstructs URLs from `carousel_id` + `slide_count` without listing blobs. If `generate_weekly_plan.py` fails to upload slides to GCS, the schedule will have missing `slide_urls` (Slack warning sent but carousels still scheduled).
+
+12. **TikTok Content Queue is 14 columns (A-N).** Status is column M (index 12), Notes is column N (index 13). Different from Pinterest's 12-column layout. Column indices are in `sheets_api.py`.
+
+13. **TikTok posting has two modes.** `TIKTOK_POSTING_ENABLED=true` posts via Publer API. `=false` sends Slack notifications with GCS links for manual upload. Both modes log to `content-log.jsonl` (with `publer_post_id` or `MANUAL_UPLOAD_REQUIRED`).
+
+14. **TikTok cron triggers are UTC.** Morning=`0 15 * * *` (10am ET), Afternoon=`0 21 * * *` (4pm ET), Evening=`0 0 * * *` (7pm ET = midnight UTC next day). DST shifts these by 1 hour (9am/3pm/6pm during EDT).
+
+15. **TikTok analytics flow (Phase 12).** `collect-analytics.yml` pulls TikTok post insights via Publer API alongside Pinterest analytics. `tiktok-weekly-review.yml` runs: analysis → attribute weight update → plan generation. Feedback loop: `pull_analytics.py` → `performance-summary.json` → `compute_attribute_weights.py --update` → shifted taxonomy weights → `generate_weekly_plan.py` reads updated weights. Cross-channel summaries flow both directions (Pinterest analysis sees TikTok digest, and vice versa) via `generate_cross_channel_summary()`.
+
+16. **TikTok analytics env vars.** `PUBLER_ACCOUNT_ID` is required for the analytics endpoint (`GET /analytics/{account_id}/post_insights`). Different from `PUBLER_WORKSPACE_ID` which is used for posting.
 
 ---
 

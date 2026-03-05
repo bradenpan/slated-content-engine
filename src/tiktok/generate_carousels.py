@@ -115,21 +115,33 @@ def generate_carousels(
         # Step 2: Build slide list for CarouselAssembler
         slides = []
 
-        # Hook slide
+        # Hook slide — guard against null hook_text from Claude
+        hook_text = spec.get("hook_text") or ""
         hook_context = {
             "slide_type": "hook",
-            "headline": spec.get("hook_text", ""),
+            "headline": hook_text,
         }
         if background_image_path:
             hook_context["background_image_url"] = str(background_image_path)
         slides.append(hook_context)
 
-        # Content slides
-        for i, content_slide in enumerate(spec.get("content_slides", [])):
+        # Content slides — guard against null content_slides from Claude
+        content_slides = spec.get("content_slides") or []
+        if not isinstance(content_slides, list):
+            logger.warning(
+                "Carousel %s has non-list content_slides (%s), using empty",
+                carousel_id, type(content_slides).__name__,
+            )
+            content_slides = []
+
+        for i, content_slide in enumerate(content_slides):
+            if not isinstance(content_slide, dict):
+                logger.warning("Carousel %s content_slide %d is not a dict, skipping", carousel_id, i)
+                continue
             slide_context = {
                 "slide_type": "content",
-                "headline": content_slide.get("headline", ""),
-                "body_text": content_slide.get("body_text", ""),
+                "headline": content_slide.get("headline") or "",
+                "body_text": content_slide.get("body_text") or "",
             }
             if content_slide.get("list_items"):
                 slide_context["list_items"] = content_slide["list_items"]
@@ -141,12 +153,15 @@ def generate_carousels(
                 slide_context["background_image_url"] = str(background_image_path)
             slides.append(slide_context)
 
-        # CTA slide
-        cta = spec.get("cta_slide", {})
+        # CTA slide — guard against null cta_slide from Claude
+        cta = spec.get("cta_slide") or {}
+        if not isinstance(cta, dict):
+            logger.warning("Carousel %s cta_slide is not a dict, using defaults", carousel_id)
+            cta = {}
         cta_context = {
             "slide_type": "cta",
-            "cta_primary": cta.get("cta_primary", "Follow @slatedapp"),
-            "cta_secondary": cta.get("cta_secondary", ""),
+            "cta_primary": cta.get("cta_primary") or "Follow @slatedapp",
+            "cta_secondary": cta.get("cta_secondary") or "",
             "handle": "@slatedapp",
         }
         if background_image_path:

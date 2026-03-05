@@ -600,6 +600,61 @@ def _build_performance_history(content_log: list[dict], today: date) -> str:
     return "\n".join(section_lines)
 
 
+def generate_cross_channel_summary(exclude_channel: str) -> str:
+    """Generate a short digest of other channels' recent performance.
+
+    Filters the content log to entries NOT matching *exclude_channel* from the
+    last 7 days, computes quick aggregates, and returns a 200-300 char summary
+    suitable for the ``cross_channel_summary`` prompt param.
+
+    Args:
+        exclude_channel: Channel to exclude (e.g. "pinterest" when running
+                         TikTok analysis, or "tiktok" for Pinterest).
+
+    Returns:
+        Short summary string, or a placeholder if no cross-channel data exists.
+    """
+    content_log = load_content_log()
+    today = date.today()
+    week_ago = (today - timedelta(days=7)).isoformat()
+
+    other_entries = [
+        e for e in content_log
+        if _get_channel(e) != exclude_channel
+        and (get_entry_date(e) or "") >= week_ago
+    ]
+
+    if not other_entries:
+        return f"No cross-channel data (only {exclude_channel} active)."
+
+    # Group by channel
+    by_channel: dict[str, list[dict]] = defaultdict(list)
+    for e in other_entries:
+        by_channel[_get_channel(e)].append(e)
+
+    parts = []
+    for ch, entries in sorted(by_channel.items()):
+        count = len(entries)
+        total_impr = sum(safe_get(e, "impressions", 0) for e in entries)
+        total_saves = sum(safe_get(e, "saves", 0) for e in entries)
+        save_rate = total_saves / total_impr * 100 if total_impr > 0 else 0.0
+
+        # Top performer by saves
+        top = max(entries, key=lambda e: safe_get(e, "saves", 0))
+        top_title = (
+            safe_get(top, "title", "")
+            or safe_get(top, "blog_title", "")
+            or safe_get(top, "topic", "untitled")
+        )[:40]
+
+        parts.append(
+            f"{ch.capitalize()}: {count} posts, {total_impr:,} impr, "
+            f"save_rate={save_rate:.1f}%. Top: \"{top_title}\""
+        )
+
+    return "Last 7 days — " + " | ".join(parts)
+
+
 def _write_summary(summary: str, output_path: Path = None) -> None:
     """Write the summary markdown to disk."""
     memory_path = output_path or (DATA_DIR / "content-memory-summary.md")

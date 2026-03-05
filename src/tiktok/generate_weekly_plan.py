@@ -34,6 +34,7 @@ from src.shared.content_planner import (
 from src.shared.content_memory import generate_content_memory_summary
 from src.shared.paths import DATA_DIR, STRATEGY_DIR
 from src.tiktok.compute_attribute_weights import load_taxonomy
+from src.shared.apis.gcs_api import GcsAPI
 from src.tiktok.generate_carousels import generate_carousels
 from src.tiktok.publish_content_queue import publish_content_queue
 
@@ -121,18 +122,39 @@ def generate_plan(
         for i in range(7)
     )
 
+    # Step 6.5: Fail-fast on missing Sheet ID (before expensive Claude/render calls)
+    if not dry_run:
+        tiktok_sheet_id = os.environ.get("TIKTOK_SPREADSHEET_ID", "")
+        if not tiktok_sheet_id:
+            raise ValueError(
+                "TIKTOK_SPREADSHEET_ID env var not set. "
+                "Set it before running plan generation to avoid wasted API calls."
+            )
+
     # Step 7: Call Claude to generate the plan
     claude = claude or ClaudeAPI()
-    plan = _call_claude_for_plan(
-        claude=claude,
-        strategy_context=strategy_context,
-        content_memory=content_memory,
-        latest_analysis=latest_analysis,
-        seasonal_context=seasonal_context,
-        taxonomy=taxonomy,
-        week_number=week_number,
-        posting_dates=posting_dates,
-    )
+    try:
+        plan = _call_claude_for_plan(
+            claude=claude,
+            strategy_context=strategy_context,
+            content_memory=content_memory,
+            latest_analysis=latest_analysis,
+            seasonal_context=seasonal_context,
+            taxonomy=taxonomy,
+            week_number=week_number,
+            posting_dates=posting_dates,
+        )
+    except Exception as e:
+        logger.error("Claude plan generation failed: %s", e)
+        try:
+            _slack = slack or SlackNotify()
+            _slack.notify_failure(
+                "tiktok_generate_weekly_plan",
+                f"Claude plan generation failed: {e}",
+            )
+        except Exception:
+            pass
+        raise
 
     # Step 8: Validate the plan
     _validate_plan(plan, taxonomy)
@@ -185,17 +207,54 @@ def generate_plan(
         except OSError:
             pass
 
-    # Step 12: Publish to Google Sheet
+    # Step 12: Upload rendered slides to GCS
+    slide_preview_urls = {}
+    if not dry_run:
+        try:
+            gcs = GcsAPI()
+            if gcs.is_available:
+                for carousel in rendered:
+                    carousel_id = carousel.get("carousel_id", "")
+                    slide_paths = carousel.get("rendered_slides", [])
+                    if not carousel_id or not slide_paths:
+                        continue
+
+                    gcs_urls = []
+                    for i, slide_path in enumerate(slide_paths):
+                        remote_name = f"tiktok/{carousel_id}/slide-{i}.png"
+                        url = gcs.upload_image(Path(slide_path), remote_name)
+                        if url:
+                            gcs_urls.append(url)
+
+                    if gcs_urls:
+                        carousel["slide_urls"] = gcs_urls
+                        carousel["slide_count"] = len(gcs_urls)
+                        slide_preview_urls[carousel_id] = gcs_urls[0]
+                        logger.info(
+                            "Uploaded %d/%d slides for %s to GCS",
+                            len(gcs_urls), len(slide_paths), carousel_id,
+                        )
+            else:
+                logger.warning("GCS not available, skipping slide upload")
+        except Exception as e:
+            logger.error("Failed to upload slides to GCS: %s", e)
+            # Flag all carousels as having no GCS slides so downstream
+            # code doesn't schedule dead URLs
+            for carousel in rendered:
+                carousel["gcs_upload_failed"] = True
+
+    # Step 13: Publish to Google Sheet
     if not dry_run:
         try:
             tiktok_sheet_id = os.environ.get("TIKTOK_SPREADSHEET_ID", "")
             sheets = sheets or SheetsAPI(sheet_id=tiktok_sheet_id)
-            publish_content_queue(rendered, sheets=sheets)
+            publish_content_queue(rendered, slide_urls=slide_preview_urls, sheets=sheets)
             logger.info("Published to TikTok Google Sheet")
         except Exception as e:
             logger.error("Failed to publish to Google Sheets: %s", e)
+            raise
 
-    # Step 13: Slack notification
+    # Step 14: Slack notification
     try:
         slack = slack or SlackNotify()
         num_carousels = len(plan.get("carousels", []))
@@ -289,14 +348,20 @@ def _validate_plan(plan: dict, taxonomy: dict) -> None:
             )
 
         # Layer 3: Quality checks
-        content_slides = carousel.get("content_slides", [])
+        content_slides = carousel.get("content_slides") or []
+        if not isinstance(content_slides, list):
+            logger.warning(
+                "Carousel %s content_slides is %s, expected list",
+                carousel.get("carousel_id", i), type(content_slides).__name__,
+            )
+            content_slides = []
         if len(content_slides) < 2:
             logger.warning(
                 "Carousel %s has only %d content slides (recommend 3-7)",
                 carousel.get("carousel_id", i), len(content_slides),
             )
 
-        hook_text = carousel.get("hook_text", "")
+        hook_text = carousel.get("hook_text") or ""
         if len(hook_text.split()) > 15:
             logger.warning(
                 "Carousel %s hook_text is %d words (recommend ≤15)",

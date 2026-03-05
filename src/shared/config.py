@@ -53,3 +53,10 @@ MAX_PIN_FAILURES = 3
 INITIAL_JITTER_MAX = 900  # 0-15 minutes
 INTER_PIN_JITTER_MIN = 300  # 5 minutes
 INTER_PIN_JITTER_MAX = 1200  # 20 minutes
+
+# --- Publer (TikTok) ---
+PUBLER_BASE_URL = "https://app.publer.com/api/v1"
+
+# --- TikTok Posting Timing ---
+TIKTOK_JITTER_MAX = 120  # 0-2 minutes (less than Pinterest; posting via Publer, not direct)
+TIKTOK_MAX_POST_FAILURES = 3

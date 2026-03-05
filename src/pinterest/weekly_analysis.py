@@ -43,6 +43,7 @@ from src.shared.analytics_utils import (
     aggregate_by_dimension,
 )
 from src.shared.content_planner import load_strategy_context, load_content_memory
+from src.shared.content_memory import generate_cross_channel_summary
 from src.shared.paths import ANALYSIS_DIR as _ANALYSIS_BASE, DATA_DIR
 from src.shared.utils.content_log import load_content_log
 
@@ -93,6 +94,7 @@ def run_weekly_analysis(week_number: Optional[int] = None, channel: str = "pinte
     strategy_context = load_strategy_context()
     strategy_doc = strategy_context.get("strategy_doc", "")
     content_memory = load_content_memory()
+    cross_channel = generate_cross_channel_summary(exclude_channel="pinterest")
 
     # Step 3: Load previous week's analysis
     previous_analysis = load_previous_analysis()
@@ -109,6 +111,7 @@ def run_weekly_analysis(week_number: Optional[int] = None, channel: str = "pinte
             content_plan=content_plan,
             strategy_doc=strategy_doc,
             content_memory=content_memory,
+            cross_channel_summary=cross_channel,
         )
     except Exception as e:
         logger.error("Claude analysis failed: %s", e)

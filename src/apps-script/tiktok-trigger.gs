@@ -17,7 +17,7 @@
  *       you MUST use an installable trigger.)
  *
  * Trigger map:
- * - Content Queue tab, all column M reviewed → tiktok-batch-approved
+ * - Content Queue tab, all column M reviewed → tiktok-promote-and-schedule
  *   (Column M = Status, column index 13)
  */
 
@@ -30,7 +30,7 @@ function onSheetEdit(e) {
   // Fires when ALL data rows have a terminal status (approved / rejected)
   if (sheet.getName() === "Content Queue" && range.getColumn() === 13) {
     if (allContentReviewed(sheet)) {
-      triggerGitHubWorkflow("tiktok-batch-approved");
+      triggerGitHubWorkflow("tiktok-promote-and-schedule");
     }
   }
 }

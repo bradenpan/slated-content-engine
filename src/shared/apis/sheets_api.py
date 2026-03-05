@@ -863,6 +863,129 @@ class SheetsAPI:
         self._clear_and_write(TAB_CONTENT_QUEUE, rows, value_input_option="USER_ENTERED")
         logger.info("TikTok content queue written: %d carousels.", len(carousels))
 
+    def read_tiktok_approved_carousels(self) -> list[dict]:
+        """Read approved carousels from the TikTok Content Queue tab.
+
+        Returns carousels where status column = "approved".
+
+        Returns:
+            list[dict]: Approved carousel data with all Content Queue fields.
+        """
+        self._validate_headers(TAB_CONTENT_QUEUE, self.TIKTOK_CQ_HEADERS)
+        try:
+            result = self.sheets.values().get(
+                spreadsheetId=self.sheet_id,
+                range=f"'{TAB_CONTENT_QUEUE}'!A:N",
+            ).execute()
+
+            values = result.get("values", [])
+            if len(values) < 2:
+                return []
+
+            headers = values[0]
+            approved = []
+            for row in values[1:]:
+                if not row:
+                    continue
+                # Status is column M (index 12)
+                status = row[12].strip().lower() if len(row) > 12 else ""
+                if status != "approved":
+                    continue
+
+                carousel = {}
+                for j, header in enumerate(headers):
+                    key = header.lower().replace(" ", "_")
+                    carousel[key] = row[j] if len(row) > j else ""
+
+                # Normalize to expected field names
+                carousel["carousel_id"] = carousel.get("id", "")
+                carousel.setdefault("slide_count", 0)
+                try:
+                    carousel["slide_count"] = int(carousel["slide_count"])
+                except (ValueError, TypeError):
+                    carousel["slide_count"] = 0
+
+                approved.append(carousel)
+
+            logger.info("Found %d approved TikTok carousels.", len(approved))
+            return approved
+
+        except Exception as e:
+            logger.error("Failed to read TikTok approved carousels: %s", e)
+            raise SheetsAPIError(f"Failed to read TikTok approved carousels: {e}") from e
+
+    def update_tiktok_content_status(
+        self,
+        carousel_id: str,
+        status: str,
+        publer_post_id: Optional[str] = None,
+        error_message: Optional[str] = None,
+    ) -> None:
+        """Update a carousel's status in the TikTok Content Queue tab.
+
+        Finds the row by carousel_id (column A) and updates the status column (M).
+        Optionally writes publer_post_id or error to the Notes column (N).
+
+        Args:
+            carousel_id: Internal carousel ID.
+            status: New status value (e.g., "scheduled", "posted", "failed").
+            publer_post_id: Publer post ID to record on success.
+            error_message: Error details to record on failure.
+        """
+        self._validate_headers(TAB_CONTENT_QUEUE, self.TIKTOK_CQ_HEADERS)
+        try:
+            result = self.sheets.values().get(
+                spreadsheetId=self.sheet_id,
+                range=f"'{TAB_CONTENT_QUEUE}'!A:A",
+            ).execute()
+
+            values = result.get("values", [])
+            target_row = None
+            for i, row in enumerate(values):
+                if row and row[0] == carousel_id:
+                    target_row = i + 1  # 1-based
+                    break
+
+            if target_row is None:
+                logger.warning("Carousel %s not found in TikTok Content Queue.", carousel_id)
+                return
+
+            # Build updates: Status (M) + Notes (N)
+            updates = [
+                {
+                    "range": f"'{TAB_CONTENT_QUEUE}'!M{target_row}",
+                    "values": [[status]],
+                },
+            ]
+
+            note = ""
+            if publer_post_id:
+                note = f"publer_id: {publer_post_id}"
+            elif error_message:
+                note = f"ERROR: {error_message[:200]}"
+
+            if note:
+                updates.append({
+                    "range": f"'{TAB_CONTENT_QUEUE}'!N{target_row}",
+                    "values": [[note]],
+                })
+
+            self.sheets.values().batchUpdate(
+                spreadsheetId=self.sheet_id,
+                body={
+                    "valueInputOption": "RAW",
+                    "data": updates,
+                },
+            ).execute()
+            logger.info("Updated TikTok carousel %s status to '%s'.", carousel_id, status)
+
+        except SheetsAPIError:
+            raise
+        except Exception as e:
+            raise SheetsAPIError(
+                f"Failed to update TikTok content status for {carousel_id}: {e}"
+            ) from e
+
     def write_tiktok_weekly_review(self, review_data: dict) -> None:
         """Write TikTok weekly review data. Stub for Phase 12."""
         logger.info("write_tiktok_weekly_review: stub (Phase 12)")

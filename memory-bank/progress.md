@@ -2866,3 +2866,122 @@ Watches column M (Status) in TikTok Content Queue. When all rows have terminal s
 |--------|-------|---------|
 | Created | 9 | `strategy/tiktok/attribute-taxonomy.json`, `src/tiktok/compute_attribute_weights.py`, `src/tiktok/generate_weekly_plan.py`, `src/tiktok/generate_carousels.py`, `src/tiktok/publish_content_queue.py`, `prompts/tiktok/weekly_plan.md`, `prompts/tiktok/carousel_copy.md`, `prompts/tiktok/image_prompt.md`, `src/apps-script/tiktok-trigger.gs` |
 | Modified | 4 | `claude_api.py` (3 TikTok methods), `sheets_api.py` (`write_tiktok_content_queue` + `write_tiktok_weekly_review` stub), `image_cleaner.py` (PNG preservation + alpha-safe noise), `ARCHITECTURE.md` (TikTok Phase 10 sections) |
+
+---
+
+## Phase 11: TikTok Posting via Publer (2026-03-05)
+
+Automated posting pipeline for TikTok carousels via Publer's REST API. Bridges the gap between human approval in the TikTok Google Sheet and live posting. Includes scheduling orchestrator, daily posting with idempotency, manual-upload fallback mode, and failure tracking.
+
+### What was built
+
+**Publer API wrapper** (`src/tiktok/apis/publer_api.py`):
+REST API wrapper for Publer v1. Auth via `PUBLER_API_KEY` + `PUBLER_WORKSPACE_ID`. Methods: `import_media()` (bulk URL import), `poll_job()` (exponential backoff polling), `create_post()` (scheduled carousel post). Retry on 429/5xx with backoff. Custom `PublerAPIError` exception class.
+
+**Scheduling orchestrator** (`src/tiktok/promote_and_schedule.py`):
+Reads approved carousels from TikTok Content Queue sheet, distributes across 7 days × 3 slots (morning/afternoon/evening) round-robin, resolves GCS slide URLs from deterministic path convention (`tiktok/{carousel_id}/slide-{i}.png`), writes `data/tiktok/carousel-schedule.json`, updates Sheet status to "scheduled". Cap at 21 carousels/week with warning. DST-correct `scheduled_at` timestamps via `ZoneInfo("America/New_York")`. Warns via Slack if any carousels have missing slide URLs.
+
+**Daily posting orchestrator** (`src/tiktok/post_content.py`):
+Posts carousels for a specific time slot. Two modes: `TIKTOK_POSTING_ENABLED=true` → full Publer pipeline (import slides → poll → create post → poll → log); `=false` → Slack notification with GCS links for manual upload. Idempotency via `is_content_posted(carousel_id, "tiktok")`. Anti-bot jitter: deterministic seed, 0-120 seconds. Failure tracking in `data/tiktok/posting-failures.json` with Slack alert after 3 failures. CLI: `python -m src.tiktok.post_content morning [--date=YYYY-MM-DD] [--demo]`.
+
+**GCS upload step** added to `generate_weekly_plan.py`:
+Step 12 uploads rendered carousel slides to GCS after rendering and before Sheet publishing. Deterministic path convention: `tiktok/{carousel_id}/slide-{i}.png`. Handles partial upload failures (updates `slide_count` to match actual uploads). Passes `slide_preview_urls` to `publish_content_queue()` for Sheet preview column.
+
+**Sheets API methods** (`sheets_api.py`):
+- `read_tiktok_approved_carousels()` — Reads Content Queue rows where Status (col M) = "approved"
+- `update_tiktok_content_status(carousel_id, status, publer_post_id, error_message)` — Updates Status + Notes columns by carousel_id
+
+**GitHub Actions workflows:**
+- `tiktok-promote-and-schedule.yml` — Trigger: `repository_dispatch: tiktok-promote-and-schedule` + manual. Concurrency: `slated-tiktok-scheduling`.
+- `tiktok-daily-post.yml` — 3 cron triggers (10am/4pm/7pm ET), `workflow_dispatch` with `time_slot` + `date_override`. Concurrency: `slated-tiktok-posting`.
+
+**Config additions** (`config.py`):
+`PUBLER_BASE_URL`, `TIKTOK_JITTER_MAX=120`, `TIKTOK_MAX_POST_FAILURES=3`.
+
+### Bugs found and fixed during review (3 rounds)
+- **slide_urls gap:** No GCS upload existed between rendering and Sheet publishing. Fixed with two-part solution (upload step in generate_weekly_plan.py + URL resolution in promote_and_schedule.py).
+- **DST bug:** Hardcoded `-05:00` offset. Fixed with `datetime(..., tzinfo=ET).isoformat()`.
+- **Slack "pins" wording:** `notify_posting_complete()` says "pins". Replaced with `notify()` using TikTok-specific messages.
+- **Partial upload mismatch:** `slide_count` not updated on partial GCS failure. Fixed by syncing count with actual uploads.
+- **Silent unpostable scheduling:** No warning when carousels had missing slide_urls. Added Slack warning listing affected IDs.
+- **Dead code + redundant env vars + format string nit** cleaned up.
+
+### Required secrets (GitHub Actions)
+- `PUBLER_API_KEY` — Publer API key from app.publer.com/settings
+- `PUBLER_WORKSPACE_ID` — Publer workspace ID
+- `TIKTOK_POSTING_ENABLED` — "true" for Publer posting, "false" for Slack fallback
+
+### File counts
+
+| Action | Count | Details |
+|--------|-------|---------|
+| Created | 4 | `src/tiktok/apis/__init__.py`, `src/tiktok/apis/publer_api.py`, `src/tiktok/post_content.py`, `src/tiktok/promote_and_schedule.py` |
+| Created (workflows) | 2 | `tiktok-promote-and-schedule.yml`, `tiktok-daily-post.yml` |
+| Modified | 4 | `config.py` (Publer constants + TikTok timing), `sheets_api.py` (2 TikTok methods), `generate_weekly_plan.py` (GCS upload step), `ARCHITECTURE.md` (TikTok posting sections) |
+
+---
+
+## Phase 12: Analytics + Feedback Loop
+
+**Date:** 2026-03-05
+
+### Goal
+
+Pull TikTok performance data, analyze it weekly via Claude, and close the feedback loop so next week's content generation shifts toward what's working via Bayesian attribute weight updates.
+
+### What Was Built
+
+**TikTok analytics puller** (`src/tiktok/pull_analytics.py`):
+Fetches post-level analytics from Publer's post insights API. Filters content log to `channel="tiktok"` entries with `publer_post_id`, within 28-day lookback window. Metrics: views (→ impressions), likes, comments, shares, saves, engagement_rate. Updates content-log.jsonl with cumulative metrics (max() guard). Writes raw snapshot to `data/tiktok/analytics/YYYY-wNN-raw.json`. Writes `data/tiktok/performance-summary.json` with per-attribute averages for feedback loop. Identifies top/bottom 5 posts. CLI: `python -m src.tiktok.pull_analytics [--demo]`.
+
+**Publer analytics method** (`src/tiktok/apis/publer_api.py`):
+`get_post_insights(account_id)` — paginates through `GET /analytics/{account_id}/post_insights` (10/page). New env var: `PUBLER_ACCOUNT_ID`.
+
+**TikTok weekly analysis** (`src/tiktok/weekly_analysis.py`):
+Claude-powered weekly performance analysis mirroring Pinterest's pattern. Aggregates by TikTok attribute dimensions (topic, angle, structure, hook_type, template_family) instead of Pinterest's pillars/boards/templates. Loads strategy context + content memory + cross-channel summary (Pinterest digest). Saves to `analysis/tiktok/weekly/YYYY-wNN-review.md`. Fallback data-only report if Claude unavailable. CLI: `python -m src.tiktok.weekly_analysis [--demo]`.
+
+**TikTok analysis prompt** (`prompts/tiktok/weekly_analysis.md`):
+TikTok-specific analysis prompt. Evaluates explore/exploit effectiveness, virality patterns (not evergreen compounding), attribute taxonomy performance. Includes Strategic Alignment Check + Cross-Channel Notes output sections. Context vars: `{{this_week_data}}`, `{{per_attribute_metrics}}`, `{{strategy_context}}`, `{{content_memory_summary}}`, `{{cross_channel_summary}}`.
+
+**Claude API method** (`src/shared/apis/claude_api.py`):
+`analyze_tiktok_performance()` — same enriched signature as Pinterest's `analyze_weekly_performance()`. Loads `prompts/tiktok/weekly_analysis.md`. Sonnet model, temp 0.5, 4096 max tokens.
+
+**Cross-channel summary** (`src/shared/content_memory.py`):
+`generate_cross_channel_summary(exclude_channel)` — filters content log to non-target channel entries from last 7 days, computes quick aggregates (post count, top performer, engagement rate), returns 200-300 char summary. Wired into both Pinterest and TikTok weekly analysis.
+
+**Feedback loop wiring** (`src/tiktok/compute_attribute_weights.py`):
+`__main__` block gains `--update` flag: reads `data/tiktok/performance-summary.json`, feeds entries into `update_taxonomy_from_performance()`, shifts attribute weights toward high performers.
+
+**Workflow: collect-analytics.yml**:
+Uncommented TikTok analytics pull step. Runs alongside Pinterest pull before content memory refresh. Env vars: `PUBLER_API_KEY`, `PUBLER_WORKSPACE_ID`, `PUBLER_ACCOUNT_ID`.
+
+**Workflow: tiktok-weekly-review.yml** (new):
+Monday 6am ET (parallel to Pinterest). Steps: weekly analysis → attribute weight update (`--update`) → plan generation. Concurrency group: `slated-content-engine-tiktok`.
+
+### Feedback Loop Data Flow
+
+```
+pull_analytics.py → content-log.jsonl (updated metrics)
+                  → performance-summary.json (per-attribute averages)
+                  ↓
+compute_attribute_weights.py --update
+                  → attribute-taxonomy.json (shifted weights)
+                  ↓
+generate_weekly_plan.py (reads updated taxonomy)
+                  → content favors high-performing attributes
+                  ↓
+content-log.jsonl (new posts with channel="tiktok")
+                  → surfaces in content memory for all planners
+```
+
+### Required Secrets (GitHub Actions)
+- `PUBLER_ACCOUNT_ID` — Publer social account ID (for analytics endpoint)
+
+### File Counts
+
+| Action | Count | Details |
+|--------|-------|---------|
+| Created | 3 | `src/tiktok/pull_analytics.py`, `src/tiktok/weekly_analysis.py`, `prompts/tiktok/weekly_analysis.md` |
+| Created (workflows) | 1 | `tiktok-weekly-review.yml` |
+| Modified | 5 | `publer_api.py` (+analytics method), `claude_api.py` (+analyze_tiktok_performance), `content_memory.py` (+cross-channel summary), `compute_attribute_weights.py` (--update flag), `collect-analytics.yml` (uncomment TikTok step) |
+| Modified (docs) | 2 | `ARCHITECTURE.md` (Phase 12 gotchas), `progress.md` (this entry) |
