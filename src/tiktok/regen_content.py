@@ -158,6 +158,10 @@ def regen_content(
         cid = req["carousel_id"]
         if cid not in carousel_by_id:
             logger.warning("Carousel %s not found in plan, skipping", cid)
+            sheets.update_tiktok_content_row(
+                cid, status="pending_review",
+                notes="Carousel not found in plan JSON — cannot regenerate.",
+            )
             skipped.append(cid)
             continue
 
@@ -207,6 +211,7 @@ def regen_content(
 
             # Step 5: Generate new images for target slides
             new_image_paths: dict[int, Path] = {}
+            image_failures: list[int] = []
             for si in slide_indices:
                 ip = _find_image_prompt(image_prompts, si)
                 prompt = ip["prompt"]
@@ -216,17 +221,21 @@ def regen_content(
                     # Update the image prompt in the spec for audit trail
                     ip["prompt"] = prompt
 
-                img_path = carousel_output / f"bg-slide-{si}.png"
-                generated = image_gen.generate(
-                    prompt=prompt,
-                    width=IMAGE_GEN_WIDTH,
-                    height=IMAGE_GEN_HEIGHT,
-                    output_path=img_path,
-                    style="natural",
-                )
-                cleaned = clean_image(generated, add_noise=False)
-                new_image_paths[si] = cleaned
-                logger.info("Regenerated image for %s slide %d", cid, si)
+                try:
+                    img_path = carousel_output / f"bg-slide-{si}.png"
+                    generated = image_gen.generate(
+                        prompt=prompt,
+                        width=IMAGE_GEN_WIDTH,
+                        height=IMAGE_GEN_HEIGHT,
+                        output_path=img_path,
+                        style="natural",
+                    )
+                    cleaned = clean_image(generated, add_noise=False)
+                    new_image_paths[si] = cleaned
+                    logger.info("Regenerated image for %s slide %d", cid, si)
+                except Exception as e:
+                    logger.error("Image generation failed for %s slide %d: %s", cid, si, e)
+                    image_failures.append(si)
 
             # Step 6: Collect ALL image paths (existing + new)
             # Load existing images from the plan's render data
@@ -276,8 +285,12 @@ def regen_content(
             # Step 9: Update Content Queue row
             regen_desc = ", ".join(f"slide {si}" for si in slide_indices)
             notes = f"Regenerated images: {regen_desc}"
+            if image_failures:
+                notes += f"; IMAGE GEN FAILED for slides: {image_failures}"
             if feedback:
                 notes += f" (feedback: {feedback[:100]})"
+            if not (gcs and gcs.is_available):
+                notes += "; GCS unavailable — slide previews not updated"
 
             slide_urls_for_row = None
             if new_urls:
