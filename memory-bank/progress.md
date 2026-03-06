@@ -3035,3 +3035,63 @@ Phase A must deploy with Phase B (workflow update to `--plan-only`). Between A a
 | Deleted | 2 | `prompts/tiktok/image_prompt.md`, `generate_tiktok_image_prompt()` method in `claude_api.py` |
 | Modified | 5 | `generate_weekly_plan.py` (plan_only branch + validation), `sheets_api.py` (+3 methods + constants), `paths.py` (+TIKTOK_DATA_DIR), `weekly_plan.md` (image_prompts schema), `pull_analytics.py` (centralized import) |
 | Modified (docs) | 2 | `ARCHITECTURE.md` (two-phase flow, updated tables/gotchas), `progress.md` (this entry) |
+
+## Phase 13B — TikTok Two-Phase Approval: Workflow Update + Collision Guard (2026-03-05)
+
+Updated `tiktok-weekly-review.yml` to use `--plan-only` mode and added a cron collision guard so the weekly cron doesn't overwrite specs under active review.
+
+### What Changed
+
+**`src/tiktok/generate_weekly_plan.py`** — Added `--check-plan-status` CLI flag. Reads B3 from Sheet; exits 0 (proceed) if status is idle/rejected/empty/None, exits 78 (GitHub Actions neutral) if review is in progress.
+
+**`.github/workflows/tiktok-weekly-review.yml`** — Rewritten:
+- Removed Node.js/Puppeteer setup (rendering moved to Phase D)
+- Added "Check plan status" step using `--check-plan-status`
+- Gated all downstream steps on `steps.check.outcome == 'success'`
+- Uses `--plan-only` flag for plan generation
+- Removed `OPENAI_API_KEY` and `GCS_BUCKET_NAME` env vars (not needed for plan-only)
+
+### Design Decision
+- Exit code 78 maps to GitHub Actions "neutral" outcome — the workflow shows as grey (skipped), not red (failed)
+- Collision guard prevents cron from overwriting specs that a reviewer is actively editing
+
+### File Counts
+
+| Action | Count | Details |
+|--------|-------|---------|
+| Modified | 2 | `generate_weekly_plan.py` (+`--check-plan-status`), `tiktok-weekly-review.yml` (rewritten for plan-only + collision guard) |
+| Modified (docs) | 2 | `ARCHITECTURE.md`, `progress.md` |
+
+## Phase 13C — TikTok Two-Phase Approval: Plan-Level Regen Orchestrator (2026-03-06)
+
+Added `regen_plan.py` — a plan-level regeneration orchestrator that processes reviewer feedback from the Weekly Review tab. When a reviewer sets a carousel's status to "regen" with optional feedback, this script parses the feedback and either applies direct edits or calls Claude for regeneration.
+
+### What Changed
+
+**`src/tiktok/regen_plan.py`** — New file (~310 lines). Core orchestrator with:
+- `parse_feedback()` — Regex-based parser supporting: `change hook to "..."`, `change slide N to "..."`, `regen hook`, `regen slide N`, `regen`/empty (full), free-form fallback
+- `apply_direct_edit()` — Returns `(success, description)` tuple; failed edits (e.g., slide index out of range) fall through to Claude regen
+- `regen_plan()` — Full orchestration: read requests → load plan → parse feedback → apply direct edits → Claude regen (fault-tolerant per-carousel loop) → write Sheet first → reset B5 → save JSON (atomic write) → Slack notification
+
+**`src/shared/apis/claude_api.py`** — Added `regenerate_tiktok_carousel_spec()` method. Loads `prompts/tiktok/regen_plan.md`, builds context with slim taxonomy + kept specs, calls Claude Sonnet with 4096 max_tokens. Returns replacement carousel dict.
+
+**`src/shared/apis/sheets_api.py`** — Added `reset_tiktok_plan_regen_trigger()` method. Writes "idle" to B5 after regen completes.
+
+**`prompts/tiktok/regen_plan.md`** — New prompt template for carousel regen. Template variables: `{{carousel_to_replace}}`, `{{feedback}}`, `{{target}}`, `{{kept_specs}}`, `{{attribute_taxonomy}}`.
+
+**`.github/workflows/tiktok-regen-plan.yml`** — New workflow. Triggered by `repository_dispatch: tiktok-regen-plan` (from Apps Script when B5 = "regen"). Has `git pull --rebase` before regen (plan JSON may have been updated by another runner), `commit-data` after. Concurrency group: `slated-content-engine-tiktok`.
+
+### Key Design Decisions
+- **Sheet-first-then-JSON ordering**: Write Sheet before saving plan JSON to prevent divergence if either step fails
+- **Fault-tolerant Claude loop**: Per-carousel errors caught and tracked; failures don't block other carousels. Successes and failures reported separately in Slack
+- **Direct edit fallback**: If a direct edit fails (e.g., slide index out of range), it falls through to full Claude regen with the original feedback as context
+- **B5 reset wrapped in try/except**: A failure resetting the trigger cell doesn't prevent saving the updated plan JSON
+- **Guard against list response**: Claude may wrap single-carousel output in an array; `if isinstance(replacement, list): replacement = replacement[0]`
+
+### File Counts
+
+| Action | Count | Details |
+|--------|-------|---------|
+| New | 3 | `regen_plan.py` (orchestrator), `regen_plan.md` (prompt), `tiktok-regen-plan.yml` (workflow) |
+| Modified | 2 | `claude_api.py` (+`regenerate_tiktok_carousel_spec()`), `sheets_api.py` (+`reset_tiktok_plan_regen_trigger()`) |
+| Modified (docs) | 2 | `ARCHITECTURE.md` (updated tables), `progress.md` (this entry) |

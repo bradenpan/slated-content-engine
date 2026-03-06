@@ -153,9 +153,9 @@ slated-content-engine/              # Renamed from pinterest-pipeline
 
 | File | Purpose |
 |------|---------|
-| `claude_api.py` | Claude Sonnet/Opus + GPT-5 Mini integration, prompt template loading, cost tracking. TikTok methods: `generate_tiktok_plan()`, `generate_carousel_copy()` (reserved) |
+| `claude_api.py` | Claude Sonnet/Opus + GPT-5 Mini integration, prompt template loading, cost tracking. TikTok methods: `generate_tiktok_plan()`, `generate_carousel_copy()` (reserved), `regenerate_tiktok_carousel_spec()` |
 | `openai_chat_api.py` | GPT-5 Mini HTTP wrapper (used by claude_api.py for pin copy + image prompts) |
-| `sheets_api.py` | Google Sheets CRUD (Weekly Review, Content Queue, Post Log, Dashboard tabs). TikTok: `write_tiktok_content_queue()` (14-col Content Queue), `write_tiktok_weekly_review()` (11-col Weekly Review with B3/B5 control cells), `read_tiktok_plan_status()`, `read_tiktok_plan_regen_requests()`. Separate TikTok spreadsheet (`TIKTOK_SPREADSHEET_ID`). |
+| `sheets_api.py` | Google Sheets CRUD (Weekly Review, Content Queue, Post Log, Dashboard tabs). TikTok: `write_tiktok_content_queue()` (14-col Content Queue), `write_tiktok_weekly_review()` (11-col Weekly Review with B3/B5 control cells), `read_tiktok_plan_status()`, `read_tiktok_plan_regen_requests()`, `reset_tiktok_plan_regen_trigger()`. Separate TikTok spreadsheet (`TIKTOK_SPREADSHEET_ID`). |
 | `gcs_api.py` | Google Cloud Storage uploads (primary image hosting for Sheet previews + Pinterest) |
 | `drive_api.py` | Google Drive uploads (fallback if GCS fails) |
 | `github_api.py` | GitHub Git Data API (atomic multi-file blog commits to goslated.com) |
@@ -207,6 +207,7 @@ slated-content-engine/              # Renamed from pinterest-pipeline
 | `pull_analytics.py` | Publer post insights pull → `performance-summary.json`. 28-day lookback, derived metrics via `analytics_utils.py`. |
 | `weekly_analysis.py` | Claude-driven weekly performance analysis. TikTok attribute dimensions (topic, angle, structure, hook_type, template_family). |
 | `compute_attribute_weights.py` | Bayesian attribute weight updater for explore/exploit feedback loop. 65/35 exploit/explore split, cold-start even distribution until 5+ posts per attribute. `--update` reads performance summary. |
+| `regen_plan.py` | Plan-level regen orchestrator: parses reviewer feedback (direct text edits or Claude regen), updates carousel specs, re-writes Weekly Review tab. Supports `change hook/slide to "..."`, `regen hook/slide N`, full regen, and free-form feedback fallback. |
 | `carousel_assembler.py` | Multi-slide carousel renderer: loads HTML/CSS templates (4 families × 3 slide types), injects variables, renders all slides in one Puppeteer batch via `render_pin.js --manifest`. Output: 1080×1920px PNGs. |
 
 ---
@@ -305,6 +306,7 @@ generate_pin_content → bare URL "https://goslated.com/blog/{slug}"
 | `setup-boards.yml` | Manual only | One-time Pinterest board creation |
 | **TikTok Workflows** | | |
 | `tiktok-weekly-review.yml` | Cron: Monday 6:30am ET | Weekly analysis → attribute weight update → plan generation (`--plan-only`) |
+| `tiktok-regen-plan.yml` | Dispatch: `tiktok-regen-plan` | Regen flagged carousel specs from Weekly Review feedback |
 | `tiktok-promote-and-schedule.yml` | Dispatch: `tiktok-promote-and-schedule` | Read approved carousels → schedule JSON → Sheet status "scheduled" |
 | `tiktok-daily-post.yml` | Cron: 10am/4pm/7pm ET | Post scheduled carousels via Publer (or Slack fallback) |
 
