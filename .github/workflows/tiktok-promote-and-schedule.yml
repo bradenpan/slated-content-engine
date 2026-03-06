@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: slated-tiktok-scheduling
+  group: slated-tiktok-posting
   cancel-in-progress: false
 
 env:

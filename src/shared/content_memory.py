@@ -656,14 +656,20 @@ def generate_cross_channel_summary(exclude_channel: str) -> str:
 
 
 def _write_summary(summary: str, output_path: Path = None) -> None:
-    """Write the summary markdown to disk."""
+    """Write the summary markdown to disk (atomic via tmp+rename)."""
     memory_path = output_path or (DATA_DIR / "content-memory-summary.md")
+    memory_path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = memory_path.with_suffix(".tmp")
     try:
-        memory_path.parent.mkdir(parents=True, exist_ok=True)
-        memory_path.write_text(summary, encoding="utf-8")
+        tmp.write_text(summary, encoding="utf-8")
+        tmp.replace(memory_path)
         logger.info("Wrote content memory summary to %s (%d chars)", memory_path, len(summary))
     except OSError as e:
         logger.warning("Failed to save content memory summary: %s", e)
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            pass
 
 
 if __name__ == "__main__":

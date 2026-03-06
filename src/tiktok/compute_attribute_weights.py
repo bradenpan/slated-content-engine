@@ -210,6 +210,19 @@ if __name__ == "__main__":
             sys.exit(1)
 
         perf = json.loads(PERFORMANCE_SUMMARY_PATH.read_text(encoding="utf-8"))
+
+        # Staleness check: warn if performance data is more than 2 days old
+        from datetime import date, datetime as dt_cls, timedelta
+        generated_at = perf.get("generated_at", "")
+        if generated_at:
+            try:
+                gen_date = dt_cls.fromisoformat(generated_at).date() if "T" in generated_at else date.fromisoformat(generated_at)
+                if (date.today() - gen_date).days > 2:
+                    print(f"WARNING: Performance summary is stale (generated {generated_at}). "
+                          f"Analytics may not have been collected this week.")
+            except ValueError:
+                print(f"WARNING: Could not parse generated_at date: {generated_at}")
+
         entries = perf.get("entries", [])
         if not entries:
             print("Performance summary has no entries. Nothing to update.")

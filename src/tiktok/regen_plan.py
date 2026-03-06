@@ -38,6 +38,7 @@ from src.shared.apis.slack_notify import SlackNotify
 from src.shared.paths import TIKTOK_DATA_DIR
 from src.shared.utils.plan_utils import find_latest_plan, load_plan
 from src.tiktok.compute_attribute_weights import load_taxonomy
+from src.tiktok.generate_weekly_plan import REQUIRED_CAROUSEL_KEYS, VALID_TEMPLATE_FAMILIES
 
 logger = logging.getLogger(__name__)
 
@@ -223,6 +224,31 @@ def regen_plan(
                 # Default image_prompts if missing
                 replacement.setdefault("image_prompts", [])
 
+                # Validate replacement has required keys
+                missing = [k for k in REQUIRED_CAROUSEL_KEYS if k not in replacement]
+                if missing:
+                    raise ValueError(
+                        f"Claude regen for {cid} missing required keys: {missing}"
+                    )
+
+                # Normalize template_family (Claude may return hyphenated)
+                tf = replacement.get("template_family", "")
+                if "-" in tf:
+                    tf = tf.replace("-", "_")
+                    replacement["template_family"] = tf
+                if tf not in VALID_TEMPLATE_FAMILIES:
+                    raise ValueError(
+                        f"Claude regen for {cid} has invalid template_family='{tf}'"
+                    )
+
+                # Coerce is_aigc to bool
+                is_aigc = replacement.get("is_aigc")
+                if not isinstance(is_aigc, bool):
+                    if isinstance(is_aigc, str):
+                        replacement["is_aigc"] = is_aigc.lower() in ("true", "1", "yes")
+                    else:
+                        replacement["is_aigc"] = bool(is_aigc)
+
                 # Splice into carousels list
                 for i, c in enumerate(carousels):
                     if c.get("carousel_id") == cid:
@@ -237,11 +263,15 @@ def regen_plan(
                 logger.error("Claude regen failed for %s: %s", cid, e)
 
     # Step 6: Write Sheet first, then save JSON
-    # Note: write_tiktok_weekly_review() resets B3 to pending_review,
-    # which is correct — reviewer must re-review after regen.
-    plan["carousels"] = carousels
-    sheets.write_tiktok_weekly_review(plan)
-    logger.info("Re-wrote Weekly Review tab with updated specs")
+    # Skip if nothing actually changed — preserves reviewer feedback in the Sheet
+    if not direct_edits and not claude_successes:
+        logger.info("No successful edits or regens — skipping Sheet write to preserve reviewer feedback")
+    else:
+        # Note: write_tiktok_weekly_review() resets B3 to pending_review,
+        # which is correct — reviewer must re-review after regen.
+        plan["carousels"] = carousels
+        sheets.write_tiktok_weekly_review(plan)
+        logger.info("Re-wrote Weekly Review tab with updated specs")
 
     # Defensive B5 reset — write_tiktok_weekly_review() already writes
     # B5=idle via row data, but this explicit call ensures it even if
@@ -252,21 +282,24 @@ def regen_plan(
     except Exception as e:
         logger.warning("Failed to reset B5 trigger (non-fatal): %s", e)
 
-    # Save plan JSON (atomic write)
-    tmp = plan_path.with_suffix(".tmp")
-    try:
-        tmp.write_text(
-            json.dumps(plan, indent=2, ensure_ascii=False),
-            encoding="utf-8",
-        )
-        tmp.replace(plan_path)
-    except OSError:
+    # Save plan JSON (atomic write) — only if something changed
+    if not direct_edits and not claude_successes:
+        logger.info("No changes to save to plan JSON")
+    else:
+        tmp = plan_path.with_suffix(".tmp")
         try:
-            tmp.unlink(missing_ok=True)
+            tmp.write_text(
+                json.dumps(plan, indent=2, ensure_ascii=False),
+                encoding="utf-8",
+            )
+            tmp.replace(plan_path)
         except OSError:
-            pass
-        raise
-    logger.info("Saved updated plan to %s", plan_path)
+            try:
+                tmp.unlink(missing_ok=True)
+            except OSError:
+                pass
+            raise
+        logger.info("Saved updated plan to %s", plan_path)
 
     # Step 7: Slack notification
     summary_parts = []

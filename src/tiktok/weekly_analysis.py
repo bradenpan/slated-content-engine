@@ -113,7 +113,7 @@ def build_analysis_context(
     # This week's posts
     this_week = [
         e for e in entries
-        if e.get("posted_date", "") >= week_ago
+        if e.get("posted_date", "") > week_ago
         and e.get("pin_id")
     ]
 
@@ -197,11 +197,17 @@ def save_analysis(analysis: str, year: Optional[int] = None, week: Optional[int]
     filename = f"{year}-w{week:02d}-review.md"
     output_path = TIKTOK_ANALYSIS_DIR / filename
 
+    tmp = output_path.with_suffix(".tmp")
     try:
-        output_path.write_text(analysis, encoding="utf-8")
+        tmp.write_text(analysis, encoding="utf-8")
+        tmp.replace(output_path)
         logger.info("TikTok analysis saved to %s", output_path)
     except OSError as e:
         logger.error("Failed to save analysis: %s", e)
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            pass
         raise
 
     return output_path
@@ -261,7 +267,7 @@ def _compute_account_trends(entries: list[dict]) -> dict:
         end_str = end.isoformat()
         week_entries = [
             e for e in entries
-            if start_str <= e.get("posted_date", "") <= end_str
+            if start_str < e.get("posted_date", "") <= end_str
         ]
         return _aggregate_list(week_entries)
 
@@ -269,7 +275,7 @@ def _compute_account_trends(entries: list[dict]) -> dict:
     last_week = _week_metrics(today - timedelta(days=14), today - timedelta(days=7))
 
     weekly_totals = []
-    for w in range(4):
+    for w in range(1, 5):
         w_start = today - timedelta(days=7 * (w + 1))
         w_end = today - timedelta(days=7 * w)
         weekly_totals.append(_week_metrics(w_start, w_end))
@@ -391,5 +397,9 @@ if __name__ == "__main__":
         print(xc)
     else:
         print("Running TikTok weekly performance analysis...")
-        analysis = run_weekly_analysis()
-        print(f"Analysis complete. Length: {len(analysis)} chars")
+        try:
+            analysis = run_weekly_analysis()
+            print(f"Analysis complete. Length: {len(analysis)} chars")
+        except Exception as e:
+            logger.error("TikTok weekly analysis failed: %s", e, exc_info=True)
+            sys.exit(1)

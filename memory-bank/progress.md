@@ -3204,3 +3204,63 @@ All 6 phases are now implemented:
 | New | 2 | `regen_content.py` (orchestrator), `tiktok-regen-content.yml` (workflow) |
 | Modified | 1 | `sheets_api.py` (+`update_tiktok_content_row()`) |
 | Modified (docs) | 2 | `ARCHITECTURE.md` (updated tables), `progress.md` (this entry) |
+
+### Phase F Fixes (Post-Review)
+
+Three fixes applied after code review:
+
+1. **Per-image error handling** — Individual `image_gen.generate()` calls in the regen loop now wrapped in try/except. Failures tracked in `image_failures` list; surviving images still render. Previously, one failed image generation would crash the entire carousel regen.
+
+2. **Missing carousel note** — When `carousel_id` not found in the plan JSON, `regen_content.py` now calls `sheets.update_tiktok_content_row()` with status `pending_review` and a descriptive note ("Carousel not found in plan JSON — cannot regenerate"), instead of silently skipping.
+
+3. **GCS-down note** — When GCS is unavailable, appends "GCS unavailable — slide previews not updated" to the Notes column, so the reviewer knows why thumbnails didn't refresh.
+
+---
+
+## Phase 13: TikTok Pipeline Audit + Hardening (2026-03-06)
+
+Three rounds of 4-agent code review across the full TikTok workflow, producing 14 + 8 + 8 = 30 fixes total. Key improvements:
+
+### Round 3 Fixes (this session)
+
+1. **Missing `git pull` in weekly review workflow** — `tiktok-weekly-review.yml` was running on stale checkout data, missing analytics committed 30 min earlier by `collect-analytics.yml`. Added `git pull --rebase origin main` step.
+2. **Rolling 4-week average included incomplete current week** — `_compute_account_trends` in `weekly_analysis.py` used `range(4)` starting at current week (0-1 days of data on Monday mornings), deflating the average by ~25%. Changed to `range(1, 5)` to use 4 prior completed weeks.
+3. **Slide count mismatch accepted silently** — `carousel_assembler.py` `_render_batch` only warned when `render_pin.js` returned fewer slides than requested with `ok: true`. Now raises `CarouselAssemblerError` to prevent index misalignment.
+4. **Regen skipped full validation** — `regen_plan.py` only checked `REQUIRED_CAROUSEL_KEYS` on Claude replacements. Now validates `template_family` (hyphen→underscore normalization + allowlist check) and coerces `is_aigc` to bool.
+5. **Regen wrote Sheet even when all regens failed** — Wiped reviewer feedback for nothing. Now skips Sheet write + JSON save when `not direct_edits and not claude_successes`.
+6. **Photo-forward missing image_prompts not warned** — `generate_weekly_plan.py` validation now warns when `photo_forward` family has empty `image_prompts`.
+7. **Logger args swapped in template normalization** — Captured original family name before overwriting so the log shows `'clean-educational' -> 'clean_educational'` instead of the carousel_id.
+8. **Overflow slot collision** — `promote_and_schedule.py` overflow logic could place carousels in slots already occupied by other dates' carousels. Added `occupied_slots` tracking dict that checks target slot availability before placing overflow.
+
+### Earlier Fixes (rounds 1-2, same session)
+
+- 12-week rolling window for performance summary (`pull_analytics.py`)
+- `scheduled_date` enrichment from plan (`promote_and_schedule.py`)
+- GCS upload stop-on-first-failure for index alignment (`generate_weekly_plan.py`)
+- PENDING/MANUAL sentinel filter in analytics (`pull_analytics.py`)
+- Apps Script `row >= 2` guard, timestamp consolidation (`tiktok-trigger.gs`)
+- `is_aigc` boolean coercion in plan validation (`generate_weekly_plan.py`)
+- Timezone-consistent failure timestamps (`post_content.py`)
+- `is_aigc` forwarding to Publer (`post_content.py`)
+- Consistent date boundary exclusion in analysis (`weekly_analysis.py`)
+
+### Technical Debt Tracking
+
+Created `architecture/tiktok-two-phase-approval/technical-debt-and-design-todos.md` with 7 tracked algorithmic/design issues:
+1. Composite score scale mismatch (HIGH — fix before ~20 posts)
+2. Unbounded performance history (MEDIUM — mitigated by 12-week window fix)
+3. Top/bottom performer overlap (LOW — self-resolves at 10+ posts)
+4. Partial render index mapping (LOW — mitigated by reject-all strategy)
+5. `pin_id` naming for TikTok (LOW — next schema change)
+6. Workflow data freshness gap (MEDIUM — mitigated by `git pull` fix)
+7. Sheets API rate limiting (MEDIUM — at scale >15 carousels)
+
+### File Counts
+
+| Action | Count | Details |
+|--------|-------|---------|
+| Modified | 8 | `weekly_analysis.py`, `carousel_assembler.py`, `regen_plan.py`, `generate_weekly_plan.py`, `promote_and_schedule.py`, `pull_analytics.py`, `post_content.py`, `tiktok-trigger.gs` |
+| Modified (workflow) | 1 | `tiktok-weekly-review.yml` |
+| Modified (test) | 3 | `test_tiktok_carousel_assembler.py`, `test_tiktok_promote_and_schedule.py`, `test_tiktok_validate_plan.py` |
+| Modified (docs) | 3 | `ARCHITECTURE.md`, `progress.md`, `technical-debt-and-design-todos.md` (new) |
+| Tests | 427 passing |

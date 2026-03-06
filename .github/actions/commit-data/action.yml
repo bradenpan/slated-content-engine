@@ -11,7 +11,7 @@ runs:
         set -e
         git config user.name "slated-content-engine-bot"
         git config user.email "bot@slated-content-engine.local"
-        git add data/ analysis/
+        git add data/ analysis/ strategy/
         git diff --staged --stat
         if git diff --staged --quiet; then
           echo "No data changes to commit."

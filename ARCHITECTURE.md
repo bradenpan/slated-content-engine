@@ -1,6 +1,6 @@
 # Pinterest Pipeline — Architecture
 
-**Last verified:** 2026-03-05
+**Last verified:** 2026-03-06
 **Update this doc when:** a file is added/removed from `src/`, a workflow is added/removed, an external integration changes, a major feature is added/removed, or data schemas change.
 
 ---
@@ -101,8 +101,9 @@ slated-content-engine/              # Renamed from pinterest-pipeline
 │   │   ├── generate_weekly_plan.py # Weekly planning orchestrator (7 carousels)
 │   │   ├── generate_carousels.py  # Carousel rendering + image gen orchestrator
 │   │   ├── publish_content_queue.py # Content Queue sheet publisher
-│   │   ├── promote_and_schedule.py # Approved → scheduled (7d×3 slots, schedule JSON)
+│   │   ├── promote_and_schedule.py # Approved → scheduled (7d×3 slots, overflow collision detection, schedule JSON)
 │   │   ├── post_content.py       # Daily posting via Publer (3x daily cron)
+│   │   ├── regen_content.py      # Content-level AI image regen from CQ feedback
 │   │   ├── compute_attribute_weights.py # Explore/exploit weight updater
 │   │   └── carousel_assembler.py # HTML/CSS template → multi-slide PNG renderer
 │   └── apps-script/              # Google Apps Script source
@@ -155,7 +156,7 @@ slated-content-engine/              # Renamed from pinterest-pipeline
 |------|---------|
 | `claude_api.py` | Claude Sonnet/Opus + GPT-5 Mini integration, prompt template loading, cost tracking. TikTok methods: `generate_tiktok_plan()`, `generate_carousel_copy()` (reserved), `regenerate_tiktok_carousel_spec()` |
 | `openai_chat_api.py` | GPT-5 Mini HTTP wrapper (used by claude_api.py for pin copy + image prompts) |
-| `sheets_api.py` | Google Sheets CRUD (Weekly Review, Content Queue, Post Log, Dashboard tabs). TikTok: `write_tiktok_content_queue()` (14-col Content Queue), `write_tiktok_weekly_review()` (11-col Weekly Review with B3/B5 control cells), `read_tiktok_plan_status()`, `read_tiktok_plan_regen_requests()`, `reset_tiktok_plan_regen_trigger()`. Separate TikTok spreadsheet (`TIKTOK_SPREADSHEET_ID`). |
+| `sheets_api.py` | Google Sheets CRUD (Weekly Review, Content Queue, Post Log, Dashboard tabs). TikTok: `write_tiktok_content_queue()` (17-col Content Queue, per-slide `=IMAGE()` previews), `write_tiktok_weekly_review()` (11-col Weekly Review with B3/B5 control cells), `read_tiktok_plan_status()`, `read_tiktok_plan_regen_requests()`, `reset_tiktok_plan_regen_trigger()`, `read_tiktok_content_regen_requests()`, `reset_tiktok_content_regen_trigger()`, `update_tiktok_content_row()`. Separate TikTok spreadsheet (`TIKTOK_SPREADSHEET_ID`). |
 | `gcs_api.py` | Google Cloud Storage uploads (primary image hosting for Sheet previews + Pinterest) |
 | `drive_api.py` | Google Drive uploads (fallback if GCS fails) |
 | `github_api.py` | GitHub Git Data API (atomic multi-file blog commits to goslated.com) |
@@ -204,10 +205,10 @@ slated-content-engine/              # Renamed from pinterest-pipeline
 | `generate_weekly_plan.py` | TikTok weekly planning orchestrator. `--plan-only`: Claude generates 7 carousel specs → saves plan JSON → writes Weekly Review tab. `--generate-content`: loads approved plan JSON → renders all specs → uploads ALL slides to GCS → publishes Content Queue (17-col, per-slide previews). `--check-plan-status`: reads B3 for cron collision guard. |
 | `generate_carousels.py` | Carousel rendering orchestrator: per-slide AI image generation from `image_prompts` array, translates taxonomy family names (underscores→hyphens), renders slides via `carousel_assembler.py`, cleans output PNGs. Exports `build_slides_for_render()` for reuse by `regen_content.py`. |
 | `publish_content_queue.py` | Publishes rendered carousels to TikTok Google Sheet "Content Queue" tab via `SheetsAPI.write_tiktok_content_queue()`. Passes all slide URLs (not just first) for per-slide previews. |
-| `pull_analytics.py` | Publer post insights pull → `performance-summary.json`. 28-day lookback, derived metrics via `analytics_utils.py`. |
+| `pull_analytics.py` | Publer post insights pull → `performance-summary.json`. 28-day lookback for analytics fetch, 12-week rolling window for feedback loop weights. Derived metrics via `analytics_utils.py`. |
 | `weekly_analysis.py` | Claude-driven weekly performance analysis. TikTok attribute dimensions (topic, angle, structure, hook_type, template_family). |
 | `compute_attribute_weights.py` | Bayesian attribute weight updater for explore/exploit feedback loop. 65/35 exploit/explore split, cold-start even distribution until 5+ posts per attribute. `--update` reads performance summary. |
-| `regen_plan.py` | Plan-level regen orchestrator: parses reviewer feedback (direct text edits or Claude regen), updates carousel specs, re-writes Weekly Review tab. Supports `change hook/slide to "..."`, `regen hook/slide N`, full regen, and free-form feedback fallback. |
+| `regen_plan.py` | Plan-level regen orchestrator: parses reviewer feedback (direct text edits or Claude regen), updates carousel specs, re-writes Weekly Review tab. Validates regenerated specs (template family normalization, `is_aigc` coercion, required keys). Skips Sheet write when all regens fail to preserve reviewer feedback. Supports `change hook/slide to "..."`, `regen hook/slide N`, full regen, and free-form feedback fallback. |
 | `regen_content.py` | Content-level regen orchestrator: regenerates AI images for specific slides (`regen_image_N`) or all images (`regen`). Translates column-position to slide_index, generates new images, re-renders carousel, uploads to GCS with cache-bust, updates Content Queue row. |
 | `carousel_assembler.py` | Multi-slide carousel renderer: loads HTML/CSS templates (4 families × 3 slide types), injects variables, renders all slides in one Puppeteer batch via `render_pin.js --manifest`. Output: 1080×1920px PNGs. |
 

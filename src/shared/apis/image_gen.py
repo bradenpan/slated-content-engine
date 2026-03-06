@@ -167,7 +167,8 @@ class ImageGenAPI:
                     )
                     # Modify prompt slightly for retry to increase generation variance
                     current_prompt = self._modify_prompt_for_retry(prompt, attempt + 1)
-                    time.sleep(2)  # Brief pause before retry
+                    backoff = min(4 * (2 ** attempt), 30)  # 4s, 8s, capped at 30s
+                    time.sleep(backoff)
                 else:
                     logger.error("Image generation failed after %d attempts.", max_retries + 1)
 
@@ -179,7 +180,8 @@ class ImageGenAPI:
                         attempt + 1, max_retries + 1, e,
                     )
                     current_prompt = self._modify_prompt_for_retry(prompt, attempt + 1)
-                    time.sleep(2)
+                    backoff = min(4 * (2 ** attempt), 30)
+                    time.sleep(backoff)
                 else:
                     logger.error("Image generation failed after %d attempts: %s", max_retries + 1, e)
 
@@ -219,6 +221,30 @@ class ImageGenAPI:
             },
             timeout=120,
         )
+
+        if response.status_code == 429:
+            retry_after = int(response.headers.get("Retry-After", "10"))
+            retry_after = min(retry_after, 60)  # Cap at 60s
+            logger.warning(
+                "OpenAI rate limit (429). Retry-After: %ds. Waiting...", retry_after,
+            )
+            time.sleep(retry_after)
+            # Retry once after waiting
+            response = requests.post(
+                "https://api.openai.com/v1/images/generations",
+                headers={
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": "gpt-image-1.5",
+                    "prompt": prompt,
+                    "n": 1,
+                    "size": size_str,
+                    "quality": "medium",
+                },
+                timeout=120,
+            )
 
         if response.status_code != 200:
             error_text = response.text

@@ -73,7 +73,8 @@ def pull_analytics() -> dict:
     for entry in entries:
         if (entry.get("channel") or "pinterest") != "tiktok":
             continue
-        if not entry.get("publer_post_id"):
+        pid = entry.get("publer_post_id")
+        if not pid or pid in ("PENDING", "MANUAL"):
             continue
         posted = entry.get("posted_date", "")
         if posted and posted < cutoff_date:
@@ -144,8 +145,10 @@ def pull_analytics() -> dict:
     # Build performance summary for feedback loop
     # Skip if insights fetch failed entirely — avoid overwriting valid data with zeros
     tiktok_entries = [e for e in entries if (e.get("channel") or "pinterest") == "tiktok"]
+    weight_cutoff = (today - timedelta(days=84)).isoformat()  # 12-week rolling window
+    windowed_entries = [e for e in tiktok_entries if (e.get("posted_date") or "") >= weight_cutoff]
     if post_level_data:
-        perf_summary = _build_performance_summary(tiktok_entries)
+        perf_summary = _build_performance_summary(windowed_entries)
         _save_performance_summary(perf_summary)
     else:
         perf_summary = {}
@@ -360,12 +363,16 @@ if __name__ == "__main__":
         print(f"Trackable (have publer_post_id): {len(trackable)}")
     else:
         print("Pulling TikTok analytics via Publer...")
-        data = pull_analytics()
-        summary = data.get("summary", {})
-        print(f"\nSummary:")
-        print(f"  Posts tracked: {summary.get('posts_tracked', 0)}")
-        print(f"  Posts with data: {summary.get('posts_with_data', 0)}")
-        print(f"  Total views: {summary.get('total_views', 0)}")
-        print(f"  Total saves: {summary.get('total_saves', 0)}")
-        print(f"  Total shares: {summary.get('total_shares', 0)}")
-        print(f"  Errors: {summary.get('errors', 0)}")
+        try:
+            data = pull_analytics()
+            summary = data.get("summary", {})
+            print(f"\nSummary:")
+            print(f"  Posts tracked: {summary.get('posts_tracked', 0)}")
+            print(f"  Posts with data: {summary.get('posts_with_data', 0)}")
+            print(f"  Total views: {summary.get('total_views', 0)}")
+            print(f"  Total saves: {summary.get('total_saves', 0)}")
+            print(f"  Total shares: {summary.get('total_shares', 0)}")
+            print(f"  Errors: {summary.get('errors', 0)}")
+        except Exception as e:
+            logger.error("TikTok analytics pull failed: %s", e, exc_info=True)
+            sys.exit(1)

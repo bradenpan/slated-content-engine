@@ -137,7 +137,9 @@ def is_content_posted(
                 try:
                     entry = json.loads(line)
                     platform_id = entry.get(platform_id_field, "")
+                    entry_channel = entry.get("channel", "pinterest")
                     if (entry.get("pin_id") == content_id
+                            and entry_channel == channel
                             and platform_id
                             and platform_id != "PENDING"):
                         return True

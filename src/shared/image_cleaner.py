@@ -77,9 +77,9 @@ def clean_image(
         if jpeg_quality is None:
             jpeg_quality = random.randint(89, 94)
 
-        # Detect input format to preserve it (PNG carousel slides must stay PNG)
-        input_ext = input_path.suffix.lower()
-        is_png = input_ext == ".png"
+        # Detect output format: use output extension when explicitly provided,
+        # input extension when cleaning in-place (PNG carousel slides stay PNG)
+        is_png = output_path.suffix.lower() == ".png"
 
         # Open and load pixel data — metadata is NOT carried over
         with Image.open(input_path) as img:

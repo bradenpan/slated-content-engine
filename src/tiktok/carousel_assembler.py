@@ -300,6 +300,12 @@ class CarouselAssembler:
                 timeout=120,  # longer timeout for multi-slide batches
             )
 
+            if result.returncode != 0:
+                raise CarouselAssemblerError(
+                    f"render_pin.js exited with code {result.returncode}. "
+                    f"stderr: {result.stderr}"
+                )
+
             stdout = result.stdout.strip()
             if not stdout:
                 raise CarouselAssemblerError(
@@ -314,10 +320,29 @@ class CarouselAssembler:
                 )
 
             if not response.get("ok"):
+                rendered_partial = response.get("rendered", [])
                 errors = response.get("errors", response.get("error", "unknown error"))
-                raise CarouselAssemblerError(f"render_pin.js failed: {errors}")
+                if rendered_partial:
+                    # Partial success: some slides rendered but others failed.
+                    # Reject the entire carousel — partial renders produce
+                    # misaligned slide indices that corrupt GCS uploads.
+                    logger.warning(
+                        "render_pin.js partial failure: %d/%d slides rendered. "
+                        "Rejecting entire carousel to prevent index misalignment. Errors: %s",
+                        len(rendered_partial), len(jobs), errors,
+                    )
+                raise CarouselAssemblerError(
+                    f"render_pin.js failed ({len(rendered_partial) if rendered_partial else 0}/"
+                    f"{len(jobs)} slides): {errors}"
+                )
 
-            return response.get("rendered", [])
+            rendered = response.get("rendered", [])
+            if len(rendered) != len(jobs):
+                raise CarouselAssemblerError(
+                    f"render_pin.js returned {len(rendered)} slides but "
+                    f"{len(jobs)} were requested — rejecting to prevent index misalignment"
+                )
+            return rendered
 
         finally:
             try:

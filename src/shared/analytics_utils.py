@@ -25,12 +25,16 @@ def compute_derived_metrics(entries: list[dict]) -> list[dict]:
         saves = entry.get("saves", 0)
         outbound_clicks = entry.get("outbound_clicks", 0)
 
+        shares = entry.get("shares", 0)
+
         if impressions > 0:
             entry["save_rate"] = round(saves / impressions, 6)
             entry["click_through_rate"] = round(outbound_clicks / impressions, 6)
+            entry["share_rate"] = round(shares / impressions, 6)
         else:
             entry["save_rate"] = 0.0
             entry["click_through_rate"] = 0.0
+            entry["share_rate"] = 0.0
 
     return entries
 
@@ -108,8 +112,8 @@ def aggregate_by_dimension(
             "save_rate": round(agg["saves"] / impressions, 6) if impressions > 0 else 0.0,
             "click_through_rate": round(agg["outbound_clicks"] / impressions, 6) if impressions > 0 else 0.0,
         }
-        if "shares" in agg and impressions > 0:
-            derived["share_rate"] = round(agg["shares"] / impressions, 6)
+        if "shares" in agg:
+            derived["share_rate"] = round(agg["shares"] / impressions, 6) if impressions > 0 else 0.0
         result[dim_value] = {**agg, **derived}
 
     return result

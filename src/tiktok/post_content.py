@@ -157,6 +157,9 @@ def post_content(
                 results["posted_count"] += 1
                 logger.info("Posted carousel %s (publer_id=%s)", carousel_id, publer_post_id)
 
+                # Clear any previous failure records for this carousel
+                _clear_failure_record(carousel_id)
+
             else:
                 # Fallback mode: manual upload required
                 gcs_urls = safe_get(carousel, "slide_urls", [])
@@ -171,9 +174,9 @@ def post_content(
                         level="warning",
                     )
 
-                # Log as manual upload required (publer_post_id="" so idempotency
-                # check doesn't permanently skip this carousel on future retries)
-                log_entry = _build_log_entry(carousel, carousel_id, today_str, time_slot, "")
+                # Log as manual upload with "MANUAL" sentinel so idempotency
+                # check recognizes this carousel as handled on future re-runs
+                log_entry = _build_log_entry(carousel, carousel_id, today_str, time_slot, "MANUAL")
                 log_entry["manual_upload_required"] = True
                 append_content_log_entry(log_entry)
 
@@ -242,6 +245,12 @@ def _post_via_publer(publer: PublerAPI, carousel: dict) -> str:
     media_ids = import_result.get("media_ids", [])
     if not media_ids:
         raise PublerAPIError(0, "Media import returned no media_ids", import_result)
+    if len(media_ids) != len(slide_urls):
+        raise PublerAPIError(
+            0,
+            f"Media import returned {len(media_ids)} IDs but {len(slide_urls)} URLs were sent",
+            import_result,
+        )
 
     # Step 2: Create post
     caption = safe_get(carousel, "caption", "")
@@ -252,11 +261,14 @@ def _post_via_publer(publer: PublerAPI, carousel: dict) -> str:
     title = safe_get(carousel, "topic", safe_get(carousel, "carousel_id", ""))
     scheduled_at = safe_get(carousel, "scheduled_at", datetime.now(ET).isoformat())
 
+    is_aigc = safe_get(carousel, "is_aigc", False)
+
     post_job_id = publer.create_post(
         media_ids=media_ids,
         caption=caption,
         title=title,
         scheduled_at=scheduled_at,
+        is_aigc=is_aigc,
     )
     post_result = publer.poll_job(post_job_id)
 
@@ -362,6 +374,31 @@ def _apply_jitter(time_slot: str, carousel_index: int) -> None:
     time.sleep(jitter_seconds)
 
 
+def _clear_failure_record(carousel_id: str) -> None:
+    """Remove a carousel's failure record after successful posting."""
+    failures_path = DATA_DIR / "tiktok" / "posting-failures.json"
+    if not failures_path.exists():
+        return
+    try:
+        with open(failures_path, "r", encoding="utf-8") as f:
+            failures = json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return
+    if carousel_id not in failures:
+        return
+    del failures[carousel_id]
+    tmp = failures_path.with_suffix(".tmp")
+    try:
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(failures, f, indent=2)
+        tmp.replace(failures_path)
+    except OSError:
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            pass
+
+
 def _record_failure(carousel_id: str, error_msg: str) -> None:
     """Record a posting failure for permanent failure detection."""
     failures_path = DATA_DIR / "tiktok" / "posting-failures.json"
@@ -378,10 +415,10 @@ def _record_failure(carousel_id: str, error_msg: str) -> None:
     entry = failures.get(carousel_id, {"count": 0, "errors": []})
     entry["count"] = entry.get("count", 0) + 1
     entry["errors"].append({
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": datetime.now(ET).isoformat(),
         "error": error_msg[:500],
     })
-    entry["last_failure"] = datetime.now().isoformat()
+    entry["last_failure"] = datetime.now(ET).isoformat()
     failures[carousel_id] = entry
 
     tmp = failures_path.with_suffix(".tmp")
@@ -442,5 +479,9 @@ if __name__ == "__main__":
     else:
         target_date = date_override or datetime.now(ET).date().isoformat()
         print(f"Posting TikTok carousels for {slot} slot (date: {target_date})...")
-        results = post_content(slot, date_override=date_override)
-        print(f"Results: {json.dumps(results, indent=2)}")
+        try:
+            results = post_content(slot, date_override=date_override)
+            print(f"Results: {json.dumps(results, indent=2)}")
+        except Exception as e:
+            logger.error("TikTok posting failed: %s", e, exc_info=True)
+            sys.exit(1)

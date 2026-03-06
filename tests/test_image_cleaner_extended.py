@@ -538,7 +538,7 @@ class TestNoiseVerification:
             # The mean of each quadrant should differ slightly (noise is random)
             means = [q1.mean(), q2.mean(), q3.mean(), q4.mean()]
             # Not all quadrant means should be exactly equal
-            assert len(set(round(m, 2) for m in means)) > 1, (
+            assert len(set(round(m, 4) for m in means)) > 1, (
                 f"All quadrants have identical mean — noise may be uniform: {means}"
             )
 

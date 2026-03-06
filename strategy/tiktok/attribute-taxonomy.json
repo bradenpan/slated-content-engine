@@ -9,7 +9,7 @@
       "description": "Content topic category — what the carousel is about",
       "attributes": {
         "invisible-labor": {
-          "weight": 1.0,
+          "weight": 0.1667,
           "impressions": 0,
           "saves": 0,
           "shares": 0,
@@ -17,7 +17,7 @@
           "likes": 0
         },
         "whats-for-dinner": {
-          "weight": 1.0,
+          "weight": 0.1667,
           "impressions": 0,
           "saves": 0,
           "shares": 0,
@@ -25,7 +25,7 @@
           "likes": 0
         },
         "meal-prep-hack": {
-          "weight": 1.0,
+          "weight": 0.1667,
           "impressions": 0,
           "saves": 0,
           "shares": 0,
@@ -33,7 +33,7 @@
           "likes": 0
         },
         "picky-eaters": {
-          "weight": 1.0,
+          "weight": 0.1667,
           "impressions": 0,
           "saves": 0,
           "shares": 0,
@@ -41,7 +41,7 @@
           "likes": 0
         },
         "budget-meals": {
-          "weight": 1.0,
+          "weight": 0.1667,
           "impressions": 0,
           "saves": 0,
           "shares": 0,
@@ -49,7 +49,7 @@
           "likes": 0
         },
         "weeknight-speed": {
-          "weight": 1.0,
+          "weight": 0.1667,
           "impressions": 0,
           "saves": 0,
           "shares": 0,
@@ -62,7 +62,7 @@
       "description": "Content angle — the emotional/rhetorical approach",
       "attributes": {
         "empathy-first": {
-          "weight": 1.0,
+          "weight": 0.2,
           "impressions": 0,
           "saves": 0,
           "shares": 0,
@@ -70,7 +70,7 @@
           "likes": 0
         },
         "tactical-tip": {
-          "weight": 1.0,
+          "weight": 0.2,
           "impressions": 0,
           "saves": 0,
           "shares": 0,
@@ -78,7 +78,7 @@
           "likes": 0
         },
         "myth-bust": {
-          "weight": 1.0,
+          "weight": 0.2,
           "impressions": 0,
           "saves": 0,
           "shares": 0,
@@ -86,7 +86,7 @@
           "likes": 0
         },
         "hot-take": {
-          "weight": 1.0,
+          "weight": 0.2,
           "impressions": 0,
           "saves": 0,
           "shares": 0,
@@ -94,7 +94,7 @@
           "likes": 0
         },
         "relatable-rant": {
-          "weight": 1.0,
+          "weight": 0.2,
           "impressions": 0,
           "saves": 0,
           "shares": 0,
@@ -107,7 +107,7 @@
       "description": "Carousel structure — how the content is organized across slides",
       "attributes": {
         "listicle": {
-          "weight": 1.0,
+          "weight": 0.2,
           "impressions": 0,
           "saves": 0,
           "shares": 0,
@@ -115,7 +115,7 @@
           "likes": 0
         },
         "before-after": {
-          "weight": 1.0,
+          "weight": 0.2,
           "impressions": 0,
           "saves": 0,
           "shares": 0,
@@ -123,7 +123,7 @@
           "likes": 0
         },
         "story-arc": {
-          "weight": 1.0,
+          "weight": 0.2,
           "impressions": 0,
           "saves": 0,
           "shares": 0,
@@ -131,7 +131,7 @@
           "likes": 0
         },
         "step-by-step": {
-          "weight": 1.0,
+          "weight": 0.2,
           "impressions": 0,
           "saves": 0,
           "shares": 0,
@@ -139,7 +139,7 @@
           "likes": 0
         },
         "comparison": {
-          "weight": 1.0,
+          "weight": 0.2,
           "impressions": 0,
           "saves": 0,
           "shares": 0,
@@ -152,7 +152,7 @@
       "description": "Hook style — how the first slide grabs attention",
       "attributes": {
         "question": {
-          "weight": 1.0,
+          "weight": 0.25,
           "impressions": 0,
           "saves": 0,
           "shares": 0,
@@ -160,7 +160,7 @@
           "likes": 0
         },
         "bold-claim": {
-          "weight": 1.0,
+          "weight": 0.25,
           "impressions": 0,
           "saves": 0,
           "shares": 0,
@@ -168,7 +168,7 @@
           "likes": 0
         },
         "pattern-interrupt": {
-          "weight": 1.0,
+          "weight": 0.25,
           "impressions": 0,
           "saves": 0,
           "shares": 0,
@@ -176,7 +176,7 @@
           "likes": 0
         },
         "curiosity-gap": {
-          "weight": 1.0,
+          "weight": 0.25,
           "impressions": 0,
           "saves": 0,
           "shares": 0,

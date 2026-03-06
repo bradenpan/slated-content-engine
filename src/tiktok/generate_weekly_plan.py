@@ -102,9 +102,9 @@ def generate_plan(
     content_memory = generate_content_memory_summary(channel="tiktok")
 
     # Step 4: Determine seasonal window
-    seasonal_calendar = strategy_context.get("seasonal_calendar", {})
+    seasonal_calendar = strategy_context.get("seasonal_calendar") or {}
     seasonal_context = get_current_seasonal_window(
-        seasonal_calendar.get("seasons", [])
+        seasonal_calendar.get("seasons") or []
     )
 
     # Step 5: Load attribute taxonomy
@@ -177,6 +177,7 @@ def generate_plan(
             tmp_path.unlink(missing_ok=True)
         except OSError:
             pass
+        raise
 
     if plan_only:
         # Write specs to Weekly Review tab and return (no rendering)
@@ -249,6 +250,16 @@ def _validate_plan(plan: dict, taxonomy: dict) -> None:
     carousels = plan.get("carousels", [])
     dimensions = taxonomy.get("dimensions", {})
 
+    # Check for duplicate and empty carousel IDs
+    seen_ids = set()
+    for carousel in carousels:
+        cid = carousel.get("carousel_id", "")
+        if not cid:
+            raise ValueError("Carousel has empty or missing carousel_id")
+        if cid in seen_ids:
+            raise ValueError(f"Duplicate carousel_id: {cid}")
+        seen_ids.add(cid)
+
     for i, carousel in enumerate(carousels):
         # Default image_prompts to empty list if not provided
         carousel.setdefault("image_prompts", [])
@@ -258,6 +269,29 @@ def _validate_plan(plan: dict, taxonomy: dict) -> None:
         if missing:
             raise ValueError(
                 f"Carousel {i} missing required keys: {missing}"
+            )
+
+        # Validate is_aigc is boolean (Claude may return string "false" which is truthy)
+        is_aigc = carousel.get("is_aigc")
+        if not isinstance(is_aigc, bool):
+            if isinstance(is_aigc, str):
+                carousel["is_aigc"] = is_aigc.lower() in ("true", "1", "yes")
+            else:
+                carousel["is_aigc"] = bool(is_aigc)
+            logger.warning(
+                "Carousel %s is_aigc was %r (type %s), coerced to %s",
+                carousel.get("carousel_id", i), is_aigc,
+                type(is_aigc).__name__, carousel["is_aigc"],
+            )
+
+        # Validate scheduled_date format
+        sched_date = carousel.get("scheduled_date", "")
+        try:
+            datetime.strptime(sched_date, "%Y-%m-%d")
+        except ValueError:
+            raise ValueError(
+                f"Carousel {carousel.get('carousel_id', i)} has invalid "
+                f"scheduled_date='{sched_date}'. Expected YYYY-MM-DD format."
             )
 
         # Layer 2: Taxonomy + template family validation
@@ -273,11 +307,19 @@ def _validate_plan(plan: dict, taxonomy: dict) -> None:
                 )
 
         family = carousel.get("template_family", "")
+        # Normalize hyphenated variants to underscored (e.g. "clean-educational" -> "clean_educational")
+        if "-" in family:
+            original_family = family
+            normalized = family.replace("-", "_")
+            if normalized in VALID_TEMPLATE_FAMILIES:
+                carousel["template_family"] = normalized
+                family = normalized
+                logger.info("Normalized template_family '%s' -> '%s' for carousel %s",
+                            original_family, family, carousel.get("carousel_id", i))
         if family not in VALID_TEMPLATE_FAMILIES:
-            logger.warning(
-                "Carousel %s has invalid template_family='%s'. Valid: %s",
-                carousel.get("carousel_id", i),
-                family, VALID_TEMPLATE_FAMILIES,
+            raise ValueError(
+                f"Carousel {carousel.get('carousel_id', i)} has invalid "
+                f"template_family='{family}'. Valid: {VALID_TEMPLATE_FAMILIES}"
             )
 
         # Layer 2b: Image prompts validation
@@ -287,10 +329,16 @@ def _validate_plan(plan: dict, taxonomy: dict) -> None:
                 "Carousel %s has %d image_prompts (max 3)",
                 carousel.get("carousel_id", i), len(image_prompts),
             )
-        if family not in ("photo_forward", "photo-forward") and image_prompts:
+        if family != "photo_forward" and image_prompts:
             logger.warning(
                 "Carousel %s is '%s' but has %d image_prompts (should be empty)",
                 carousel.get("carousel_id", i), family, len(image_prompts),
+            )
+        if family == "photo_forward" and not image_prompts:
+            logger.warning(
+                "Carousel %s is 'photo_forward' but has no image_prompts — "
+                "slides will render without background images",
+                carousel.get("carousel_id", i),
             )
         content_slide_count = len(carousel.get("content_slides") or [])
         cta_index = content_slide_count + 1
@@ -309,6 +357,7 @@ def _validate_plan(plan: dict, taxonomy: dict) -> None:
                 carousel.get("carousel_id", i), type(content_slides).__name__,
             )
             content_slides = []
+            carousel["content_slides"] = content_slides
         if len(content_slides) < 2:
             logger.warning(
                 "Carousel %s has only %d content slides (recommend 3-7)",
@@ -367,7 +416,17 @@ def generate_content_from_plan(
     # Step 1: Render carousels (per-slide image generation + Puppeteer)
     rendered = generate_carousels(plan, dry_run=dry_run)
 
-    # Enrich plan with render results
+    # Filter out carousels that completely failed to render
+    render_failed = [r for r in rendered if r.get("render_error")]
+    if render_failed:
+        failed_ids = [r.get("carousel_id", "?") for r in render_failed]
+        logger.warning(
+            "%d carousel(s) failed to render and will not be published: %s",
+            len(render_failed), failed_ids,
+        )
+        rendered = [r for r in rendered if not r.get("render_error")]
+
+    # Enrich plan with render results (AFTER filtering failures)
     plan["_rendered"] = [
         {
             "carousel_id": r.get("carousel_id"),
@@ -409,19 +468,35 @@ def generate_content_from_plan(
                     continue
 
                 gcs_urls = []
+                upload_failed = False
                 for i, slide_path in enumerate(slide_paths):
                     remote_name = f"tiktok/{carousel_id}/slide-{i}.png"
                     url = gcs.upload_image(Path(slide_path), remote_name)
                     if url:
                         gcs_urls.append(url)
+                    else:
+                        # Preserve index alignment — stop uploading on first failure
+                        upload_failed = True
+                        logger.warning(
+                            "GCS upload failed for %s slide %d — aborting remaining slides",
+                            carousel_id, i,
+                        )
+                        break
 
-                if gcs_urls:
+                if gcs_urls and not upload_failed:
                     carousel["slide_urls"] = gcs_urls
-                    carousel["slide_count"] = len(gcs_urls)
                     slide_preview_urls[carousel_id] = gcs_urls
-                    logger.info(
-                        "Uploaded %d/%d slides for %s to GCS",
-                        len(gcs_urls), len(slide_paths), carousel_id,
+                elif gcs_urls and upload_failed:
+                    carousel["gcs_upload_failed"] = True
+                    logger.warning(
+                        "Partial GCS upload for %s: %d/%d slides uploaded — carousel will not be postable",
+                        carousel_id, len(gcs_urls), len(slide_paths),
+                    )
+                else:
+                    carousel["gcs_upload_failed"] = True
+                    logger.warning(
+                        "GCS upload failed completely for %s (0/%d slides)",
+                        carousel_id, len(slide_paths),
                     )
         else:
             logger.warning("GCS not available, skipping slide upload")
@@ -503,13 +578,18 @@ if __name__ == "__main__":
             print(f"Plan status is '{status}' — review in progress, skipping generation.")
             sys.exit(78)
 
+    import sys
     print("Generating TikTok weekly content plan...")
-    result = generate_plan(
-        week_start_date=args.week_start,
-        dry_run=args.dry_run,
-        plan_only=args.plan_only,
-    )
-    carousels = result.get("carousels", [])
-    print(f"Generated plan with {len(carousels)} carousels")
-    for c in carousels:
-        print(f"  {c.get('carousel_id')}: {c.get('topic')} / {c.get('angle')} [{c.get('template_family')}]")
+    try:
+        result = generate_plan(
+            week_start_date=args.week_start,
+            dry_run=args.dry_run,
+            plan_only=args.plan_only,
+        )
+        carousels = result.get("carousels", [])
+        print(f"Generated plan with {len(carousels)} carousels")
+        for c in carousels:
+            print(f"  {c.get('carousel_id')}: {c.get('topic')} / {c.get('angle')} [{c.get('template_family')}]")
+    except Exception as e:
+        logger.error("Plan generation failed: %s", e, exc_info=True)
+        sys.exit(1)

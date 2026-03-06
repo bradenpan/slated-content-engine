@@ -47,7 +47,7 @@ function onSheetEdit(e) {
           sheet.getRange("B3").setNote("BLOCKED: B5 was '" + b5 + "' — wait for plan regen to complete, then re-approve.");
           return;
         }
-        sheet.getRange("B6").setValue(new Date().toISOString());
+        sheet.getRange("B4").setValue(new Date().toISOString());
         triggerGitHubWorkflow("tiktok-generate-content");
       }
 
@@ -62,7 +62,7 @@ function onSheetEdit(e) {
 
     // B5: Plan regen trigger
     if (col === 2 && row === 5 && newValue === "regen") {
-      sheet.getRange("B6").setValue(new Date().toISOString());
+      sheet.getRange("B4").setValue(new Date().toISOString());
       triggerGitHubWorkflow("tiktok-regen-plan");
     }
   }
@@ -72,7 +72,7 @@ function onSheetEdit(e) {
 
     // Column O (col 15): content approval status
     // Fires when ALL data rows have a terminal status (approved / rejected)
-    if (col === 15) {
+    if (col === 15 && row >= 2) {
       if (allContentReviewed(sheet)) {
         // Guard: only dispatch if Weekly Review B3 = "approved"
         // (prevents scheduling stale renders after backward phase transition)
@@ -100,16 +100,27 @@ function triggerGitHubWorkflow(eventType) {
   var token = PropertiesService.getScriptProperties().getProperty("GITHUB_TOKEN");
   var repo = "bradenpan/slated-content-engine";
 
-  UrlFetchApp.fetch("https://api.github.com/repos/" + repo + "/dispatches", {
-    method: "POST",
-    headers: {
-      "Authorization": "Bearer " + token,
-      "Accept": "application/vnd.github.v3+json"
-    },
-    payload: JSON.stringify({
-      event_type: eventType
-    })
-  });
+  try {
+    var response = UrlFetchApp.fetch("https://api.github.com/repos/" + repo + "/dispatches", {
+      method: "POST",
+      headers: {
+        "Authorization": "Bearer " + token,
+        "Accept": "application/vnd.github.v3+json"
+      },
+      payload: JSON.stringify({
+        event_type: eventType
+      }),
+      muteHttpExceptions: true
+    });
+    var code = response.getResponseCode();
+    if (code === 204) {
+      SpreadsheetApp.getActiveSpreadsheet().toast("Dispatched: " + eventType, "✓ Workflow", 5);
+    } else {
+      SpreadsheetApp.getActiveSpreadsheet().toast("HTTP " + code + " — check GITHUB_TOKEN", "✗ Dispatch Failed", 10);
+    }
+  } catch (err) {
+    SpreadsheetApp.getActiveSpreadsheet().toast(err.message, "✗ Network Error", 10);
+  }
 }
 
 function allContentReviewed(sheet) {
@@ -134,27 +145,33 @@ function allContentReviewed(sheet) {
 }
 
 // === Convenience button functions ===
+// These set the trigger cell value, which fires the installable onSheetEdit
+// trigger. Do NOT also call triggerGitHubWorkflow() directly — installable
+// triggers DO fire for programmatic setValue(), so direct dispatch would
+// cause duplicate workflow runs.
 
 /**
  * Trigger plan-level regen manually (attach to a button drawing).
- * Sets B5 = "regen" which fires the onSheetEdit trigger.
+ * Sets B5 = "regen" which fires onSheetEdit -> triggerGitHubWorkflow.
  */
 function runTikTokPlanRegen() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var wr = ss.getSheetByName("Weekly Review");
   if (wr) {
+    // Only set B5 — onSheetEdit handles the B4 timestamp
     wr.getRange("B5").setValue("regen");
   }
 }
 
 /**
  * Trigger content-level regen manually (attach to a button drawing).
- * Sets R1 = "run" which fires the onSheetEdit trigger.
+ * Sets R1 = "run" which fires onSheetEdit -> triggerGitHubWorkflow.
  */
 function runTikTokContentRegen() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var cq = ss.getSheetByName("Content Queue");
   if (cq) {
+    // Only set R1 — onSheetEdit handles the R2 timestamp
     cq.getRange("R1").setValue("run");
   }
 }

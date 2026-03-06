@@ -212,14 +212,14 @@ def regen_content(
             # Step 5: Generate new images for target slides
             new_image_paths: dict[int, Path] = {}
             image_failures: list[int] = []
+            prompt_updates: dict[int, str] = {}  # defer mutations until carousel succeeds
             for si in slide_indices:
                 ip = _find_image_prompt(image_prompts, si)
-                prompt = ip["prompt"]
+                original_prompt = ip.get("prompt", "")
+                prompt = original_prompt
                 # Append feedback to prompt if provided
                 if feedback:
-                    prompt = f"{prompt}\n\nReviewer feedback: {feedback}"
-                    # Update the image prompt in the spec for audit trail
-                    ip["prompt"] = prompt
+                    prompt = f"{original_prompt}\n\nReviewer feedback: {feedback}"
 
                 try:
                     img_path = carousel_output / f"bg-slide-{si}.png"
@@ -232,6 +232,9 @@ def regen_content(
                     )
                     cleaned = clean_image(generated, add_noise=False)
                     new_image_paths[si] = cleaned
+                    # Defer prompt update until carousel regen fully succeeds
+                    if feedback:
+                        prompt_updates[si] = prompt
                     logger.info("Regenerated image for %s slide %d", cid, si)
                 except Exception as e:
                     logger.error("Image generation failed for %s slide %d: %s", cid, si, e)
@@ -314,6 +317,12 @@ def regen_content(
                 slide_urls=slide_urls_for_row,
             )
 
+            # Apply deferred prompt updates now that carousel regen succeeded
+            for si, updated_prompt in prompt_updates.items():
+                ip = _find_image_prompt(image_prompts, si)
+                if ip:
+                    ip["prompt"] = updated_prompt
+
             successes.append((cid, slide_indices))
             logger.info("Content regen complete for %s (slides: %s)", cid, slide_indices)
 
@@ -321,27 +330,35 @@ def regen_content(
             failures.append((cid, str(e)))
             logger.error("Content regen failed for %s: %s", cid, e)
 
-    # Step 10: Save updated plan JSON (image prompts may have been modified)
-    tmp = plan_path.with_suffix(".tmp")
-    try:
-        tmp.write_text(
-            json.dumps(plan, indent=2, ensure_ascii=False),
-            encoding="utf-8",
-        )
-        tmp.replace(plan_path)
-        logger.info("Saved updated plan to %s", plan_path)
-    except OSError:
+    # Step 10: Save updated plan JSON (only if at least one regen succeeded,
+    # to avoid persisting corrupted prompts from failed attempts)
+    if successes:
+        tmp = plan_path.with_suffix(".tmp")
         try:
-            tmp.unlink(missing_ok=True)
+            tmp.write_text(
+                json.dumps(plan, indent=2, ensure_ascii=False),
+                encoding="utf-8",
+            )
+            tmp.replace(plan_path)
+            logger.info("Saved updated plan to %s", plan_path)
         except OSError:
-            pass
-        raise
+            try:
+                tmp.unlink(missing_ok=True)
+            except OSError:
+                pass
+            raise
+    elif failures:
+        logger.warning("All regens failed — skipping plan JSON save to avoid corrupted prompts")
 
-    # Step 11: Reset R1 trigger
-    try:
-        sheets.reset_tiktok_content_regen_trigger()
-    except Exception as e:
-        logger.warning("Failed to reset R1 trigger (non-fatal): %s", e)
+    # Step 11: Reset R1 trigger (only if at least one regen succeeded;
+    # if all failed, leave trigger active so reviewer knows it didn't work)
+    if successes or (not failures and not skipped):
+        try:
+            sheets.reset_tiktok_content_regen_trigger()
+        except Exception as e:
+            logger.warning("Failed to reset R1 trigger (non-fatal): %s", e)
+    elif failures and not successes:
+        logger.warning("All regens failed — leaving R1 trigger active for retry")
 
     # Step 12: Slack notification
     summary_parts = []
