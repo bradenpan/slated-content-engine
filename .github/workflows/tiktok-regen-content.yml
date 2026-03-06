@@ -1,0 +1,58 @@
+name: TikTok Regen Content
+
+# Triggered by Apps Script when Content Queue R1 = "run" (via repository_dispatch)
+on:
+  repository_dispatch:
+    types: [tiktok-regen-content]
+  workflow_dispatch:  # Manual fallback trigger
+
+concurrency:
+  group: slated-content-engine-tiktok
+  cancel-in-progress: false
+
+env:
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+  GOOGLE_SHEETS_CREDENTIALS_JSON: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS_JSON }}
+  TIKTOK_SPREADSHEET_ID: ${{ secrets.TIKTOK_SPREADSHEET_ID }}
+  GCS_BUCKET_NAME: ${{ secrets.GCS_BUCKET_NAME }}
+  SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+jobs:
+  tiktok-regen-content:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull latest (plan JSON from previous runner)
+        run: git pull --rebase origin main
+
+      - name: Setup pipeline
+        uses: ./.github/actions/setup-pipeline
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Puppeteer
+        run: npm install puppeteer
+
+      - name: Regenerate flagged carousel images
+        run: python -m src.tiktok.regen_content
+
+      - name: Commit updated plan
+        uses: ./.github/actions/commit-data
+        with:
+          message: "chore: regenerated TikTok carousel images [skip ci]"
+
+      - name: Notify failure
+        if: failure()
+        uses: ./.github/actions/notify-failure
+        with:
+          workflow_name: "TikTok Regen Content"
+          run_url: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

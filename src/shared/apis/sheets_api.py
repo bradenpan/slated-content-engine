@@ -1093,6 +1093,86 @@ class SheetsAPI:
         except Exception as e:
             raise SheetsAPIError(f"Failed to reset TikTok content regen trigger: {e}") from e
 
+    def update_tiktok_content_row(
+        self,
+        carousel_id: str,
+        status: str | None = None,
+        notes: str | None = None,
+        slide_urls: list[str] | None = None,
+    ) -> None:
+        """Update specific cells for a carousel row in the TikTok Content Queue.
+
+        Used by regen_content.py to update slide preview URLs, status, and
+        notes after image regeneration without rewriting the entire tab.
+
+        Args:
+            carousel_id: Internal carousel ID (column A).
+            status: New status value for column O. None = don't update.
+            notes: New notes value for column Q. None = don't update.
+            slide_urls: List of slide URLs for columns D-L. Each URL gets
+                wrapped in =IMAGE(). None = don't update slide previews.
+        """
+        try:
+            result = self.sheets.values().get(
+                spreadsheetId=self.sheet_id,
+                range=f"'{TAB_CONTENT_QUEUE}'!A:A",
+            ).execute()
+
+            values = result.get("values", [])
+            target_row = None
+            for i, row in enumerate(values):
+                if row and row[0].strip() == carousel_id:
+                    target_row = i + 1  # 1-based
+                    break
+
+            if target_row is None:
+                logger.warning("Carousel %s not found in TikTok Content Queue.", carousel_id)
+                return
+
+            updates = []
+
+            if status is not None:
+                updates.append({
+                    "range": f"'{TAB_CONTENT_QUEUE}'!O{target_row}",
+                    "values": [[status]],
+                })
+
+            if notes is not None:
+                updates.append({
+                    "range": f"'{TAB_CONTENT_QUEUE}'!Q{target_row}",
+                    "values": [[notes]],
+                })
+
+            if slide_urls is not None:
+                # Build 9 slide preview cells (D-L)
+                slide_cells = [""] * self.TIKTOK_CQ_SLIDE_SLOTS
+                for j, url in enumerate(slide_urls):
+                    if j < self.TIKTOK_CQ_SLIDE_SLOTS and url:
+                        slide_cells[j] = f'=IMAGE("{url}")'
+                updates.append({
+                    "range": f"'{TAB_CONTENT_QUEUE}'!D{target_row}:L{target_row}",
+                    "values": [slide_cells],
+                })
+
+            if not updates:
+                return
+
+            self.sheets.values().batchUpdate(
+                spreadsheetId=self.sheet_id,
+                body={
+                    "valueInputOption": "USER_ENTERED",
+                    "data": updates,
+                },
+            ).execute()
+            logger.info("Updated TikTok content row for %s.", carousel_id)
+
+        except SheetsAPIError:
+            raise
+        except Exception as e:
+            raise SheetsAPIError(
+                f"Failed to update TikTok content row for {carousel_id}: {e}"
+            ) from e
+
     def write_tiktok_weekly_review(self, plan: dict) -> None:
         """Write TikTok carousel specs to the Weekly Review tab.
 

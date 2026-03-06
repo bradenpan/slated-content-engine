@@ -3157,3 +3157,50 @@ Split content rendering into a separate step triggered by plan approval (B3=appr
 | Major rewrite | 2 | `generate_carousels.py` (per-slide images + extracted builder), `tiktok-trigger.gs` (6 triggers + guards) |
 | Modified | 4 | `generate_weekly_plan.py` (+`generate_content_from_plan()`, deleted Steps 11-14), `sheets_api.py` (17-col schema + 2 new methods), `publish_content_queue.py` (slide_urls type), `tiktok-promote-and-schedule.yml` (+git pull) |
 | Modified (docs) | 2 | `ARCHITECTURE.md` (updated tables/gotchas), `progress.md` (this entry) |
+
+## Phase 13F — TikTok Two-Phase Approval: Image-Level Regen (2026-03-06)
+
+Final phase of the two-phase approval system. Content-level regeneration of AI-generated images for specific slides, triggered from the Content Queue tab.
+
+### What Changed
+
+**`src/tiktok/regen_content.py`** — New file (~250 lines). Content-level regen orchestrator:
+- `_parse_regen_status()` — Parses `regen_image_N`, comma-separated targets, or full `regen`
+- `_col_position_to_slide_index()` — Translates fixed Content Queue column-position (0=hook, 1-7=content, 8=CTA) to actual slide_index using content_slides length
+- `_find_image_prompt()` — Looks up image_prompt entry by slide_index; no-op if slide has no AI image
+- `regen_content()` — Full orchestration: read requests → load plan → parse targets → generate new AI images (with feedback appended to prompt) → re-render full carousel via `build_slides_for_render()` + `CarouselAssembler` → upload to GCS with cache-bust `?t=TIMESTAMP` → update Content Queue row → save plan JSON → reset R1 → Slack notification
+- Per-carousel error isolation (failures don't block others)
+
+**`src/shared/apis/sheets_api.py`** — Added `update_tiktok_content_row()` method:
+- Batch-updates specific cells for a carousel row: Status (O), Notes (Q), and optionally slide preview URLs (D-L with `=IMAGE()` formulas)
+- Uses `USER_ENTERED` value input option for formula evaluation
+- Row lookup uses `.strip()` for whitespace safety
+
+**`.github/workflows/tiktok-regen-content.yml`** — New workflow:
+- Triggered by `repository_dispatch: tiktok-regen-content` (from Apps Script when R1=run)
+- `git pull --rebase` + Node.js 22 + Puppeteer (for re-rendering)
+- Concurrency group: `slated-content-engine-tiktok`
+
+### Key Design Decisions
+- **Image regen only in Phase 2**: Text was approved in Phase 1. Phase 2 regen targets visual output only — no Claude API calls needed, only `ImageGenAPI.generate()`
+- **Column-position to slide_index translation**: Fixed CQ layout (0-8) maps to variable carousel structure. Out-of-range positions logged and skipped.
+- **No-op for text-only slides**: `regen_image_N` on a slide without an image prompt writes a note and skips — no crash, no silent corruption
+- **Feedback modifies prompt**: Reviewer feedback (e.g., "make it brighter") is appended to the existing image prompt. Updated prompt saved to plan JSON for audit trail.
+- **Cache-bust for Sheet refresh**: `?t=TIMESTAMP` appended to GCS URLs forces Google Sheets to re-fetch `=IMAGE()` formulas after image replacement
+- **Full carousel re-render**: Even if only one slide's image changes, the entire carousel is re-rendered. Reuses existing `build_slides_for_render()` + `CarouselAssembler` with zero changes to rendering code.
+
+### Two-Phase Approval System Complete
+
+All 6 phases are now implemented:
+- **A+B**: Plan/render split + workflow updates (plan-only mode, cron collision guard)
+- **C**: Plan-level regen (direct edits + Claude regen from Weekly Review feedback)
+- **D+E**: Content generation as separate step + Apps Script wiring (per-slide images, 17-col Content Queue, 6 triggers with concurrency guards)
+- **F**: Image-level regen (AI image regeneration from Content Queue feedback)
+
+### File Counts
+
+| Action | Count | Details |
+|--------|-------|---------|
+| New | 2 | `regen_content.py` (orchestrator), `tiktok-regen-content.yml` (workflow) |
+| Modified | 1 | `sheets_api.py` (+`update_tiktok_content_row()`) |
+| Modified (docs) | 2 | `ARCHITECTURE.md` (updated tables), `progress.md` (this entry) |

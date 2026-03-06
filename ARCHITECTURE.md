@@ -50,7 +50,7 @@ Plan → [Plan Review] → [Plan Regen] → Render → GCS Upload → Sheet → 
 | 2 | Plan Approval | Sheet B3 = "approved" | Apps Script → `tiktok-generate-content.yml` | — |
 | 3 | Content Generation | Workflow | `tiktok/generate_weekly_plan.py --generate-content` | Rendered PNGs + GCS upload + Content Queue sheet (17 cols, per-slide previews) |
 | 4 | Content Review | Manual in Sheet | — | Status per row in Column O (approved/rejected/regen_image_N) |
-| 4b | Content Regen *(optional)* | Sheet R1 = "run" | `tiktok/regen_content.py` *(Phase F)* | Updated images + Content Queue rows |
+| 4b | Content Regen *(optional)* | Sheet R1 = "run" | `tiktok/regen_content.py` | Updated images + Content Queue rows |
 | 5 | Promote & Schedule | `repository_dispatch: tiktok-promote-and-schedule` | `tiktok/promote_and_schedule.py` | `carousel-schedule.json` (7d × 3 slots), Sheet status → "scheduled" |
 | 6 | Daily Posting | 3x daily cron (10am/4pm/7pm ET) | `tiktok/post_content.py` | Posts via Publer API, updated `content-log.jsonl` |
 
@@ -208,6 +208,7 @@ slated-content-engine/              # Renamed from pinterest-pipeline
 | `weekly_analysis.py` | Claude-driven weekly performance analysis. TikTok attribute dimensions (topic, angle, structure, hook_type, template_family). |
 | `compute_attribute_weights.py` | Bayesian attribute weight updater for explore/exploit feedback loop. 65/35 exploit/explore split, cold-start even distribution until 5+ posts per attribute. `--update` reads performance summary. |
 | `regen_plan.py` | Plan-level regen orchestrator: parses reviewer feedback (direct text edits or Claude regen), updates carousel specs, re-writes Weekly Review tab. Supports `change hook/slide to "..."`, `regen hook/slide N`, full regen, and free-form feedback fallback. |
+| `regen_content.py` | Content-level regen orchestrator: regenerates AI images for specific slides (`regen_image_N`) or all images (`regen`). Translates column-position to slide_index, generates new images, re-renders carousel, uploads to GCS with cache-bust, updates Content Queue row. |
 | `carousel_assembler.py` | Multi-slide carousel renderer: loads HTML/CSS templates (4 families × 3 slide types), injects variables, renders all slides in one Puppeteer batch via `render_pin.js --manifest`. Output: 1080×1920px PNGs. |
 
 ---
@@ -308,6 +309,7 @@ generate_pin_content → bare URL "https://goslated.com/blog/{slug}"
 | `tiktok-weekly-review.yml` | Cron: Monday 6:30am ET | Weekly analysis → attribute weight update → plan generation (`--plan-only`) |
 | `tiktok-regen-plan.yml` | Dispatch: `tiktok-regen-plan` | Regen flagged carousel specs from Weekly Review feedback |
 | `tiktok-generate-content.yml` | Dispatch: `tiktok-generate-content` | Render approved specs → per-slide AI images → GCS upload → Content Queue (17-col) |
+| `tiktok-regen-content.yml` | Dispatch: `tiktok-regen-content` | Regenerate AI images for flagged slides → re-render → GCS re-upload → update Content Queue row |
 | `tiktok-promote-and-schedule.yml` | Dispatch: `tiktok-promote-and-schedule` | Read approved carousels → schedule JSON → Sheet status "scheduled" |
 | `tiktok-daily-post.yml` | Cron: 10am/4pm/7pm ET | Post scheduled carousels via Publer (or Slack fallback) |
 
