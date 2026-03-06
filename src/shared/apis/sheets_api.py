@@ -1110,6 +1110,14 @@ class SheetsAPI:
             logger.warning("Could not read TikTok plan regen requests: %s", e)
             return []
 
+    def reset_tiktok_plan_regen_trigger(self) -> None:
+        """Write 'idle' to TikTok Weekly Review plan regen trigger cell (B5)."""
+        try:
+            self.write_cell(TIKTOK_TAB_WEEKLY_REVIEW, TIKTOK_WR_CELL_REGEN_TRIGGER, "idle")
+            logger.info("Reset TikTok plan regen trigger to 'idle'.")
+        except Exception as e:
+            raise SheetsAPIError(f"Failed to reset TikTok plan regen trigger: {e}") from e
+
     # === Internal Helpers ===
 
     def _clear_and_write(

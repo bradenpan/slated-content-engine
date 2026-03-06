@@ -644,6 +644,73 @@ class ClaudeAPI:
             response_text = self._call_api(prompt=prompt, system=system, model=MODEL_ROUTINE, max_tokens=2048, temperature=0.7)
             return self._parse_json_response(response_text, "carousel copy")
 
+    def regenerate_tiktok_carousel_spec(
+        self,
+        carousel_to_replace: dict,
+        feedback: str,
+        target: str,
+        kept_specs: list[dict],
+        taxonomy: dict,
+    ) -> dict:
+        """Regenerate a single TikTok carousel spec based on reviewer feedback.
+
+        Args:
+            carousel_to_replace: The carousel spec being replaced.
+            feedback: Reviewer's raw feedback text.
+            target: Regen target — "full", "hook", or "slide_N".
+            kept_specs: Other carousel specs (for diversity context).
+            taxonomy: Attribute taxonomy dict with current weights.
+
+        Returns:
+            dict: Replacement carousel spec in the same schema.
+        """
+        template = self.load_prompt_template("tiktok/regen_plan.md")
+
+        kept_summaries = [
+            f"- {s.get('carousel_id')}: {s.get('topic')}/{s.get('angle')} [{s.get('template_family')}]"
+            for s in kept_specs
+        ]
+
+        slim_taxonomy = {}
+        for dim_name, dim in taxonomy.get("dimensions", {}).items():
+            slim_taxonomy[dim_name] = {
+                attr_name: attr.get("weight", 1.0)
+                for attr_name, attr in dim.get("attributes", {}).items()
+            }
+
+        context = {
+            "carousel_to_replace": json.dumps(carousel_to_replace, indent=2),
+            "feedback": feedback or "No specific feedback — generate a fresh replacement.",
+            "target": target,
+            "kept_specs": "\n".join(kept_summaries) if kept_summaries else "None (only carousel in plan).",
+            "attribute_taxonomy": json.dumps(slim_taxonomy, indent=2),
+        }
+
+        prompt = self._render_template(template, context)
+
+        system = (
+            "You are a TikTok content strategist for Slated, a family meal planning app. "
+            "You are replacing a carousel spec that was flagged by a reviewer. "
+            "Generate a replacement spec that addresses the reviewer's feedback. "
+            "Preserve the carousel_id and scheduled_date from the original. "
+            "IMPORTANT: Output ONLY valid JSON. No explanations or text outside the JSON."
+        )
+
+        logger.info(
+            "Regenerating TikTok carousel %s (target: %s)...",
+            safe_get(carousel_to_replace, "carousel_id", "unknown"), target,
+        )
+
+        response_text = self._call_api(
+            prompt=prompt,
+            system=system,
+            model=MODEL_ROUTINE,
+            max_tokens=4096,
+            temperature=0.7,
+        )
+
+        return self._parse_json_response(response_text, "TikTok carousel regen")
+
     def analyze_weekly_performance(
         self,
         performance_data: dict,
