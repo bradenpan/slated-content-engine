@@ -73,6 +73,16 @@ WR_CELL_REGEN_TRIGGER = "B5"
 # Content Queue control cells
 CQ_CELL_REGEN_TRIGGER = "N1"
 
+# TikTok Weekly Review tab and control cells
+TIKTOK_TAB_WEEKLY_REVIEW = "Weekly Review"
+TIKTOK_WR_CELL_PLAN_STATUS = "B3"
+TIKTOK_WR_CELL_REGEN_TRIGGER = "B5"
+TIKTOK_WR_DATA_START_ROW = 7
+TIKTOK_WR_HEADERS = [
+    "ID", "Topic", "Angle", "Structure", "Hook Type", "Template Family",
+    "Hook Text", "Slide Text Preview", "Caption", "Status", "Feedback",
+]
+
 
 class SheetsAPIError(Exception):
     """Raised when Google Sheets operations fail."""
@@ -986,9 +996,119 @@ class SheetsAPI:
                 f"Failed to update TikTok content status for {carousel_id}: {e}"
             ) from e
 
-    def write_tiktok_weekly_review(self, review_data: dict) -> None:
-        """Write TikTok weekly review data. Stub for Phase 12."""
-        logger.info("write_tiktok_weekly_review: stub (Phase 12)")
+    def write_tiktok_weekly_review(self, plan: dict) -> None:
+        """Write TikTok carousel specs to the Weekly Review tab.
+
+        Writes control cells (B3=pending_review, B5=idle) and carousel
+        spec rows starting at row 7 with headers at row 6.
+
+        Args:
+            plan: The weekly plan dict containing a 'carousels' array.
+        """
+        carousels = plan.get("carousels", [])
+        logger.info("Writing TikTok Weekly Review: %d carousel specs...", len(carousels))
+
+        # Build rows: control cells (rows 1-5), blank row, header (row 6), data (row 7+)
+        rows = [
+            [],                                          # Row 1
+            [],                                          # Row 2
+            ["Plan Status", "pending_review"],            # Row 3 (A3, B3)
+            [],                                          # Row 4
+            ["Regen Trigger", "idle"],                    # Row 5 (A5, B5)
+            list(TIKTOK_WR_HEADERS),                     # Row 6 (header)
+        ]
+
+        for carousel in carousels:
+            content_slides = carousel.get("content_slides") or []
+            cta = carousel.get("cta_slide") or {}
+
+            # Build slide text preview: "Hook: ... | 1. ... 2. ... | CTA: ..."
+            parts = [f"Hook: {carousel.get('hook_text', '')}"]
+            slide_parts = []
+            for idx, slide in enumerate(content_slides, 1):
+                headline = slide.get("headline", "") if isinstance(slide, dict) else str(slide)
+                slide_parts.append(f"{idx}. {headline}")
+            if slide_parts:
+                parts.append(" ".join(slide_parts))
+            cta_text = cta.get("cta_primary", "") if isinstance(cta, dict) else str(cta)
+            if cta_text:
+                parts.append(f"CTA: {cta_text}")
+            slide_text_preview = " | ".join(parts)
+
+            # Truncate caption for preview
+            caption = str(carousel.get("caption", ""))
+            caption_preview = caption[:200] + "..." if len(caption) > 200 else caption
+
+            rows.append([
+                str(carousel.get("carousel_id", "")),
+                str(carousel.get("topic", "")),
+                str(carousel.get("angle", "")),
+                str(carousel.get("structure", "")),
+                str(carousel.get("hook_type", "")),
+                str(carousel.get("template_family", "")),
+                str(carousel.get("hook_text", "")),
+                slide_text_preview,
+                caption_preview,
+                "pending_review",
+                "",  # Feedback (empty)
+            ])
+
+        self._clear_and_write(TIKTOK_TAB_WEEKLY_REVIEW, rows)
+        logger.info("TikTok Weekly Review written: %d carousel specs.", len(carousels))
+
+    def read_tiktok_plan_status(self) -> Optional[str]:
+        """Read the TikTok plan status from Weekly Review B3.
+
+        Returns:
+            The status string ('pending_review', 'approved', 'rejected'),
+            or None if the tab/cell doesn't exist.
+        """
+        try:
+            result = self.sheets.values().get(
+                spreadsheetId=self.sheet_id,
+                range=f"'{TIKTOK_TAB_WEEKLY_REVIEW}'!{TIKTOK_WR_CELL_PLAN_STATUS}",
+            ).execute()
+            values = result.get("values", [])
+            if values and values[0]:
+                return str(values[0][0]).strip()
+            return None
+        except Exception as e:
+            logger.warning("Could not read TikTok plan status: %s", e)
+            return None
+
+    def read_tiktok_plan_regen_requests(self) -> list[dict]:
+        """Read carousel rows flagged for regen from the TikTok Weekly Review tab.
+
+        Returns:
+            List of dicts with 'carousel_id' and 'feedback' for rows
+            where the Status column (J) = 'regen'.
+        """
+        try:
+            result = self.sheets.values().get(
+                spreadsheetId=self.sheet_id,
+                range=f"'{TIKTOK_TAB_WEEKLY_REVIEW}'!A{TIKTOK_WR_DATA_START_ROW}:K",
+            ).execute()
+            values = result.get("values", [])
+            if not values:
+                return []
+
+            regen_requests = []
+            for row in values:
+                if len(row) < 10:
+                    continue
+                status = row[9].strip().lower() if row[9] else ""  # Col J (index 9)
+                if status != "regen":
+                    continue
+                feedback = row[10].strip() if len(row) > 10 and row[10] else ""
+                regen_requests.append({
+                    "carousel_id": row[0].strip(),  # Col A (index 0)
+                    "feedback": feedback,             # Col K (index 10)
+                })
+
+            return regen_requests
+        except Exception as e:
+            logger.warning("Could not read TikTok plan regen requests: %s", e)
+            return []
 
     # === Internal Helpers ===
 

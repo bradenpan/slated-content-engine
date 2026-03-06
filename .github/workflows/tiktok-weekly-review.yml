@@ -1,8 +1,9 @@
 name: TikTok Weekly Review
 
-# TikTok-specific weekly review: performance analysis + attribute weight update + content plan
+# TikTok-specific weekly review: performance analysis + attribute weight update + plan generation (plan-only)
 # Runs Monday 6:30am ET (11:30 UTC) -- 30 min after Pinterest (6:00am ET), 1h after analytics (5:30am ET)
 # Analytics data and content memory are already fresh from the collection step.
+# Plan-only mode: generates specs + writes Weekly Review tab. No rendering.
 on:
   schedule:
     - cron: '30 11 * * 1'  # 11:30 UTC = 6:30 AM ET, Monday (30 min after Pinterest)
@@ -20,8 +21,6 @@ env:
   PUBLER_API_KEY: ${{ secrets.PUBLER_API_KEY }}
   PUBLER_WORKSPACE_ID: ${{ secrets.PUBLER_WORKSPACE_ID }}
   PUBLER_ACCOUNT_ID: ${{ secrets.PUBLER_ACCOUNT_ID }}
-  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-  GCS_BUCKET_NAME: ${{ secrets.GCS_BUCKET_NAME }}
 
 jobs:
   tiktok-weekly-review:
@@ -37,25 +36,35 @@ jobs:
       - name: Setup pipeline
         uses: ./.github/actions/setup-pipeline
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
+      - name: Check for in-progress review (cron collision guard)
+        id: check
+        continue-on-error: true
+        run: python -m src.tiktok.generate_weekly_plan --check-plan-status
 
-      - name: Install Puppeteer
-        run: npm install puppeteer
+      - name: Warn if skipping due to in-progress review
+        if: steps.check.outcome == 'failure'
+        run: |
+          echo "::warning::Skipped TikTok plan generation — previous week's review still in progress."
+          python -m src.shared.apis.slack_notify \
+            "TikTok Weekly Review" \
+            "Skipped plan generation — previous week's review still in progress (B3 != idle/rejected)." \
+            || echo "::warning::Slack notification failed (non-fatal)."
 
       - name: Run TikTok weekly performance analysis
+        if: steps.check.outcome == 'success'
         run: python -m src.tiktok.weekly_analysis
 
       - name: Update attribute weights from performance data
+        if: steps.check.outcome == 'success'
         continue-on-error: true  # Plan can use stale weights if update fails
         run: python -m src.tiktok.compute_attribute_weights --update
 
-      - name: Generate weekly content plan
-        run: python -m src.tiktok.generate_weekly_plan
+      - name: Generate weekly content plan (plan-only)
+        if: steps.check.outcome == 'success'
+        run: python -m src.tiktok.generate_weekly_plan --plan-only
 
       - name: Commit updated data files
+        if: steps.check.outcome == 'success'
         uses: ./.github/actions/commit-data
         with:
           message: "chore: update TikTok analytics and plan [skip ci]"

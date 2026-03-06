@@ -24,13 +24,12 @@ from pathlib import Path
 from typing import Optional
 
 from src.tiktok.apis.publer_api import PublerAPI, PublerAPIError
-from src.shared.paths import DATA_DIR
+from src.shared.paths import DATA_DIR, TIKTOK_DATA_DIR
 from src.shared.analytics_utils import compute_derived_metrics
 from src.shared.utils.content_log import load_content_log, save_content_log
 
 logger = logging.getLogger(__name__)
 
-TIKTOK_DATA_DIR = DATA_DIR / "tiktok"
 ANALYTICS_DIR = TIKTOK_DATA_DIR / "analytics"
 PERFORMANCE_SUMMARY_PATH = TIKTOK_DATA_DIR / "performance-summary.json"
 

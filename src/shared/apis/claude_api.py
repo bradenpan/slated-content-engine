@@ -644,47 +644,6 @@ class ClaudeAPI:
             response_text = self._call_api(prompt=prompt, system=system, model=MODEL_ROUTINE, max_tokens=2048, temperature=0.7)
             return self._parse_json_response(response_text, "carousel copy")
 
-    def generate_tiktok_image_prompt(
-        self,
-        carousel_spec: dict,
-    ) -> dict:
-        """Generate a DALL-E image prompt for a photo-forward TikTok carousel.
-
-        Uses GPT-5 Mini as primary with Claude Sonnet fallback.
-        Brand visual guidelines are embedded directly in the prompt template.
-
-        Args:
-            carousel_spec: Carousel specification (must be photo-forward family).
-
-        Returns:
-            dict: {"image_prompt": str, "style": str}
-        """
-        template = self.load_prompt_template("tiktok/image_prompt.md")
-
-        context = {
-            "topic": safe_get(carousel_spec, "topic", ""),
-            "angle": safe_get(carousel_spec, "angle", ""),
-            "hook_text": safe_get(carousel_spec, "hook_text", ""),
-        }
-
-        prompt = self._render_template(template, context)
-
-        system = (
-            "You are an image prompt specialist for food and lifestyle photography. "
-            "Generate a detailed DALL-E image prompt for a TikTok carousel background. "
-            "The image should be portrait orientation (9:16), warm and inviting. "
-            "IMPORTANT: Output ONLY valid JSON."
-        )
-
-        logger.info("Generating image prompt for: %s", safe_get(carousel_spec, "carousel_id", "unknown"))
-        try:
-            response_text = call_gpt5_mini(prompt=prompt, system=system, max_tokens=500, temperature=0.8)
-            return self._parse_json_response(response_text, "TikTok image prompt")
-        except (OpenAIChatAPIError, ValueError, requests.HTTPError) as e:
-            logger.warning("GPT-5 Mini failed for image prompt, falling back to Claude Sonnet: %s", str(e))
-            response_text = self._call_api(prompt=prompt, system=system, model=MODEL_ROUTINE, max_tokens=500, temperature=0.8)
-            return self._parse_json_response(response_text, "TikTok image prompt")
-
     def analyze_weekly_performance(
         self,
         performance_data: dict,

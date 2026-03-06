@@ -40,15 +40,19 @@ Plan → [Plan Regen] → Generate → Review → [Content Regen] → Deploy →
 ### TikTok Pipeline Flow
 
 ```
-Plan → Render → GCS Upload → Sheet → [Human Review] → Schedule → Post (3x daily)
+Plan → [Plan Review] → [Plan Regen] → Render → GCS Upload → Sheet → [Content Review] → Schedule → Post (3x daily)
 ```
 
 | # | Step | Trigger | Script(s) | Output |
 |---|------|---------|-----------|--------|
-| 1 | Weekly Plan | `tiktok-weekly-plan.yml` | `tiktok/generate_weekly_plan.py` | 7 carousel specs + rendered PNGs + GCS upload + TikTok Content Queue sheet |
-| 2 | Human Review | Manual in Sheet | — | Status per row in Column M (approved/rejected) |
-| 3 | Promote & Schedule | `repository_dispatch: tiktok-promote-and-schedule` | `tiktok/promote_and_schedule.py` | `carousel-schedule.json` (7d × 3 slots), Sheet status → "scheduled" |
-| 4 | Daily Posting | 3x daily cron (10am/4pm/7pm ET) | `tiktok/post_content.py` | Posts via Publer API, updated `content-log.jsonl` |
+| 1 | Weekly Plan | `tiktok-weekly-review.yml` (Monday 6:30am ET) | `tiktok/generate_weekly_plan.py --plan-only` | 7 carousel specs → plan JSON + Weekly Review tab |
+| 1b | Plan Regen *(optional)* | Sheet B5 = "regen" | `tiktok/regen_plan.py` *(Phase C)* | Updated plan JSON + Weekly Review tab |
+| 2 | Plan Approval | Sheet B3 = "approved" | Apps Script → `tiktok-generate-content.yml` *(Phase D)* | — |
+| 3 | Content Generation | Workflow | `tiktok/generate_weekly_plan.py --generate-content` *(Phase D)* | Rendered PNGs + GCS upload + Content Queue sheet |
+| 4 | Content Review | Manual in Sheet | — | Status per row in Column O (approved/rejected/regen_image_N) |
+| 4b | Content Regen *(optional)* | Sheet R1 = "run" | `tiktok/regen_content.py` *(Phase F)* | Updated images + Content Queue rows |
+| 5 | Promote & Schedule | `repository_dispatch: tiktok-promote-and-schedule` | `tiktok/promote_and_schedule.py` | `carousel-schedule.json` (7d × 3 slots), Sheet status → "scheduled" |
+| 6 | Daily Posting | 3x daily cron (10am/4pm/7pm ET) | `tiktok/post_content.py` | Posts via Publer API, updated `content-log.jsonl` |
 
 **Posting modes:** `TIKTOK_POSTING_ENABLED=true` posts via Publer automatically. `=false` sends Slack alerts with GCS links for manual upload.
 
@@ -105,7 +109,7 @@ slated-content-engine/              # Renamed from pinterest-pipeline
 ├── prompts/
 │   ├── shared/                   # Cross-channel prompts (blog generation, image prompts)
 │   ├── pinterest/                # Pinterest-specific prompts (planning, analysis, review)
-│   └── tiktok/                   # TikTok prompts (weekly_plan, carousel_copy, image_prompt)
+│   └── tiktok/                   # TikTok prompts (weekly_plan, carousel_copy, weekly_analysis)
 ├── templates/
 │   ├── pins/                    # HTML/CSS pin templates (5 types × 3 variants)
 │   └── tiktok/carousels/        # TikTok carousel templates (4 families × 3 slide types)
@@ -135,7 +139,7 @@ slated-content-engine/              # Renamed from pinterest-pipeline
 
 | File | Purpose |
 |------|---------|
-| `paths.py` | Centralized path constants (PROJECT_ROOT, DATA_DIR, PROMPTS_DIR, etc.) |
+| `paths.py` | Centralized path constants (PROJECT_ROOT, DATA_DIR, TIKTOK_DATA_DIR, PROMPTS_DIR, etc.) |
 | `config.py` | Centralized config: model names, costs, URLs, dimensions (pin + TikTok slide), timing constants |
 | `blog_generator.py` | Individual blog MDX generation with frontmatter + Schema.org (4 types: recipe, guide, listicle, weekly-plan) |
 | `blog_deployer.py` | Commits blogs to goslated.com repo (Vercel deploy), URL verification, pin schedule creation |
@@ -149,9 +153,9 @@ slated-content-engine/              # Renamed from pinterest-pipeline
 
 | File | Purpose |
 |------|---------|
-| `claude_api.py` | Claude Sonnet/Opus + GPT-5 Mini integration, prompt template loading, cost tracking. TikTok methods: `generate_tiktok_plan()`, `generate_carousel_copy()` (reserved), `generate_tiktok_image_prompt()` |
+| `claude_api.py` | Claude Sonnet/Opus + GPT-5 Mini integration, prompt template loading, cost tracking. TikTok methods: `generate_tiktok_plan()`, `generate_carousel_copy()` (reserved) |
 | `openai_chat_api.py` | GPT-5 Mini HTTP wrapper (used by claude_api.py for pin copy + image prompts) |
-| `sheets_api.py` | Google Sheets CRUD (Weekly Review, Content Queue, Post Log, Dashboard tabs). TikTok: `write_tiktok_content_queue()` writes 14-column carousel schema to separate TikTok spreadsheet (`TIKTOK_SPREADSHEET_ID`) |
+| `sheets_api.py` | Google Sheets CRUD (Weekly Review, Content Queue, Post Log, Dashboard tabs). TikTok: `write_tiktok_content_queue()` (14-col Content Queue), `write_tiktok_weekly_review()` (11-col Weekly Review with B3/B5 control cells), `read_tiktok_plan_status()`, `read_tiktok_plan_regen_requests()`. Separate TikTok spreadsheet (`TIKTOK_SPREADSHEET_ID`). |
 | `gcs_api.py` | Google Cloud Storage uploads (primary image hosting for Sheet previews + Pinterest) |
 | `drive_api.py` | Google Drive uploads (fallback if GCS fails) |
 | `github_api.py` | GitHub Git Data API (atomic multi-file blog commits to goslated.com) |
@@ -197,10 +201,12 @@ slated-content-engine/              # Renamed from pinterest-pipeline
 
 | File | Purpose |
 |------|---------|
-| `generate_weekly_plan.py` | TikTok weekly planning orchestrator: loads shared context + attribute taxonomy, calls Claude for 7 carousel specs, validates, renders via `generate_carousels.py`, publishes to TikTok Google Sheet. Supports `--dry-run`. |
+| `generate_weekly_plan.py` | TikTok weekly planning orchestrator: loads shared context + attribute taxonomy, calls Claude for 7 carousel specs (with `image_prompts` per slide), validates. `--plan-only`: saves plan JSON + writes Weekly Review tab. Full mode: renders via `generate_carousels.py`, publishes to Content Queue. Supports `--dry-run`. |
 | `generate_carousels.py` | Carousel rendering orchestrator: translates taxonomy family names (underscores) to assembler names (hyphens), generates background images for photo-forward carousels via OpenAI, renders slides via `carousel_assembler.py`, cleans output PNGs. |
 | `publish_content_queue.py` | Publishes rendered carousels to TikTok Google Sheet "Content Queue" tab via `SheetsAPI.write_tiktok_content_queue()`. |
-| `compute_attribute_weights.py` | Bayesian attribute weight updater for explore/exploit feedback loop. 65/35 exploit/explore split, cold-start even distribution until 5+ posts per attribute. Called by Phase 12 analytics. |
+| `pull_analytics.py` | Publer post insights pull → `performance-summary.json`. 28-day lookback, derived metrics via `analytics_utils.py`. |
+| `weekly_analysis.py` | Claude-driven weekly performance analysis. TikTok attribute dimensions (topic, angle, structure, hook_type, template_family). |
+| `compute_attribute_weights.py` | Bayesian attribute weight updater for explore/exploit feedback loop. 65/35 exploit/explore split, cold-start even distribution until 5+ posts per attribute. `--update` reads performance summary. |
 | `carousel_assembler.py` | Multi-slide carousel renderer: loads HTML/CSS templates (4 families × 3 slide types), injects variables, renders all slides in one Puppeteer batch via `render_pin.js --manifest`. Output: 1080×1920px PNGs. |
 
 ---
@@ -298,6 +304,7 @@ generate_pin_content → bare URL "https://goslated.com/blog/{slug}"
 | `monthly-review.yml` | Cron: 1st Monday | Monthly deep strategy review |
 | `setup-boards.yml` | Manual only | One-time Pinterest board creation |
 | **TikTok Workflows** | | |
+| `tiktok-weekly-review.yml` | Cron: Monday 6:30am ET | Weekly analysis → attribute weight update → plan generation (`--plan-only`) |
 | `tiktok-promote-and-schedule.yml` | Dispatch: `tiktok-promote-and-schedule` | Read approved carousels → schedule JSON → Sheet status "scheduled" |
 | `tiktok-daily-post.yml` | Cron: 10am/4pm/7pm ET | Post scheduled carousels via Publer (or Slack fallback) |
 
@@ -344,7 +351,7 @@ Cost: ~$3-5/week for a full cycle (planning + 8-10 blogs + 28 pins + analysis).
 
 11. **TikTok slide URLs use deterministic GCS paths.** Convention: `tiktok/{carousel_id}/slide-{i}.png`. `promote_and_schedule.py` reconstructs URLs from `carousel_id` + `slide_count` without listing blobs. If `generate_weekly_plan.py` fails to upload slides to GCS, the schedule will have missing `slide_urls` (Slack warning sent but carousels still scheduled).
 
-12. **TikTok Content Queue is 14 columns (A-N).** Status is column M (index 12), Notes is column N (index 13). Different from Pinterest's 12-column layout. Column indices are in `sheets_api.py`.
+12. **TikTok has a two-phase approval flow.** Phase 1: Weekly Review tab (11 cols A-K, control cells B3/B5, data row 7+) for plan-level spec review. Phase 2: Content Queue tab (currently 14 cols A-N, migrating to 17 cols A-Q in Phase D) for rendered slide review. Plan approval (B3) gates content generation. Column indices are in `sheets_api.py`.
 
 13. **TikTok posting has two modes.** `TIKTOK_POSTING_ENABLED=true` posts via Publer API. `=false` sends Slack notifications with GCS links for manual upload. Both modes log to `content-log.jsonl` (with `publer_post_id` or `MANUAL_UPLOAD_REQUIRED`).
 
@@ -353,6 +360,8 @@ Cost: ~$3-5/week for a full cycle (planning + 8-10 blogs + 28 pins + analysis).
 15. **TikTok analytics flow (Phase 12).** `collect-analytics.yml` pulls TikTok post insights via Publer API alongside Pinterest analytics. `tiktok-weekly-review.yml` runs: analysis → attribute weight update → plan generation. Feedback loop: `pull_analytics.py` → `performance-summary.json` → `compute_attribute_weights.py --update` → shifted taxonomy weights → `generate_weekly_plan.py` reads updated weights. Cross-channel summaries flow both directions (Pinterest analysis sees TikTok digest, and vice versa) via `generate_cross_channel_summary()`.
 
 16. **TikTok analytics env vars.** `PUBLER_ACCOUNT_ID` is required for the analytics endpoint (`GET /analytics/{account_id}/post_insights`). Different from `PUBLER_WORKSPACE_ID` which is used for posting.
+
+17. **TikTok `image_prompts` replaces `_image_prompt`.** Claude now specifies per-slide image prompts in the carousel spec (`image_prompts: [{slide_index, prompt}]`). Only `photo_forward` family gets images (max 3). Other families have empty arrays. The old `generate_tiktok_image_prompt()` method and `prompts/tiktok/image_prompt.md` template are deleted. `generate_carousels.py` still reads the old `_image_prompt` field until Phase D rewrites it — the `--plan-only` code path (used by cron) never hits that code.
 
 ---
 

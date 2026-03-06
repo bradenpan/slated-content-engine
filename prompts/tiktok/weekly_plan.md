@@ -73,7 +73,8 @@ Return a JSON object with a single key `carousels` containing an array of exactl
       "hashtags": ["#MentalLoad", "#WhatsForDinner", "#MealPlanning"],
       "sound_suggestion": "Trending sound or 'original audio'",
       "is_aigc": false,
-      "scheduled_date": "2026-03-06"
+      "scheduled_date": "2026-03-06",
+      "image_prompts": []
     }
   ]
 }
@@ -86,6 +87,44 @@ Return a JSON object with a single key `carousels` containing an array of exactl
 - For `comparison_grid` template, include `left_label`, `right_label`, `left_text`, `right_text` in each content slide.
 - Hook slide uses `hook_text` as the headline.
 - CTA slide always includes `cta_primary` and `cta_secondary`.
+
+## Image Prompt Rules
+
+The `image_prompts` field specifies which slides need AI-generated background images. Each entry is `{"slide_index": N, "prompt": "..."}` where `slide_index` uses the carousel's actual slide ordering: 0=hook, 1..N=content slides, last=CTA.
+
+**Rules by template family:**
+- **photo_forward**: Hook slide (index 0) ALWAYS gets an image. Pick up to 2 additional content slides that benefit from photography. CTA slide NEVER gets an image. Max 3 entries.
+- **clean_educational**: Empty array `[]`. Text-dominant design — no images.
+- **dark_bold**: Empty array `[]`. High-contrast typography on dark backgrounds — no images.
+- **comparison_grid**: Empty array `[]`. Structured data layout — no images.
+
+**CTA slide must NEVER appear in `image_prompts`.** The CTA slide index = number of content slides + 1.
+
+**Image prompt guidelines:**
+- Describe a portrait-orientation scene (9:16 ratio, 1024x1536px)
+- Keep the center-top area relatively uncluttered — text overlay goes there
+- Warm, inviting kitchen/food photography; overhead or 45-degree angle
+- Warm lighting (golden hour, pendant lights, candles)
+- Surfaces: butcher block, marble, stone countertop
+- Color palette: warm ambers, soft greens, stone neutrals
+- Style: editorial food photography, not stock photo
+- No text, logos, watermarks, or people's faces (hands/arms OK)
+- For invisible-labor topics: show the output of kitchen labor (set table, prepped ingredients, organized pantry)
+- For dinner/food topics: show appetizing food in a realistic home setting
+- End each prompt with: "Editorial food photography style, warm natural lighting, shot on Canon R5."
+
+**Example for photo_forward:**
+```json
+"image_prompts": [
+  {"slide_index": 0, "prompt": "Warm overhead shot of a family kitchen counter with scattered grocery lists and school forms. Editorial food photography style, warm natural lighting, shot on Canon R5."},
+  {"slide_index": 2, "prompt": "Close-up of hands organizing a shared calendar app on a phone, butcher block surface. Editorial food photography style, warm natural lighting, shot on Canon R5."}
+]
+```
+
+**Example for all other families:**
+```json
+"image_prompts": []
+```
 
 ## Attribution Rules
 

@@ -2985,3 +2985,53 @@ content-log.jsonl (new posts with channel="tiktok")
 | Created (workflows) | 1 | `tiktok-weekly-review.yml` |
 | Modified | 5 | `publer_api.py` (+analytics method), `claude_api.py` (+analyze_tiktok_performance), `content_memory.py` (+cross-channel summary), `compute_attribute_weights.py` (--update flag), `collect-analytics.yml` (uncomment TikTok step) |
 | Modified (docs) | 2 | `ARCHITECTURE.md` (Phase 12 gotchas), `progress.md` (this entry) |
+
+---
+
+## Phase 13A — TikTok Two-Phase Approval: Split Plan from Rendering (2026-03-05)
+
+Split `generate_weekly_plan.py` into plan-only and full-render modes. First step of the two-phase approval flow where carousel specs are reviewed before any rendering happens.
+
+### What Changed
+
+**`src/shared/paths.py`** — Added `TIKTOK_DATA_DIR = DATA_DIR / "tiktok"`. Promoted from local definition in `generate_weekly_plan.py` so future scripts (`regen_plan.py`, `regen_content.py`) can import it.
+
+**`prompts/tiktok/weekly_plan.md`** — Updated output schema: each carousel spec now includes `image_prompts` array of `{slide_index, prompt}` entries. Added Image Prompt Rules section with per-family rules (`photo_forward`: 1-3 images, all others: empty array) and brand visual guidelines (migrated from deleted `image_prompt.md`).
+
+**`src/tiktok/generate_weekly_plan.py`** — Core changes:
+- Added `plan_only: bool = False` parameter to `generate_plan()`
+- Removed Step 9 (`generate_tiktok_image_prompt()` loop) — image prompts now come from Claude's planning output
+- Added `image_prompts` validation in `_validate_plan()`: defaults to `[]`, max 3, non-photo_forward must be empty, CTA slide index never targeted
+- Plan-only branch: saves JSON → writes Weekly Review tab → returns (skips rendering, GCS, Content Queue, Slack)
+- Full pipeline branch preserved (broken between Phase A and D; Phase B switches cron to `--plan-only`)
+- Added `--plan-only` CLI flag
+- Import `TIKTOK_DATA_DIR` from `paths.py` instead of local definition
+
+**`src/shared/apis/sheets_api.py`** — New constants + 3 methods:
+- `TIKTOK_TAB_WEEKLY_REVIEW`, `TIKTOK_WR_CELL_PLAN_STATUS` (B3), `TIKTOK_WR_CELL_REGEN_TRIGGER` (B5), `TIKTOK_WR_DATA_START_ROW` (7), `TIKTOK_WR_HEADERS` (11 cols A-K)
+- `write_tiktok_weekly_review(plan)` — writes control cells (B3=pending_review, B5=idle) + header + carousel spec rows with slide text preview
+- `read_tiktok_plan_status()` — reads B3, returns None if tab missing (handles first-run edge case)
+- `read_tiktok_plan_regen_requests()` — reads regen-flagged rows with feedback from cols J/K
+
+**`src/shared/apis/claude_api.py`** — Deleted `generate_tiktok_image_prompt()` method (~40 lines). Dead code after Step 9 removal.
+
+**`prompts/tiktok/image_prompt.md`** — Deleted. Dead code after method deletion.
+
+**`src/tiktok/pull_analytics.py`** — Replaced local `TIKTOK_DATA_DIR` definition with import from `src.shared.paths` (centralizing the constant).
+
+### TikTok Weekly Review Tab Schema (new)
+
+Control cells: B3 (plan status), B5 (regen trigger). Data starts row 7.
+Columns A-K: ID, Topic, Angle, Structure, Hook Type, Template Family, Hook Text, Slide Text Preview, Caption, Status, Feedback.
+
+### Deployment Note
+
+Phase A must deploy with Phase B (workflow update to `--plan-only`). Between A and D, the non-plan-only code path is broken (Step 9 removed but `generate_carousels.py` still reads `_image_prompt`).
+
+### File Counts
+
+| Action | Count | Details |
+|--------|-------|---------|
+| Deleted | 2 | `prompts/tiktok/image_prompt.md`, `generate_tiktok_image_prompt()` method in `claude_api.py` |
+| Modified | 5 | `generate_weekly_plan.py` (plan_only branch + validation), `sheets_api.py` (+3 methods + constants), `paths.py` (+TIKTOK_DATA_DIR), `weekly_plan.md` (image_prompts schema), `pull_analytics.py` (centralized import) |
+| Modified (docs) | 2 | `ARCHITECTURE.md` (two-phase flow, updated tables/gotchas), `progress.md` (this entry) |

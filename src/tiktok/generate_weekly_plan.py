@@ -1,9 +1,10 @@
 """TikTok Weekly Content Plan Generator.
 
 Generates 7 TikTok carousel specifications per week using Claude Sonnet.
-This is the main orchestrator for Phase 10 — it loads shared context,
-calls Claude with the TikTok planning prompt, validates the output,
-renders carousels, and publishes to the TikTok Google Sheet.
+This is the main orchestrator — it loads shared context, calls Claude with
+the TikTok planning prompt, validates the output, and either:
+- (plan-only mode) saves specs + writes Weekly Review tab for human approval
+- (full mode) renders carousels, uploads to GCS, publishes to Content Queue
 
 Input context:
 1. strategy/current-strategy.md — Strategic direction
@@ -12,8 +13,6 @@ Input context:
 4. data/content-memory-summary.md — Content memory (prevents repetition)
 5. strategy/seasonal-calendar.json — Current seasonal window
 6. strategy/brand-voice.md — Brand voice guidelines
-
-Output: 7 carousel specs rendered to PNGs and published to TikTok Google Sheet.
 """
 
 import json
@@ -32,15 +31,13 @@ from src.shared.content_planner import (
     get_current_seasonal_window,
 )
 from src.shared.content_memory import generate_content_memory_summary
-from src.shared.paths import DATA_DIR, STRATEGY_DIR
+from src.shared.paths import DATA_DIR, STRATEGY_DIR, TIKTOK_DATA_DIR
 from src.tiktok.compute_attribute_weights import load_taxonomy
 from src.shared.apis.gcs_api import GcsAPI
 from src.tiktok.generate_carousels import generate_carousels
 from src.tiktok.publish_content_queue import publish_content_queue
 
 logger = logging.getLogger(__name__)
-
-TIKTOK_DATA_DIR = DATA_DIR / "tiktok"
 
 # Required keys in each carousel spec
 REQUIRED_CAROUSEL_KEYS = [
@@ -61,6 +58,7 @@ def generate_plan(
     sheets: Optional[SheetsAPI] = None,
     slack: Optional[SlackNotify] = None,
     dry_run: bool = False,
+    plan_only: bool = False,
 ) -> dict:
     """Generate the weekly TikTok carousel plan.
 
@@ -73,6 +71,8 @@ def generate_plan(
         sheets: SheetsAPI instance for the TikTok spreadsheet.
         slack: SlackNotify instance.
         dry_run: If True, skip rendering, GCS upload, and Sheets write.
+        plan_only: If True, stop after saving plan JSON and writing
+            specs to the Weekly Review tab (no rendering or publishing).
 
     Returns:
         dict: The generated weekly plan with carousels array.
@@ -159,41 +159,12 @@ def generate_plan(
     # Step 8: Validate the plan
     _validate_plan(plan, taxonomy)
 
-    # Step 9: Generate image prompts for photo-forward carousels
-    for carousel in plan.get("carousels", []):
-        if carousel.get("template_family") in ("photo_forward", "photo-forward"):
-            if not dry_run:
-                try:
-                    image_prompt_result = claude.generate_tiktok_image_prompt(
-                        carousel_spec=carousel,
-                    )
-                    carousel["_image_prompt"] = image_prompt_result.get(
-                        "image_prompt", ""
-                    )
-                except Exception as e:
-                    logger.error(
-                        "Failed to generate image prompt for %s: %s",
-                        carousel.get("carousel_id"), e,
-                    )
-
-    # Step 10: Render carousels
-    rendered = generate_carousels(plan, dry_run=dry_run)
-
-    # Step 11: Save plan JSON locally
+    # Step 10: Save plan JSON locally
     TIKTOK_DATA_DIR.mkdir(parents=True, exist_ok=True)
     plan_filename = f"weekly-plan-{start_date.isoformat()}.json"
     plan_path = TIKTOK_DATA_DIR / plan_filename
     tmp_path = plan_path.with_suffix(".tmp")
     try:
-        # Enrich plan with render results before saving
-        plan["_rendered"] = [
-            {
-                "carousel_id": r.get("carousel_id"),
-                "slide_count": r.get("slide_count", 0),
-                "rendered_slides": r.get("rendered_slides", []),
-            }
-            for r in rendered
-        ]
         tmp_path.write_text(
             json.dumps(plan, indent=2, ensure_ascii=False),
             encoding="utf-8",
@@ -206,6 +177,51 @@ def generate_plan(
             tmp_path.unlink(missing_ok=True)
         except OSError:
             pass
+
+    if plan_only:
+        # Write specs to Weekly Review tab and return (no rendering)
+        if not dry_run:
+            try:
+                tiktok_sheet_id = os.environ.get("TIKTOK_SPREADSHEET_ID", "")
+                sheets = sheets or SheetsAPI(sheet_id=tiktok_sheet_id)
+                sheets.write_tiktok_weekly_review(plan)
+                logger.info("Published plan specs to TikTok Weekly Review tab")
+            except Exception as e:
+                logger.error("Failed to publish to Weekly Review: %s", e)
+                raise
+
+        logger.info(
+            "Plan-only mode: %d carousel specs saved. Awaiting review.",
+            len(plan.get("carousels", [])),
+        )
+        return plan
+
+    # --- Full pipeline (rendering + publish) below ---
+    # NOTE: This code path is broken between Phase A and Phase D
+    # (Step 9 removed but generate_carousels still expects _image_prompt).
+    # Phase B switches the cron to --plan-only so this path is never called.
+
+    # Step 11: Render carousels
+    rendered = generate_carousels(plan, dry_run=dry_run)
+
+    # Enrich plan with render results
+    plan["_rendered"] = [
+        {
+            "carousel_id": r.get("carousel_id"),
+            "slide_count": r.get("slide_count", 0),
+            "rendered_slides": r.get("rendered_slides", []),
+        }
+        for r in rendered
+    ]
+    # Re-save plan with render data
+    try:
+        tmp_path.write_text(
+            json.dumps(plan, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        tmp_path.replace(plan_path)
+    except OSError as e:
+        logger.error("Failed to re-save plan with render data: %s", e)
 
     # Step 12: Upload rendered slides to GCS
     slide_preview_urls = {}
@@ -238,8 +254,6 @@ def generate_plan(
                 logger.warning("GCS not available, skipping slide upload")
         except Exception as e:
             logger.error("Failed to upload slides to GCS: %s", e)
-            # Flag all carousels as having no GCS slides so downstream
-            # code doesn't schedule dead URLs
             for carousel in rendered:
                 carousel["gcs_upload_failed"] = True
 
@@ -320,6 +334,9 @@ def _validate_plan(plan: dict, taxonomy: dict) -> None:
     dimensions = taxonomy.get("dimensions", {})
 
     for i, carousel in enumerate(carousels):
+        # Default image_prompts to empty list if not provided
+        carousel.setdefault("image_prompts", [])
+
         # Layer 1: Structural validation
         missing = [k for k in REQUIRED_CAROUSEL_KEYS if k not in carousel]
         if missing:
@@ -346,6 +363,27 @@ def _validate_plan(plan: dict, taxonomy: dict) -> None:
                 carousel.get("carousel_id", i),
                 family, VALID_TEMPLATE_FAMILIES,
             )
+
+        # Layer 2b: Image prompts validation
+        image_prompts = carousel.get("image_prompts", [])
+        if len(image_prompts) > 3:
+            logger.warning(
+                "Carousel %s has %d image_prompts (max 3)",
+                carousel.get("carousel_id", i), len(image_prompts),
+            )
+        if family not in ("photo_forward", "photo-forward") and image_prompts:
+            logger.warning(
+                "Carousel %s is '%s' but has %d image_prompts (should be empty)",
+                carousel.get("carousel_id", i), family, len(image_prompts),
+            )
+        content_slide_count = len(carousel.get("content_slides") or [])
+        cta_index = content_slide_count + 1
+        for ip in image_prompts:
+            if ip.get("slide_index") == cta_index:
+                logger.warning(
+                    "Carousel %s has image_prompt targeting CTA slide (index %d)",
+                    carousel.get("carousel_id", i), cta_index,
+                )
 
         # Layer 3: Quality checks
         content_slides = carousel.get("content_slides") or []
@@ -382,12 +420,32 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate TikTok weekly plan")
     parser.add_argument("--week-start", help="Week start date (YYYY-MM-DD)")
     parser.add_argument("--dry-run", action="store_true", help="Skip rendering and Sheets write")
+    parser.add_argument("--plan-only", action="store_true", help="Generate plan specs only (no rendering)")
+    parser.add_argument("--check-plan-status", action="store_true",
+                        help="Check Weekly Review B3 status and exit. "
+                             "Exit 0 if safe to generate, exit 78 if review in progress.")
     args = parser.parse_args()
+
+    if args.check_plan_status:
+        import sys
+        tiktok_sheet_id = os.environ.get("TIKTOK_SPREADSHEET_ID", "")
+        if not tiktok_sheet_id:
+            print("TIKTOK_SPREADSHEET_ID not set — treating as first run, safe to proceed.")
+            sys.exit(0)
+        sheets = SheetsAPI(sheet_id=tiktok_sheet_id)
+        status = sheets.read_tiktok_plan_status()
+        if status in (None, "", "idle", "rejected"):
+            print(f"Plan status is '{status}' — safe to generate new plan.")
+            sys.exit(0)
+        else:
+            print(f"Plan status is '{status}' — review in progress, skipping generation.")
+            sys.exit(78)
 
     print("Generating TikTok weekly content plan...")
     result = generate_plan(
         week_start_date=args.week_start,
         dry_run=args.dry_run,
+        plan_only=args.plan_only,
     )
     carousels = result.get("carousels", [])
     print(f"Generated plan with {len(carousels)} carousels")
