@@ -26,6 +26,9 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Pull latest (plan JSON + schedule from previous runner)
+        run: git pull --rebase origin main
+
       - name: Setup pipeline
         uses: ./.github/actions/setup-pipeline
 

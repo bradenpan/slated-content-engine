@@ -816,26 +816,44 @@ class SheetsAPI:
 
     # === TikTok Content Queue Operations ===
 
-    # TikTok Content Queue column schema (14 columns, A-N)
+    # TikTok Content Queue column schema (17 columns, A-Q)
+    # Cols D-L are per-slide =IMAGE() previews (hook + 7 content + CTA)
     TIKTOK_CQ_HEADERS = [
-        "ID", "Topic", "Angle", "Structure", "Hook Type", "Template Family",
-        "Hook Text", "Caption", "Hashtags", "Slide Count", "Preview",
-        "Schedule", "Status", "Notes",
+        "ID", "Topic", "Template Family",
+        "Hook", "Slide 1", "Slide 2", "Slide 3", "Slide 4",
+        "Slide 5", "Slide 6", "Slide 7", "CTA",
+        "All Slides Link", "Caption", "Status", "Feedback", "Notes",
     ]
+
+    # Column indices for the new schema
+    TIKTOK_CQ_COL_STATUS = 14    # O (0-based index)
+    TIKTOK_CQ_COL_FEEDBACK = 15  # P
+    TIKTOK_CQ_COL_NOTES = 16     # Q
+
+    # Slide preview columns: D(3) through L(11) — 9 slots
+    TIKTOK_CQ_SLIDE_COL_START = 3   # D
+    TIKTOK_CQ_SLIDE_COL_END = 11    # L (inclusive)
+    TIKTOK_CQ_SLIDE_SLOTS = 9       # hook + 7 content + CTA
+
+    # Content regen trigger cell (separate from Pinterest's N1)
+    TIKTOK_CQ_CELL_REGEN_TRIGGER = "R1"
 
     def write_tiktok_content_queue(
         self,
         carousels: list[dict],
-        slide_urls: dict = None,
+        slide_urls: dict[str, list[str]] = None,
     ) -> None:
         """Write TikTok carousels to the Content Queue tab.
 
+        Uses the 17-column schema with per-slide =IMAGE() previews.
+        Skips header validation since _clear_and_write overwrites headers.
+
         Args:
             carousels: List of enriched carousel dicts from generate_carousels().
-            slide_urls: Optional dict of carousel_id -> public URL for preview.
+            slide_urls: Dict of carousel_id -> list of public GCS URLs for
+                all slides (hook, content 1-7, CTA).
         """
         slide_urls = slide_urls or {}
-        self._validate_headers(TAB_CONTENT_QUEUE, self.TIKTOK_CQ_HEADERS)
 
         logger.info("Writing TikTok content queue: %d carousels...", len(carousels))
 
@@ -843,83 +861,111 @@ class SheetsAPI:
 
         for carousel in carousels:
             carousel_id = str(carousel.get("carousel_id", ""))
-            hashtags = carousel.get("hashtags", [])
-            hashtag_str = " ".join(hashtags) if isinstance(hashtags, list) else str(hashtags)
+            urls = slide_urls.get(carousel_id, [])
 
-            preview_url = slide_urls.get(carousel_id, "")
-            preview = f'=IMAGE("{preview_url}")' if preview_url else ""
+            # Build 9 slide preview cells (D-L): hook + up to 7 content + CTA
+            slide_cells = [""] * self.TIKTOK_CQ_SLIDE_SLOTS
+            for i, url in enumerate(urls):
+                if i < self.TIKTOK_CQ_SLIDE_SLOTS and url:
+                    slide_cells[i] = f'=IMAGE("{url}")'
 
-            notes = ""
+            # GCS folder link for full-resolution viewing
+            if urls:
+                all_slides_link = urls[0].rsplit("/", 1)[0] + "/"
+            else:
+                all_slides_link = ""
+
+            notes_parts = []
             if carousel.get("render_error"):
-                notes = f"RENDER ERROR: {carousel['render_error']}"
+                notes_parts.append(f"RENDER ERROR: {carousel['render_error']}")
+            if carousel.get("image_gen_failures"):
+                notes_parts.append(f"IMAGE GEN FAILED for slides: {carousel['image_gen_failures']}")
+            if carousel.get("gcs_upload_failed"):
+                notes_parts.append("GCS UPLOAD FAILED: slide previews unavailable")
+            notes = "; ".join(notes_parts)
 
             rows.append([
                 carousel_id,
                 str(carousel.get("topic", "")),
-                str(carousel.get("angle", "")),
-                str(carousel.get("structure", "")),
-                str(carousel.get("hook_type", "")),
                 str(carousel.get("template_family", "")),
-                str(carousel.get("hook_text", "")),
+                *slide_cells,
+                all_slides_link,
                 str(carousel.get("caption", "")),
-                hashtag_str,
-                str(carousel.get("slide_count", 0)),
-                preview,
-                str(carousel.get("scheduled_date", "")),
                 "pending_review",
+                "",  # Feedback (empty)
                 notes,
             ])
 
+        # Skip header validation — _clear_and_write overwrites from A1
+        # including headers, so old 14-col headers won't cause a mismatch.
+        # Remove tab from validated cache so future reads re-validate.
+        self._validated_tabs.discard(TAB_CONTENT_QUEUE)
         self._clear_and_write(TAB_CONTENT_QUEUE, rows, value_input_option="USER_ENTERED")
         logger.info("TikTok content queue written: %d carousels.", len(carousels))
 
     def read_tiktok_approved_carousels(self) -> list[dict]:
         """Read approved carousels from the TikTok Content Queue tab.
 
-        Returns carousels where status column = "approved".
+        Returns carousels where Status (col O, index 14) = "approved".
+        Derives slide_count from non-empty slide preview columns (D-L)
+        using FORMULA render option to detect =IMAGE() formulas.
 
         Returns:
-            list[dict]: Approved carousel data with all Content Queue fields.
+            list[dict]: Approved carousel data with carousel_id and slide_count.
         """
         self._validate_headers(TAB_CONTENT_QUEUE, self.TIKTOK_CQ_HEADERS)
         try:
             result = self.sheets.values().get(
                 spreadsheetId=self.sheet_id,
-                range=f"'{TAB_CONTENT_QUEUE}'!A:N",
+                range=f"'{TAB_CONTENT_QUEUE}'!A:Q",
+                valueRenderOption="FORMULA",
             ).execute()
 
             values = result.get("values", [])
             if len(values) < 2:
                 return []
 
-            headers = values[0]
             approved = []
             for row in values[1:]:
                 if not row:
                     continue
-                # Status is column M (index 12)
-                status = row[12].strip().lower() if len(row) > 12 else ""
+                # Status is column O (index 14)
+                status = row[self.TIKTOK_CQ_COL_STATUS].strip().lower() if len(row) > self.TIKTOK_CQ_COL_STATUS else ""
                 if status != "approved":
                     continue
 
-                carousel = {}
-                for j, header in enumerate(headers):
-                    key = header.lower().replace(" ", "_")
-                    carousel[key] = row[j] if len(row) > j else ""
+                carousel_id = row[0].strip() if row else ""
+                if not carousel_id:
+                    continue
 
-                # Normalize to expected field names
-                carousel["carousel_id"] = carousel.get("id", "")
-                carousel.setdefault("slide_count", 0)
-                try:
-                    carousel["slide_count"] = int(carousel["slide_count"])
-                except (ValueError, TypeError):
-                    carousel["slide_count"] = 0
+                # Derive slide_count from non-empty slide preview cells (D-L)
+                slide_count = 0
+                for col_idx in range(self.TIKTOK_CQ_SLIDE_COL_START, self.TIKTOK_CQ_SLIDE_COL_END + 1):
+                    cell = row[col_idx] if len(row) > col_idx else ""
+                    if cell and "=IMAGE(" in str(cell).upper():
+                        slide_count += 1
 
+                if slide_count == 0:
+                    logger.warning(
+                        "Carousel %s approved but no =IMAGE() formulas detected. "
+                        "slide_count will be 0 — check Content Queue tab.",
+                        carousel_id,
+                    )
+
+                carousel = {
+                    "carousel_id": carousel_id,
+                    "topic": row[1] if len(row) > 1 else "",
+                    "template_family": row[2] if len(row) > 2 else "",
+                    "caption": row[13] if len(row) > 13 else "",
+                    "slide_count": slide_count,
+                }
                 approved.append(carousel)
 
             logger.info("Found %d approved TikTok carousels.", len(approved))
             return approved
 
+        except SheetsAPIError:
+            raise
         except Exception as e:
             logger.error("Failed to read TikTok approved carousels: %s", e)
             raise SheetsAPIError(f"Failed to read TikTok approved carousels: {e}") from e
@@ -933,8 +979,8 @@ class SheetsAPI:
     ) -> None:
         """Update a carousel's status in the TikTok Content Queue tab.
 
-        Finds the row by carousel_id (column A) and updates the status column (M).
-        Optionally writes publer_post_id or error to the Notes column (N).
+        Finds the row by carousel_id (column A) and updates Status (col O)
+        and optionally Notes (col Q).
 
         Args:
             carousel_id: Internal carousel ID.
@@ -942,7 +988,6 @@ class SheetsAPI:
             publer_post_id: Publer post ID to record on success.
             error_message: Error details to record on failure.
         """
-        self._validate_headers(TAB_CONTENT_QUEUE, self.TIKTOK_CQ_HEADERS)
         try:
             result = self.sheets.values().get(
                 spreadsheetId=self.sheet_id,
@@ -952,7 +997,7 @@ class SheetsAPI:
             values = result.get("values", [])
             target_row = None
             for i, row in enumerate(values):
-                if row and row[0] == carousel_id:
+                if row and row[0].strip() == carousel_id:
                     target_row = i + 1  # 1-based
                     break
 
@@ -960,10 +1005,10 @@ class SheetsAPI:
                 logger.warning("Carousel %s not found in TikTok Content Queue.", carousel_id)
                 return
 
-            # Build updates: Status (M) + Notes (N)
+            # Build updates: Status (O) + Notes (Q)
             updates = [
                 {
-                    "range": f"'{TAB_CONTENT_QUEUE}'!M{target_row}",
+                    "range": f"'{TAB_CONTENT_QUEUE}'!O{target_row}",
                     "values": [[status]],
                 },
             ]
@@ -976,7 +1021,7 @@ class SheetsAPI:
 
             if note:
                 updates.append({
-                    "range": f"'{TAB_CONTENT_QUEUE}'!N{target_row}",
+                    "range": f"'{TAB_CONTENT_QUEUE}'!Q{target_row}",
                     "values": [[note]],
                 })
 
@@ -995,6 +1040,58 @@ class SheetsAPI:
             raise SheetsAPIError(
                 f"Failed to update TikTok content status for {carousel_id}: {e}"
             ) from e
+
+    def read_tiktok_content_regen_requests(self) -> list[dict]:
+        """Read content regen requests from the TikTok Content Queue tab.
+
+        Returns rows where Status (col O) starts with "regen".
+
+        Returns:
+            list[dict]: Regen requests with carousel_id, status, feedback.
+        """
+        self._validate_headers(TAB_CONTENT_QUEUE, self.TIKTOK_CQ_HEADERS)
+        try:
+            result = self.sheets.values().get(
+                spreadsheetId=self.sheet_id,
+                range=f"'{TAB_CONTENT_QUEUE}'!A:Q",
+            ).execute()
+
+            values = result.get("values", [])
+            if len(values) < 2:
+                return []
+
+            requests = []
+            for row in values[1:]:
+                if not row:
+                    continue
+                status = row[self.TIKTOK_CQ_COL_STATUS].strip().lower() if len(row) > self.TIKTOK_CQ_COL_STATUS else ""
+                if not status.startswith("regen"):
+                    continue
+
+                carousel_id = row[0].strip() if row else ""
+                if not carousel_id:
+                    continue
+
+                feedback = row[self.TIKTOK_CQ_COL_FEEDBACK].strip() if len(row) > self.TIKTOK_CQ_COL_FEEDBACK else ""
+                requests.append({
+                    "carousel_id": carousel_id,
+                    "status": status,
+                    "feedback": feedback,
+                })
+
+            logger.info("Found %d TikTok content regen requests.", len(requests))
+            return requests
+
+        except Exception as e:
+            logger.error("Failed to read TikTok content regen requests: %s", e)
+            raise SheetsAPIError(f"Failed to read TikTok content regen requests: {e}") from e
+
+    def reset_tiktok_content_regen_trigger(self) -> None:
+        """Reset the TikTok Content Queue regen trigger cell (R1) to idle."""
+        try:
+            self.write_cell(TAB_CONTENT_QUEUE, self.TIKTOK_CQ_CELL_REGEN_TRIGGER, "idle")
+        except Exception as e:
+            raise SheetsAPIError(f"Failed to reset TikTok content regen trigger: {e}") from e
 
     def write_tiktok_weekly_review(self, plan: dict) -> None:
         """Write TikTok carousel specs to the Weekly Review tab.

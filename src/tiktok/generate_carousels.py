@@ -1,10 +1,13 @@
 """TikTok Carousel Rendering + Image Generation Orchestrator.
 
 Takes a weekly plan (list of carousel specs) and produces rendered slide PNGs:
-1. For photo-forward carousels: generates background images via OpenAI gpt-image-1.5
+1. For each carousel: generates per-slide AI images as specified by image_prompts
 2. Renders all slides via CarouselAssembler (Puppeteer manifest mode)
 3. Cleans rendered images (metadata strip + anti-detection noise)
-4. Uploads slides to GCS under tiktok/{carousel_id}/
+
+image_prompts is an array of {slide_index, prompt} entries in the carousel spec.
+Only slides listed in image_prompts get AI-generated backgrounds; others render
+as pure text/CSS. Typically only photo_forward carousels have image_prompts.
 
 This module handles the family name translation between the taxonomy
 (underscores: "photo_forward") and CarouselAssembler (hyphens: "photo-forward").
@@ -31,6 +34,147 @@ def _taxonomy_to_assembler_family(family: str) -> str:
     return family.replace("_", "-")
 
 
+def build_slides_for_render(
+    spec: dict,
+    image_paths_by_index: dict[int, Path | str] | None = None,
+) -> list[dict]:
+    """Build the slide context list for CarouselAssembler from a carousel spec.
+
+    Shared by generate_carousels() (initial render) and regen_content.py
+    (re-render after image regen).
+
+    Args:
+        spec: Carousel spec dict with hook_text, content_slides, cta_slide.
+        image_paths_by_index: Optional mapping of slide_index -> image path.
+            slide_index 0 = hook, 1..N = content slides, last = CTA.
+
+    Returns:
+        List of slide context dicts ready for CarouselAssembler.render_carousel().
+    """
+    image_paths_by_index = image_paths_by_index or {}
+    carousel_id = spec.get("carousel_id", "unknown")
+    slides = []
+
+    # Hook slide
+    hook_text = spec.get("hook_text") or ""
+    hook_context = {
+        "slide_type": "hook",
+        "headline": hook_text,
+    }
+    bg = image_paths_by_index.get(0)
+    if bg:
+        hook_context["background_image_url"] = str(bg)
+    slides.append(hook_context)
+
+    # Content slides
+    content_slides = spec.get("content_slides") or []
+    if not isinstance(content_slides, list):
+        logger.warning(
+            "Carousel %s has non-list content_slides (%s), using empty",
+            carousel_id, type(content_slides).__name__,
+        )
+        content_slides = []
+
+    for i, content_slide in enumerate(content_slides):
+        if not isinstance(content_slide, dict):
+            logger.warning("Carousel %s content_slide %d is not a dict, skipping", carousel_id, i)
+            continue
+        slide_context = {
+            "slide_type": "content",
+            "headline": content_slide.get("headline") or "",
+            "body_text": content_slide.get("body_text") or "",
+        }
+        if content_slide.get("list_items"):
+            slide_context["list_items"] = content_slide["list_items"]
+        # comparison-grid specific fields
+        for field in ("left_label", "right_label", "left_text", "right_text"):
+            if content_slide.get(field):
+                slide_context[field] = content_slide[field]
+        bg = image_paths_by_index.get(i + 1)  # content slides are 1-indexed
+        if bg:
+            slide_context["background_image_url"] = str(bg)
+        slides.append(slide_context)
+
+    # CTA slide
+    cta = spec.get("cta_slide") or {}
+    if not isinstance(cta, dict):
+        logger.warning("Carousel %s cta_slide is not a dict, using defaults", carousel_id)
+        cta = {}
+    cta_index = 1 + len(content_slides)  # hook(0) + N content slides
+    cta_context = {
+        "slide_type": "cta",
+        "cta_primary": cta.get("cta_primary") or "Follow @slatedapp",
+        "cta_secondary": cta.get("cta_secondary") or "",
+        "handle": "@slatedapp",
+    }
+    bg = image_paths_by_index.get(cta_index)
+    if bg:
+        cta_context["background_image_url"] = str(bg)
+    slides.append(cta_context)
+
+    return slides
+
+
+def _generate_slide_images(
+    spec: dict,
+    image_gen: ImageGenAPI,
+    output_dir: Path,
+) -> dict[int, Path]:
+    """Generate AI images for slides specified in image_prompts.
+
+    Args:
+        spec: Carousel spec with image_prompts array.
+        image_gen: ImageGenAPI instance.
+        output_dir: Directory to save generated images.
+
+    Returns:
+        Dict mapping slide_index -> cleaned image path.
+    """
+    carousel_id = spec.get("carousel_id", "unknown")
+    image_prompts = spec.get("image_prompts") or []
+    image_paths: dict[int, Path] = {}
+
+    if not image_prompts:
+        return image_paths
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    for ip in image_prompts:
+        slide_index = ip.get("slide_index")
+        prompt = ip.get("prompt", "")
+        if slide_index is None or not prompt:
+            logger.warning(
+                "Carousel %s has image_prompt with missing slide_index or prompt, skipping",
+                carousel_id,
+            )
+            continue
+
+        try:
+            img_path = output_dir / f"bg-slide-{slide_index}.png"
+            generated = image_gen.generate(
+                prompt=prompt,
+                width=IMAGE_GEN_WIDTH,
+                height=IMAGE_GEN_HEIGHT,
+                output_path=img_path,
+                style="natural",
+            )
+            # Strip metadata only (no noise) — rendered slides get noise later
+            cleaned = clean_image(generated, add_noise=False)
+            image_paths[slide_index] = cleaned
+            logger.info(
+                "Generated image for %s slide %d: %s",
+                carousel_id, slide_index, cleaned,
+            )
+        except Exception as e:
+            logger.error(
+                "Failed to generate image for %s slide %d: %s",
+                carousel_id, slide_index, e,
+            )
+            # Slide renders as text-only (no background image)
+
+    return image_paths
+
+
 def generate_carousels(
     plan: dict,
     image_gen: Optional[ImageGenAPI] = None,
@@ -41,9 +185,9 @@ def generate_carousels(
     """Render all carousels in a weekly plan.
 
     For each carousel spec in the plan:
-    1. Translate family name (underscore → hyphen)
-    2. If photo-forward: generate background image via OpenAI
-    3. Build slide list for CarouselAssembler
+    1. Translate family name (underscore -> hyphen)
+    2. Generate per-slide AI images as specified by image_prompts
+    3. Build slide list via build_slides_for_render()
     4. Render via Puppeteer
     5. Clean rendered PNGs (preserve PNG format)
 
@@ -71,102 +215,24 @@ def generate_carousels(
         carousel_id = spec.get("carousel_id", "unknown")
         taxonomy_family = spec.get("template_family", "clean_educational")
         assembler_family = _taxonomy_to_assembler_family(taxonomy_family)
-        is_photo_forward = assembler_family == "photo-forward"
 
         logger.info(
-            "Processing carousel %s (family=%s, photo_forward=%s)",
-            carousel_id, assembler_family, is_photo_forward,
+            "Processing carousel %s (family=%s, image_prompts=%d)",
+            carousel_id, assembler_family,
+            len(spec.get("image_prompts") or []),
         )
 
-        # Step 1: Generate background image for photo-forward carousels
-        background_image_path = None
-        if is_photo_forward and not dry_run:
+        # Step 1: Generate per-slide AI images
+        image_paths_by_index: dict[int, Path] = {}
+        if not dry_run and spec.get("image_prompts"):
             image_gen = image_gen or ImageGenAPI(provider="openai")
-            image_prompt = spec.get("_image_prompt", "")
-            if not image_prompt:
-                logger.warning(
-                    "Carousel %s is photo-forward but has no _image_prompt. "
-                    "Skipping image generation.", carousel_id,
-                )
-            else:
-                try:
-                    carousel_output = output_dir / carousel_id
-                    carousel_output.mkdir(parents=True, exist_ok=True)
-                    bg_path = carousel_output / "background.png"
-                    background_image_path = image_gen.generate(
-                        prompt=image_prompt,
-                        width=IMAGE_GEN_WIDTH,
-                        height=IMAGE_GEN_HEIGHT,
-                        output_path=bg_path,
-                        style="natural",
-                    )
-                    # Strip metadata only (no noise) — the rendered slides
-                    # get noise applied later, avoiding double-noising
-                    background_image_path = clean_image(
-                        background_image_path,
-                        add_noise=False,
-                    )
-                    logger.info("Generated background image: %s", background_image_path)
-                except Exception as e:
-                    logger.error(
-                        "Failed to generate background for %s: %s", carousel_id, e,
-                    )
-
-        # Step 2: Build slide list for CarouselAssembler
-        slides = []
-
-        # Hook slide — guard against null hook_text from Claude
-        hook_text = spec.get("hook_text") or ""
-        hook_context = {
-            "slide_type": "hook",
-            "headline": hook_text,
-        }
-        if background_image_path:
-            hook_context["background_image_url"] = str(background_image_path)
-        slides.append(hook_context)
-
-        # Content slides — guard against null content_slides from Claude
-        content_slides = spec.get("content_slides") or []
-        if not isinstance(content_slides, list):
-            logger.warning(
-                "Carousel %s has non-list content_slides (%s), using empty",
-                carousel_id, type(content_slides).__name__,
+            carousel_output = output_dir / carousel_id
+            image_paths_by_index = _generate_slide_images(
+                spec, image_gen, carousel_output,
             )
-            content_slides = []
 
-        for i, content_slide in enumerate(content_slides):
-            if not isinstance(content_slide, dict):
-                logger.warning("Carousel %s content_slide %d is not a dict, skipping", carousel_id, i)
-                continue
-            slide_context = {
-                "slide_type": "content",
-                "headline": content_slide.get("headline") or "",
-                "body_text": content_slide.get("body_text") or "",
-            }
-            if content_slide.get("list_items"):
-                slide_context["list_items"] = content_slide["list_items"]
-            # comparison-grid specific fields
-            for field in ("left_label", "right_label", "left_text", "right_text"):
-                if content_slide.get(field):
-                    slide_context[field] = content_slide[field]
-            if background_image_path:
-                slide_context["background_image_url"] = str(background_image_path)
-            slides.append(slide_context)
-
-        # CTA slide — guard against null cta_slide from Claude
-        cta = spec.get("cta_slide") or {}
-        if not isinstance(cta, dict):
-            logger.warning("Carousel %s cta_slide is not a dict, using defaults", carousel_id)
-            cta = {}
-        cta_context = {
-            "slide_type": "cta",
-            "cta_primary": cta.get("cta_primary") or "Follow @slatedapp",
-            "cta_secondary": cta.get("cta_secondary") or "",
-            "handle": "@slatedapp",
-        }
-        if background_image_path:
-            cta_context["background_image_url"] = str(background_image_path)
-        slides.append(cta_context)
+        # Step 2: Build slide list
+        slides = build_slides_for_render(spec, image_paths_by_index)
 
         # Step 3: Render via CarouselAssembler
         if dry_run:
@@ -194,6 +260,17 @@ def generate_carousels(
             enriched = dict(spec)
             enriched["rendered_slides"] = [str(p) for p in cleaned_paths]
             enriched["slide_count"] = len(cleaned_paths)
+
+            # Track which slides had image generation failures
+            expected_images = {ip.get("slide_index") for ip in (spec.get("image_prompts") or [])}
+            missing_images = expected_images - set(image_paths_by_index.keys())
+            if missing_images:
+                enriched["image_gen_failures"] = sorted(missing_images)
+                logger.warning(
+                    "Carousel %s: image generation failed for slides %s (rendered as text-only)",
+                    carousel_id, sorted(missing_images),
+                )
+
             results.append(enriched)
 
             logger.info(

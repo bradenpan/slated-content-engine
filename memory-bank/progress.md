@@ -3095,3 +3095,65 @@ Added `regen_plan.py` — a plan-level regeneration orchestrator that processes 
 | New | 3 | `regen_plan.py` (orchestrator), `regen_plan.md` (prompt), `tiktok-regen-plan.yml` (workflow) |
 | Modified | 2 | `claude_api.py` (+`regenerate_tiktok_carousel_spec()`), `sheets_api.py` (+`reset_tiktok_plan_regen_trigger()`) |
 | Modified (docs) | 2 | `ARCHITECTURE.md` (updated tables), `progress.md` (this entry) |
+
+## Phase 13D+E — TikTok Two-Phase Approval: Content Generation + Apps Script Wiring (2026-03-06)
+
+Split content rendering into a separate step triggered by plan approval (B3=approved). Per-slide AI image generation replaces the old one-shared-background model. Content Queue schema expanded to 17 columns with per-slide `=IMAGE()` previews. Apps Script fully rewritten with 6 triggers and concurrency guards.
+
+### What Changed
+
+**`src/tiktok/generate_carousels.py`** — Major rewrite:
+- Per-slide image model: reads `image_prompts` array from carousel spec, generates separate AI image per `{slide_index, prompt}` entry via `_generate_slide_images()`
+- Extracted `build_slides_for_render(spec, image_paths_by_index)` for reuse by Phase F's `regen_content.py`
+- Tracks `image_gen_failures` per carousel (slides render as text-only on failure)
+- Removed old one-shared-background model (`_image_prompt` field no longer referenced)
+
+**`src/tiktok/generate_weekly_plan.py`** — Added `generate_content_from_plan()`:
+- New function loads approved plan JSON, renders all specs via `generate_carousels()`, uploads ALL slides to GCS, publishes to Content Queue with per-slide URLs
+- Added `--generate-content` CLI flag
+- Deleted old broken Steps 11-14 (rendering code that was dead since Phase A)
+- GCS upload builds `slide_preview_urls: dict[str, list[str]]` (all URLs, not just first)
+
+**`src/shared/apis/sheets_api.py`** — TikTok Content Queue rewrite:
+- `TIKTOK_CQ_HEADERS`: expanded from 14 to 17 columns (A-Q). Cols D-L = per-slide `=IMAGE()` previews (hook + 7 content + CTA). O=Status, P=Feedback, Q=Notes.
+- `write_tiktok_content_queue()`: builds 9 `=IMAGE()` formulas from URL list, skips header validation (schema transition safety), surfaces `render_error`, `image_gen_failures`, and `gcs_upload_failed` in Notes
+- `read_tiktok_approved_carousels()`: Status moved from col M(12) to O(14), uses FORMULA render option to derive `slide_count` from `=IMAGE()` formulas, range A:Q
+- `update_tiktok_content_status()`: Status writes to col O, Notes to col Q, row lookup uses `.strip()` for whitespace safety
+- New: `read_tiktok_content_regen_requests()` — reads regen-flagged rows from Content Queue (for Phase F)
+- New: `reset_tiktok_content_regen_trigger()` — writes "idle" to R1
+- New constant: `TIKTOK_CQ_CELL_REGEN_TRIGGER = "R1"`
+
+**`src/tiktok/publish_content_queue.py`** — Changed `slide_urls` parameter type from `dict[str, str]` to `dict[str, list[str]]` (all slide URLs, not just first).
+
+**`.github/workflows/tiktok-generate-content.yml`** — New workflow:
+- Triggered by `repository_dispatch: tiktok-generate-content` (from Apps Script when B3=approved)
+- `git pull --rebase` (plan JSON from previous runner), Node.js 22 + Puppeteer setup, `--generate-content` flag
+- Concurrency group: `slated-content-engine-tiktok`
+- Env: OPENAI_API_KEY, GCS_BUCKET_NAME (for image gen + upload)
+
+**`src/apps-script/tiktok-trigger.gs`** — Full rewrite (6 triggers):
+1. Weekly Review B3=`approved` → `tiktok-generate-content` (guarded: blocked while B5≠idle, resets B3 to `pending_review` on block)
+2. Weekly Review B5=`regen` → `tiktok-regen-plan`
+3. Weekly Review B3=`pending_review` → writes stale indicator to Content Queue S1
+4. Content Queue col O all reviewed → `tiktok-promote-and-schedule` (guarded: only if B3=approved)
+5. Content Queue R1=`run` → `tiktok-regen-content`
+6. Uses `range.getValue()` (not `e.value`) for programmatic `setValue()` compatibility
+- `allContentReviewed()` tracks `foundValidRow` — returns false on empty sheets
+- Timestamp tracking (B6, R2). Convenience button functions.
+
+**`.github/workflows/tiktok-promote-and-schedule.yml`** — Added `git pull --rebase` step (plan JSON from previous runner).
+
+### Key Design Decisions
+- **Schema transition**: `write_tiktok_content_queue` skips `_validate_headers` and relies on `_clear_and_write` overwriting from A1 — old 14-col headers replaced atomically
+- **Per-slide images**: `image_prompts` array drives `_generate_slide_images()`. Per-slide failures are non-fatal — slide renders as text-only, tracked in `image_gen_failures`
+- **Apps Script concurrency**: B3 approval blocked while B5 regen is in flight (resets B3 to prevent silent no-op). Promote-and-schedule blocked while B3≠approved (prevents scheduling stale renders)
+- **`build_slides_for_render` extraction**: Shared function avoids duplicating ~50 lines of slide construction logic between initial render and Phase F re-render
+
+### File Counts
+
+| Action | Count | Details |
+|--------|-------|---------|
+| New | 1 | `tiktok-generate-content.yml` (workflow) |
+| Major rewrite | 2 | `generate_carousels.py` (per-slide images + extracted builder), `tiktok-trigger.gs` (6 triggers + guards) |
+| Modified | 4 | `generate_weekly_plan.py` (+`generate_content_from_plan()`, deleted Steps 11-14), `sheets_api.py` (17-col schema + 2 new methods), `publish_content_queue.py` (slide_urls type), `tiktok-promote-and-schedule.yml` (+git pull) |
+| Modified (docs) | 2 | `ARCHITECTURE.md` (updated tables/gotchas), `progress.md` (this entry) |

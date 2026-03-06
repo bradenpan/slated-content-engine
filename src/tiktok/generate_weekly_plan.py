@@ -196,90 +196,6 @@ def generate_plan(
         )
         return plan
 
-    # --- Full pipeline (rendering + publish) below ---
-    # NOTE: This code path is broken between Phase A and Phase D
-    # (Step 9 removed but generate_carousels still expects _image_prompt).
-    # Phase B switches the cron to --plan-only so this path is never called.
-
-    # Step 11: Render carousels
-    rendered = generate_carousels(plan, dry_run=dry_run)
-
-    # Enrich plan with render results
-    plan["_rendered"] = [
-        {
-            "carousel_id": r.get("carousel_id"),
-            "slide_count": r.get("slide_count", 0),
-            "rendered_slides": r.get("rendered_slides", []),
-        }
-        for r in rendered
-    ]
-    # Re-save plan with render data
-    try:
-        tmp_path.write_text(
-            json.dumps(plan, indent=2, ensure_ascii=False),
-            encoding="utf-8",
-        )
-        tmp_path.replace(plan_path)
-    except OSError as e:
-        logger.error("Failed to re-save plan with render data: %s", e)
-
-    # Step 12: Upload rendered slides to GCS
-    slide_preview_urls = {}
-    if not dry_run:
-        try:
-            gcs = GcsAPI()
-            if gcs.is_available:
-                for carousel in rendered:
-                    carousel_id = carousel.get("carousel_id", "")
-                    slide_paths = carousel.get("rendered_slides", [])
-                    if not carousel_id or not slide_paths:
-                        continue
-
-                    gcs_urls = []
-                    for i, slide_path in enumerate(slide_paths):
-                        remote_name = f"tiktok/{carousel_id}/slide-{i}.png"
-                        url = gcs.upload_image(Path(slide_path), remote_name)
-                        if url:
-                            gcs_urls.append(url)
-
-                    if gcs_urls:
-                        carousel["slide_urls"] = gcs_urls
-                        carousel["slide_count"] = len(gcs_urls)
-                        slide_preview_urls[carousel_id] = gcs_urls[0]
-                        logger.info(
-                            "Uploaded %d/%d slides for %s to GCS",
-                            len(gcs_urls), len(slide_paths), carousel_id,
-                        )
-            else:
-                logger.warning("GCS not available, skipping slide upload")
-        except Exception as e:
-            logger.error("Failed to upload slides to GCS: %s", e)
-            for carousel in rendered:
-                carousel["gcs_upload_failed"] = True
-
-    # Step 13: Publish to Google Sheet
-    if not dry_run:
-        try:
-            tiktok_sheet_id = os.environ.get("TIKTOK_SPREADSHEET_ID", "")
-            sheets = sheets or SheetsAPI(sheet_id=tiktok_sheet_id)
-            publish_content_queue(rendered, slide_urls=slide_preview_urls, sheets=sheets)
-            logger.info("Published to TikTok Google Sheet")
-        except Exception as e:
-            logger.error("Failed to publish to Google Sheets: %s", e)
-            raise
-
-    # Step 14: Slack notification
-    try:
-        slack = slack or SlackNotify()
-        num_carousels = len(plan.get("carousels", []))
-        num_rendered = sum(1 for r in rendered if r.get("rendered_slides"))
-        slack.notify(
-            f"TikTok plan generated: {num_carousels} carousels "
-            f"({num_rendered} rendered) for week of {start_date}",
-        )
-    except Exception as e:
-        logger.error("Failed to send Slack notification: %s", e)
-
     return plan
 
 
@@ -409,6 +325,137 @@ def _validate_plan(plan: dict, taxonomy: dict) -> None:
     logger.info("Plan validation complete: %d carousels checked", len(carousels))
 
 
+def generate_content_from_plan(
+    plan_path: Path = None,
+    sheets: Optional[SheetsAPI] = None,
+    slack: Optional[SlackNotify] = None,
+    dry_run: bool = False,
+) -> dict:
+    """Render all carousel specs from an approved plan and publish to Content Queue.
+
+    Called after plan approval (B3=approved). Loads the saved plan JSON,
+    renders all specs, uploads all slides to GCS, and writes the Content Queue
+    with per-slide =IMAGE() previews.
+
+    Args:
+        plan_path: Path to the plan JSON file. Defaults to latest in TIKTOK_DATA_DIR.
+        sheets: SheetsAPI instance for the TikTok spreadsheet.
+        slack: SlackNotify instance.
+        dry_run: If True, skip rendering, GCS upload, and Sheets write.
+
+    Returns:
+        dict: The plan dict enriched with render results.
+    """
+    from src.shared.utils.plan_utils import find_latest_plan, load_plan
+
+    if plan_path is None:
+        plan_path = find_latest_plan(data_dir=TIKTOK_DATA_DIR)
+        if not plan_path:
+            raise FileNotFoundError(
+                "No TikTok weekly plan files found in data/tiktok/. "
+                "Run generate_weekly_plan.py --plan-only first."
+            )
+
+    logger.info("Loading approved plan from %s", plan_path)
+    plan = load_plan(plan_path)
+    carousels = plan.get("carousels", [])
+    if not carousels:
+        raise ValueError("Plan has no carousels to render.")
+
+    logger.info("Rendering %d carousel specs from approved plan...", len(carousels))
+
+    # Step 1: Render carousels (per-slide image generation + Puppeteer)
+    rendered = generate_carousels(plan, dry_run=dry_run)
+
+    # Enrich plan with render results
+    plan["_rendered"] = [
+        {
+            "carousel_id": r.get("carousel_id"),
+            "slide_count": r.get("slide_count", 0),
+            "rendered_slides": r.get("rendered_slides", []),
+        }
+        for r in rendered
+    ]
+
+    # Re-save plan with render data
+    tmp_path = plan_path.with_suffix(".tmp")
+    try:
+        tmp_path.write_text(
+            json.dumps(plan, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        tmp_path.replace(plan_path)
+        logger.info("Re-saved plan with render data to %s", plan_path)
+    except OSError as e:
+        logger.error("Failed to re-save plan with render data: %s", e)
+        try:
+            tmp_path.unlink(missing_ok=True)
+        except OSError:
+            pass
+
+    if dry_run:
+        logger.info("[DRY RUN] Skipping GCS upload and Sheet publish.")
+        return plan
+
+    # Step 2: Upload all rendered slides to GCS
+    slide_preview_urls: dict[str, list[str]] = {}
+    try:
+        gcs = GcsAPI()
+        if gcs.is_available:
+            for carousel in rendered:
+                carousel_id = carousel.get("carousel_id", "")
+                slide_paths = carousel.get("rendered_slides", [])
+                if not carousel_id or not slide_paths:
+                    continue
+
+                gcs_urls = []
+                for i, slide_path in enumerate(slide_paths):
+                    remote_name = f"tiktok/{carousel_id}/slide-{i}.png"
+                    url = gcs.upload_image(Path(slide_path), remote_name)
+                    if url:
+                        gcs_urls.append(url)
+
+                if gcs_urls:
+                    carousel["slide_urls"] = gcs_urls
+                    carousel["slide_count"] = len(gcs_urls)
+                    slide_preview_urls[carousel_id] = gcs_urls
+                    logger.info(
+                        "Uploaded %d/%d slides for %s to GCS",
+                        len(gcs_urls), len(slide_paths), carousel_id,
+                    )
+        else:
+            logger.warning("GCS not available, skipping slide upload")
+    except Exception as e:
+        logger.error("Failed to upload slides to GCS: %s", e)
+        for carousel in rendered:
+            carousel["gcs_upload_failed"] = True
+
+    # Step 3: Publish to Content Queue
+    try:
+        tiktok_sheet_id = os.environ.get("TIKTOK_SPREADSHEET_ID", "")
+        if not tiktok_sheet_id:
+            raise ValueError("TIKTOK_SPREADSHEET_ID env var not set.")
+        sheets = sheets or SheetsAPI(sheet_id=tiktok_sheet_id)
+        publish_content_queue(rendered, slide_urls=slide_preview_urls, sheets=sheets)
+        logger.info("Published to TikTok Content Queue")
+    except Exception as e:
+        logger.error("Failed to publish to Content Queue: %s", e)
+        raise
+
+    # Step 4: Slack notification
+    try:
+        slack = slack or SlackNotify()
+        num_rendered = sum(1 for r in rendered if r.get("rendered_slides"))
+        slack.notify(
+            f"TikTok content generated: {len(carousels)} carousels "
+            f"({num_rendered} rendered). Review slides in Content Queue tab.",
+        )
+    except Exception as e:
+        logger.error("Failed to send Slack notification: %s", e)
+
+    return plan
+
+
 if __name__ == "__main__":
     import argparse
 
@@ -421,10 +468,25 @@ if __name__ == "__main__":
     parser.add_argument("--week-start", help="Week start date (YYYY-MM-DD)")
     parser.add_argument("--dry-run", action="store_true", help="Skip rendering and Sheets write")
     parser.add_argument("--plan-only", action="store_true", help="Generate plan specs only (no rendering)")
+    parser.add_argument("--generate-content", action="store_true",
+                        help="Render all specs from the approved plan and publish to Content Queue.")
     parser.add_argument("--check-plan-status", action="store_true",
                         help="Check Weekly Review B3 status and exit. "
                              "Exit 0 if safe to generate, exit 78 if review in progress.")
     args = parser.parse_args()
+
+    if args.generate_content:
+        import sys
+        print("Generating TikTok content from approved plan...")
+        try:
+            result = generate_content_from_plan(dry_run=args.dry_run)
+            rendered = result.get("_rendered", [])
+            success = sum(1 for r in rendered if r.get("rendered_slides"))
+            print(f"Content generation complete: {success}/{len(rendered)} carousels rendered.")
+        except Exception as e:
+            logger.error("Content generation failed: %s", e, exc_info=True)
+            sys.exit(1)
+        sys.exit(0)
 
     if args.check_plan_status:
         import sys
