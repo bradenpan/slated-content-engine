@@ -21,11 +21,16 @@ runs:
 
         # Push with retry — if a concurrent workflow pushed first,
         # rebase our commit on top and retry.
+        # Stash any unstaged changes (e.g., package.json modified by npm install)
+        # so git pull --rebase can proceed cleanly.
+        git stash --include-untracked -q 2>/dev/null || true
+
         MAX_ATTEMPTS=3
         for attempt in $(seq 1 $MAX_ATTEMPTS); do
           if ! git pull --rebase; then
             echo "::error::Rebase conflict on attempt $attempt. Aborting rebase."
             git rebase --abort 2>/dev/null || true
+            git stash pop -q 2>/dev/null || true
             exit 1
           fi
           if git push; then
