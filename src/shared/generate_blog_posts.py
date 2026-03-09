@@ -95,12 +95,43 @@ def generate_blog_posts(
     # Ensure output directory exists
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    # Generate all blog posts
-    batch_results = generator.generate_batch(new_content_specs)
-
-    # Save generated posts and build results dict
+    # Check for already-generated posts (idempotency for reruns)
+    specs_to_generate = []
     results: dict = {}
     saved_paths: list[Path] = []
+
+    for spec in new_content_specs:
+        post_id = spec.get("post_id", "unknown")
+        slug = generator._generate_slug(spec.get("topic", ""))
+        mdx_path = OUTPUT_DIR / f"{slug}.mdx"
+        if mdx_path.exists():
+            mdx_content = mdx_path.read_text(encoding="utf-8")
+            logger.info("Reusing existing blog post: %s (%s)", slug, post_id)
+            results[post_id] = {
+                "slug": slug,
+                "title": spec.get("topic", ""),
+                "file_path": str(mdx_path),
+                "pillar": spec.get("pillar"),
+                "content_type": spec.get("content_type"),
+                "mdx_content": mdx_content,
+                "hero_image": None,
+                "status": "success",
+                "error": None,
+            }
+            saved_paths.append(mdx_path)
+        else:
+            specs_to_generate.append(spec)
+
+    if specs_to_generate:
+        logger.info(
+            "Generating %d blog posts (%d already exist)",
+            len(specs_to_generate), len(new_content_specs) - len(specs_to_generate),
+        )
+    else:
+        logger.info("All %d blog posts already exist, skipping generation", len(new_content_specs))
+
+    # Generate only the posts that don't already exist
+    batch_results = generator.generate_batch(specs_to_generate) if specs_to_generate else []
 
     for result in batch_results:
         post_id = result.get("post_id")

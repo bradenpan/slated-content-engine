@@ -97,14 +97,31 @@ def generate_pin_content(
     # Ensure output directory exists
     PIN_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    # Step 1: Generate copy for all pins in batches
+    # Idempotency: load previous results and skip already-generated pins
+    prev_results = _load_previous_pin_results()
+    already_done = {}
+    for pin_data in prev_results:
+        pid = safe_get(pin_data, "pin_id", "")
+        rendered_path = PIN_OUTPUT_DIR / f"{pid}.png"
+        if pid and rendered_path.exists():
+            already_done[pid] = pin_data
+
+    if already_done:
+        logger.info(
+            "Reusing %d already-generated pins (rendered PNGs exist)",
+            len(already_done),
+        )
+
+    pins_needing_gen = [s for s in pins_specs if safe_get(s, "pin_id", "") not in already_done]
+
+    # Step 1: Generate copy for pins that need it
     all_pin_copy = _generate_all_copy(
         claude=claude,
-        pin_specs=pins_specs,
+        pin_specs=pins_needing_gen,
         blog_posts=blog_posts,
         brand_voice=brand_voice,
         keyword_targets=keyword_targets,
-    )
+    ) if pins_needing_gen else {}
 
     # Build plan-level metadata lookup for pillar/content_type fallback
     plan_post_meta = {}
@@ -117,11 +134,14 @@ def generate_pin_content(
             }
 
     # Step 2: Source images and assemble pins
-    generated_pins = []
+    generated_pins = list(already_done.values())
     failures = []
 
     for i, pin_spec in enumerate(pins_specs):
         pin_id = safe_get(pin_spec, "pin_id", f"pin-{i}")
+
+        if pin_id in already_done:
+            continue
 
         try:
             # Get the copy for this pin
@@ -808,6 +828,18 @@ def _resolve_blog_slug(pin_spec: dict, blog_posts: dict) -> str:
 
     # For fresh treatments, the slug should be in the pin spec
     return safe_get(pin_spec, "existing_slug", "")
+
+
+def _load_previous_pin_results() -> list[dict]:
+    """Load previously generated pin results for idempotency checks."""
+    results_path = DATA_DIR / "pin-generation-results.json"
+    if not results_path.exists():
+        return []
+    try:
+        data = json.loads(results_path.read_text(encoding="utf-8"))
+        return data.get("generated", [])
+    except (json.JSONDecodeError, KeyError):
+        return []
 
 
 def _save_pin_results(generated_pins: list[dict], failures: list[dict]) -> None:
