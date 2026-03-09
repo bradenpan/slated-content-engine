@@ -206,8 +206,8 @@ if __name__ == "__main__":
         # Feed performance data into taxonomy weights
         if not PERFORMANCE_SUMMARY_PATH.exists():
             print(f"No performance summary found at {PERFORMANCE_SUMMARY_PATH}")
-            print("Run pull_analytics.py first to generate performance data.")
-            sys.exit(1)
+            print("No performance data yet (expected on first run). Using default weights.")
+            sys.exit(0)
 
         perf = json.loads(PERFORMANCE_SUMMARY_PATH.read_text(encoding="utf-8"))
 

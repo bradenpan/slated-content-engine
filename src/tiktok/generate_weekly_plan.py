@@ -195,6 +195,18 @@ def generate_plan(
             "Plan-only mode: %d carousel specs saved. Awaiting review.",
             len(plan.get("carousels", [])),
         )
+
+        # Notify via Slack
+        try:
+            _slack = slack or SlackNotify()
+            num_carousels = len(plan.get("carousels", []))
+            _slack.notify(
+                f"TikTok weekly plan generated: {num_carousels} carousel specs "
+                f"for week {week_number}. Review in Weekly Review tab.",
+            )
+        except Exception as e:
+            logger.error("Failed to send Slack notification: %s", e)
+
         return plan
 
     return plan
