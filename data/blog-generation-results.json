@@ -1,101 +1,101 @@
 {
-  "W10-P01": {
-    "slug": "weekly-plan-spring-refresh-light-weeknight-dinners",
-    "title": "This Week's Family Dinner Plan — 5 Light Spring Dinners the Whole Family Will Love",
-    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/weekly-plan-spring-refresh-light-weeknight-dinners.mdx",
+  "W11-P01": {
+    "slug": "weekly-plan-spring-family-dinners",
+    "title": "This Week's Family Dinner Plan — 5 Fresh Spring Dinners with One Grocery List",
+    "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/weekly-plan-spring-family-dinners.mdx",
     "pillar": 1,
     "content_type": "weekly-plan",
-    "hero_image": "/assets/blog/weekly-plan-spring-refresh-light-weeknight-dinners.jpg",
+    "hero_image": "/assets/blog/weekly-plan-spring-family-dinners.jpg",
     "status": "success",
     "error": null
   },
-  "W10-P02": {
-    "slug": "weekly-plan-5-easy-weeknight-meals-one-grocery-list",
-    "title": "This Week's Family Dinner Plan — 5 Easy Weeknight Meals, One Grocery List",
-    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/weekly-plan-5-easy-weeknight-meals-one-grocery-list.mdx",
+  "W11-P02": {
+    "slug": "weekly-plan-busy-weeknight-dinners-under-30-minutes",
+    "title": "This Week's Family Dinner Plan — 5 Busy Weeknight Meals Under 30 Minutes",
+    "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/weekly-plan-busy-weeknight-dinners-under-30-minutes.mdx",
     "pillar": 1,
     "content_type": "weekly-plan",
-    "hero_image": "/assets/blog/weekly-plan-5-easy-weeknight-meals-one-grocery-list.png",
+    "hero_image": "/assets/blog/weekly-plan-busy-weeknight-dinners-under-30-minutes.jpg",
     "status": "success",
     "error": null
   },
-  "W10-P03": {
-    "slug": "sheet-pan-chicken-drumsticks-roasted-vegetables",
-    "title": "Sheet Pan Chicken Drumsticks with Roasted Vegetables — Easy Dinners Kids Will Eat",
-    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/sheet-pan-chicken-drumsticks-roasted-vegetables.mdx",
+  "W11-P03": {
+    "slug": "cheesy-baked-pasta-casserole",
+    "title": "Cheesy Baked Pasta Casserole — The Kid Friendly Dinner Everyone Actually Eats",
+    "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/cheesy-baked-pasta-casserole.mdx",
     "pillar": 2,
     "content_type": "recipe",
-    "hero_image": "/assets/blog/sheet-pan-chicken-drumsticks-roasted-vegetables.jpg",
+    "hero_image": "/assets/blog/cheesy-baked-pasta-casserole.jpg",
     "status": "success",
     "error": null
   },
-  "W10-P04": {
-    "slug": "mini-turkey-taco-bowls-toddler-dinner-ideas",
-    "title": "Mini Turkey Taco Bowls — Toddler Dinner Ideas the Whole Family Can Customize",
-    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/mini-turkey-taco-bowls-toddler-dinner-ideas.mdx",
-    "pillar": 2,
-    "content_type": "recipe",
-    "hero_image": "/assets/blog/mini-turkey-taco-bowls-toddler-dinner-ideas.jpg",
-    "status": "success",
-    "error": null
-  },
-  "W10-P05": {
-    "slug": "dinner-ideas-picky-eaters-family-meal-planning-system",
-    "title": "Dinner Ideas for Picky Eaters: A Family Planning System That Gives Everyone a Vote",
-    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/dinner-ideas-picky-eaters-family-meal-planning-system.mdx",
+  "W11-P04": {
+    "slug": "meals-for-picky-families-one-dinner-everyone-agrees-on",
+    "title": "Meals for Picky Families: How to Plan One Dinner Everyone Actually Eats",
+    "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/meals-for-picky-families-one-dinner-everyone-agrees-on.mdx",
     "pillar": 2,
     "content_type": "guide",
-    "hero_image": "/assets/blog/dinner-ideas-picky-eaters-family-meal-planning-system.png",
+    "hero_image": "/assets/blog/meals-for-picky-families-one-dinner-everyone-agrees-on.jpg",
     "status": "success",
     "error": null
   },
-  "W10-P06": {
-    "slug": "lemon-garlic-butter-shrimp-pasta",
-    "title": "Lemon Garlic Butter Shrimp Pasta — Quick Weeknight Dinner in 20 Minutes",
-    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/lemon-garlic-butter-shrimp-pasta.mdx",
+  "W11-P05": {
+    "slug": "spring-vegetable-pasta-primavera",
+    "title": "Spring Vegetable Pasta Primavera — Easy Weeknight Dinner Ready in 20 Minutes",
+    "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/spring-vegetable-pasta-primavera.mdx",
     "pillar": 3,
     "content_type": "recipe",
-    "hero_image": "/assets/blog/lemon-garlic-butter-shrimp-pasta.jpg",
+    "hero_image": "/assets/blog/spring-vegetable-pasta-primavera.jpg",
     "status": "success",
     "error": null
   },
-  "W10-P07": {
-    "slug": "one-pan-honey-mustard-pork-tenderloin",
-    "title": "One-Pan Honey Mustard Pork Tenderloin — A Simple Dinner Recipe for Busy Nights",
-    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/one-pan-honey-mustard-pork-tenderloin.mdx",
+  "W11-P06": {
+    "slug": "garlic-butter-sausage-and-peppers-skillet",
+    "title": "Garlic Butter Sausage and Peppers Skillet — Ready in 30 Minutes",
+    "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/garlic-butter-sausage-and-peppers-skillet.mdx",
     "pillar": 3,
     "content_type": "recipe",
-    "hero_image": "/assets/blog/one-pan-honey-mustard-pork-tenderloin.jpg",
+    "hero_image": "/assets/blog/garlic-butter-sausage-and-peppers-skillet.jpg",
     "status": "success",
     "error": null
   },
-  "W10-P08": {
-    "slug": "black-bean-sweet-potato-tacos",
-    "title": "Black Bean and Sweet Potato Tacos — Easy Vegetarian Family Dinner in 25 Minutes",
-    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/black-bean-sweet-potato-tacos.mdx",
+  "W11-P07": {
+    "slug": "ground-turkey-taco-skillet",
+    "title": "Ground Turkey Taco Skillet — Easy Family Dinner in 20 Minutes",
+    "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/ground-turkey-taco-skillet.mdx",
     "pillar": 3,
     "content_type": "recipe",
-    "hero_image": "/assets/blog/black-bean-sweet-potato-tacos.jpg",
+    "hero_image": "/assets/blog/ground-turkey-taco-skillet.jpg",
     "status": "success",
     "error": null
   },
-  "W10-P09": {
-    "slug": "reasons-families-quitting-meal-kits",
-    "title": "7 Reasons Families Are Quitting Meal Kits — And What They're Doing Instead",
-    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/reasons-families-quitting-meal-kits.mdx",
+  "W11-P08": {
+    "slug": "better-than-hello-fresh-build-your-own-meal-plan",
+    "title": "Better Than Hello Fresh: How to Build Your Own Weekly Dinner Plan",
+    "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/better-than-hello-fresh-build-your-own-meal-plan.mdx",
     "pillar": 4,
-    "content_type": "listicle",
-    "hero_image": "/assets/blog/reasons-families-quitting-meal-kits.jpg",
+    "content_type": "guide",
+    "hero_image": "/assets/blog/better-than-hello-fresh-build-your-own-meal-plan.jpg",
     "status": "success",
     "error": null
   },
-  "W10-P10": {
-    "slug": "slow-cooker-white-bean-kale-soup",
-    "title": "Slow Cooker White Bean and Kale Soup — A Gluten Free Family Dinner That Makes Itself",
-    "file_path": "/home/runner/work/slated-pinterest-bot/slated-pinterest-bot/data/generated/blog/slow-cooker-white-bean-kale-soup.mdx",
+  "W11-P09": {
+    "slug": "instant-pot-chicken-and-rice",
+    "title": "Instant Pot Chicken and Rice — Easy Family Dinner Ready in 25 Minutes",
+    "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/instant-pot-chicken-and-rice.mdx",
     "pillar": 5,
     "content_type": "recipe",
-    "hero_image": "/assets/blog/slow-cooker-white-bean-kale-soup.jpg",
+    "hero_image": "/assets/blog/instant-pot-chicken-and-rice.jpg",
+    "status": "success",
+    "error": null
+  },
+  "W11-P10": {
+    "slug": "dairy-free-coconut-curry-chickpeas",
+    "title": "Dairy-Free Coconut Curry with Chickpeas — Easy Anti-Inflammatory Weeknight Dinner",
+    "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/dairy-free-coconut-curry-chickpeas.mdx",
+    "pillar": 5,
+    "content_type": "recipe",
+    "hero_image": "/assets/blog/dairy-free-coconut-curry-chickpeas.jpg",
     "status": "success",
     "error": null
   }
