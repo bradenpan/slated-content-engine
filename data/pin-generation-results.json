@@ -663,7 +663,9 @@
       "treatment_number": 1,
       "source_post_id": "W11-P10",
       "funnel_layer": "discovery",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W11-12.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W11-12.png"
     },
     {
       "pin_id": "W11-13",
@@ -698,7 +700,9 @@
       "treatment_number": 1,
       "source_post_id": "W11-P01",
       "funnel_layer": "discovery",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W11-13.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W11-13.png"
     },
     {
       "pin_id": "W11-15",
@@ -733,7 +737,9 @@
       "treatment_number": 1,
       "source_post_id": "W11-P07",
       "funnel_layer": "discovery",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W11-15.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W11-15.png"
     },
     {
       "pin_id": "W11-17",
@@ -775,7 +781,9 @@
       "treatment_number": 1,
       "source_post_id": "W11-P02",
       "funnel_layer": "consideration",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W11-17.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W11-17.png"
     },
     {
       "pin_id": "W11-21",
@@ -810,7 +818,9 @@
       "treatment_number": 1,
       "source_post_id": "W11-P01",
       "funnel_layer": "discovery",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W11-21.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W11-21.png"
     },
     {
       "pin_id": "W11-22",
@@ -851,7 +861,9 @@
       "treatment_number": 4,
       "source_post_id": "existing:slow-cooker-white-bean-kale-soup",
       "funnel_layer": "discovery",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W11-22.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W11-22.png"
     },
     {
       "pin_id": "W11-23",
@@ -893,7 +905,9 @@
       "treatment_number": 1,
       "source_post_id": "W11-P05",
       "funnel_layer": "discovery",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W11-23.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W11-23.png"
     },
     {
       "pin_id": "W11-24",
@@ -928,7 +942,9 @@
       "treatment_number": 1,
       "source_post_id": "W11-P02",
       "funnel_layer": "discovery",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W11-24.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W11-24.png"
     },
     {
       "pin_id": "W11-25",
@@ -963,7 +979,9 @@
       "treatment_number": 1,
       "source_post_id": "W11-P10",
       "funnel_layer": "discovery",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W11-25.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W11-25.png"
     },
     {
       "pin_id": "W11-26",
@@ -1001,7 +1019,9 @@
       "treatment_number": 4,
       "source_post_id": "existing:mini-turkey-taco-bowls-toddler-dinner-ideas",
       "funnel_layer": "discovery",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W11-26.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W11-26.png"
     },
     {
       "pin_id": "W11-27",
@@ -1043,7 +1063,9 @@
       "treatment_number": 1,
       "source_post_id": "W11-P09",
       "funnel_layer": "consideration",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W11-27.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W11-27.png"
     },
     {
       "pin_id": "W11-28",
@@ -1081,7 +1103,9 @@
       "treatment_number": 3,
       "source_post_id": "existing:reasons-families-quitting-meal-kits",
       "funnel_layer": "consideration",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W11-28.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W11-28.png"
     }
   ],
   "failures": [],
