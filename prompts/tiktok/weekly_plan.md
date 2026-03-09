@@ -45,10 +45,11 @@ Choose from these 4 template families. Each has a different visual style:
 
 ## Output Format
 
-Return a JSON object with a single key `carousels` containing an array of exactly 7 carousel specifications:
+Return a JSON object. Put your strategic reasoning in `planning_notes` (max 4 short paragraphs — attribute choices, seasonal hooks, what you learned from last week's analysis). Do NOT output any text before or after the JSON object.
 
 ```json
 {
+  "planning_notes": "Your strategic reasoning for this week's content mix. Max 4 short paragraphs.",
   "carousels": [
     {
       "carousel_id": "TK-W{{week_number}}-01",

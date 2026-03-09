@@ -196,8 +196,9 @@ class ClaudeAPI:
             prompt=prompt,
             system=system,
             model=MODEL_ROUTINE,
-            max_tokens=8192,
+            max_tokens=16384,
             temperature=0.7,
+            require_complete=True,
         )
 
         return self._parse_json_response(response_text, "weekly plan")
@@ -269,7 +270,7 @@ class ClaudeAPI:
                 batch_results = self._parse_json_response(response_text, "pin copy batch")
             except (OpenAIChatAPIError, ValueError, requests.HTTPError) as e:
                 logger.warning("GPT-5 Mini failed for pin copy batch %d-%d, falling back to Claude Sonnet: %s", i + 1, i + len(batch), str(e))
-                response_text = self._call_api(prompt=prompt, system=system, model=MODEL_ROUTINE, max_tokens=4096, temperature=0.7)
+                response_text = self._call_api(prompt=prompt, system=system, model=MODEL_ROUTINE, max_tokens=4096, temperature=0.7, require_complete=True)
                 batch_results = self._parse_json_response(response_text, "pin copy batch")
             if isinstance(batch_results, list):
                 all_results.extend(batch_results)
@@ -343,7 +344,7 @@ class ClaudeAPI:
         # Token limits vary by post type
         max_tokens_map = {
             "recipe": 4096,
-            "weekly-plan": 8192,  # Longer: 5 embedded recipes
+            "weekly-plan": 12288,  # Longer: 5 embedded recipes
             "guide": 6144,
             "listicle": 6144,
         }
@@ -514,7 +515,7 @@ class ClaudeAPI:
 
         # Scale max_tokens to replacement size: ~300/post + ~150/pin + overhead
         max_tokens = 200 + (300 * len(posts_to_replace)) + (150 * len(slots_to_fill))
-        max_tokens = min(max_tokens, 4096)
+        max_tokens = min(max_tokens, 8192)
 
         logger.info(
             "Generating replacement for %d posts (%d pin slots)...",
@@ -527,6 +528,7 @@ class ClaudeAPI:
             model=MODEL_ROUTINE,
             max_tokens=max_tokens,
             temperature=0.7,
+            require_complete=True,
         )
 
         return self._parse_json_response(response_text, "topic replacement")
@@ -593,8 +595,9 @@ class ClaudeAPI:
             prompt=prompt,
             system=system,
             model=MODEL_ROUTINE,
-            max_tokens=8192,
+            max_tokens=16384,
             temperature=0.7,
+            require_complete=True,
         )
 
         return self._parse_json_response(response_text, "TikTok weekly plan")
@@ -641,7 +644,7 @@ class ClaudeAPI:
             return self._parse_json_response(response_text, "carousel copy")
         except (OpenAIChatAPIError, ValueError, requests.HTTPError) as e:
             logger.warning("GPT-5 Mini failed for carousel copy, falling back to Claude Sonnet: %s", str(e))
-            response_text = self._call_api(prompt=prompt, system=system, model=MODEL_ROUTINE, max_tokens=2048, temperature=0.7)
+            response_text = self._call_api(prompt=prompt, system=system, model=MODEL_ROUTINE, max_tokens=2048, temperature=0.7, require_complete=True)
             return self._parse_json_response(response_text, "carousel copy")
 
     def regenerate_tiktok_carousel_spec(
@@ -707,6 +710,7 @@ class ClaudeAPI:
             model=MODEL_ROUTINE,
             max_tokens=4096,
             temperature=0.7,
+            require_complete=True,
         )
 
         return self._parse_json_response(response_text, "TikTok carousel regen")
@@ -855,7 +859,7 @@ class ClaudeAPI:
             prompt=prompt,
             system=system,
             model=MODEL_DEEP,
-            max_tokens=8192,
+            max_tokens=16384,
             temperature=0.5,
         )
 
@@ -933,6 +937,7 @@ class ClaudeAPI:
         max_tokens: int = 4096,
         temperature: float = 0.7,
         images: Optional[list] = None,
+        require_complete: bool = False,
     ) -> str:
         """
         Make a call to the Claude API with retry on rate limits and token/cost tracking.
@@ -947,12 +952,17 @@ class ClaudeAPI:
                     Each element can be bytes (raw image data) or a str/Path
                     (file path to read). Images are sent as base64-encoded
                     content blocks before the text prompt.
+            require_complete: If True, raise ClaudeAPIError when the response
+                    is truncated (hit max_tokens). Use for JSON-producing calls
+                    where partial output is unusable. Defaults to False (log
+                    warning only).
 
         Returns:
             str: Claude's response text.
 
         Raises:
-            ClaudeAPIError: On authentication failure or persistent errors.
+            ClaudeAPIError: On authentication failure, persistent errors, or
+                    truncation when require_complete=True.
         """
         use_model = model or MODEL_ROUTINE
         max_retries = 3
@@ -1017,6 +1027,26 @@ class ClaudeAPI:
                     use_model, input_tokens, output_tokens, call_cost,
                     self.total_input_tokens, self.total_output_tokens, self.total_cost_usd,
                 )
+
+                # Detect truncated responses
+                if message.stop_reason == "max_tokens":
+                    if require_complete:
+                        logger.error(
+                            "Claude response truncated: hit max_tokens=%d "
+                            "(output_tokens=%d). Response is incomplete.",
+                            max_tokens, output_tokens,
+                        )
+                        raise ClaudeAPIError(
+                            f"Response truncated at {output_tokens} output tokens "
+                            f"(max_tokens={max_tokens}). Increase max_tokens for "
+                            f"this call or reduce prompt size."
+                        )
+                    else:
+                        logger.warning(
+                            "Claude response may be truncated: hit max_tokens=%d "
+                            "(output_tokens=%d). Returning partial response.",
+                            max_tokens, output_tokens,
+                        )
 
                 # Extract text from response
                 response_text = ""

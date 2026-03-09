@@ -154,8 +154,8 @@ slated-content-engine/              # Renamed from pinterest-pipeline
 
 | File | Purpose |
 |------|---------|
-| `claude_api.py` | Claude Sonnet/Opus + GPT-5 Mini integration, prompt template loading, cost tracking. TikTok methods: `generate_tiktok_plan()`, `generate_carousel_copy()` (reserved), `regenerate_tiktok_carousel_spec()` |
-| `openai_chat_api.py` | GPT-5 Mini HTTP wrapper (used by claude_api.py for pin copy + image prompts) |
+| `claude_api.py` | Claude Sonnet/Opus + GPT-5 Mini integration, prompt template loading, cost tracking, truncation detection (`require_complete` flag — hard error for JSON callers, warning for free-text). TikTok methods: `generate_tiktok_plan()`, `generate_carousel_copy()` (reserved), `regenerate_tiktok_carousel_spec()` |
+| `openai_chat_api.py` | GPT-5 Mini HTTP wrapper (used by claude_api.py for pin copy + image prompts), truncation detection via `finish_reason` |
 | `sheets_api.py` | Google Sheets CRUD (Weekly Review, Content Queue, Post Log, Dashboard tabs). TikTok: `write_tiktok_content_queue()` (17-col Content Queue, per-slide `=IMAGE()` previews), `write_tiktok_weekly_review()` (11-col Weekly Review with B3/B5 control cells), `read_tiktok_plan_status()`, `read_tiktok_plan_regen_requests()`, `reset_tiktok_plan_regen_trigger()`, `read_tiktok_content_regen_requests()`, `reset_tiktok_content_regen_trigger()`, `update_tiktok_content_row()`. Separate TikTok spreadsheet (`TIKTOK_SPREADSHEET_ID`). |
 | `gcs_api.py` | Google Cloud Storage uploads (primary image hosting for Sheet previews + Pinterest) |
 | `drive_api.py` | Google Drive uploads (fallback if GCS fails) |

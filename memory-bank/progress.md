@@ -3264,3 +3264,38 @@ Created `architecture/tiktok-two-phase-approval/technical-debt-and-design-todos.
 | Modified (test) | 3 | `test_tiktok_carousel_assembler.py`, `test_tiktok_promote_and_schedule.py`, `test_tiktok_validate_plan.py` |
 | Modified (docs) | 3 | `ARCHITECTURE.md`, `progress.md`, `technical-debt-and-design-todos.md` (new) |
 | Tests | 427 passing |
+
+---
+
+## Hotfix: LLM Response Truncation Detection + max_tokens Increase (2026-03-09)
+
+### Problem
+`pinterest-weekly-review` workflow failed: Claude's response hit the `max_tokens=8192` ceiling, producing truncated JSON that failed `_validate_plan_structure()`. Root cause: growing input context (36K input tokens — 71KB strategy doc, 12KB content memory, 13KB weekly analysis) caused more detailed output that exceeded the 8192 output token limit. The prompt also had contradictory instructions ("analyze first" vs "output only JSON"), causing the model to waste tokens on reasoning preamble before the JSON.
+
+### Changes
+
+**Truncation detection (`_call_api()` + `call_gpt5_mini()`):**
+- `_call_api()` gains `require_complete` parameter (default `False`). When `True`, raises `ClaudeAPIError` on truncation (`stop_reason == "max_tokens"`). When `False`, logs a warning and returns partial text.
+- All JSON-producing callers pass `require_complete=True`: `generate_weekly_plan`, `generate_pin_copy` (fallback), `generate_replacement_posts`, `generate_tiktok_plan`, `generate_carousel_copy` (fallback), `regenerate_tiktok_carousel_spec`.
+- Free-text callers (blog posts, analysis, monthly review) use default `False` — truncated text is still usable.
+- `call_gpt5_mini()` checks `finish_reason == "length"` and raises `OpenAIChatAPIError`.
+
+**max_tokens increases:**
+- `generate_weekly_plan()`: 8192 → 16384
+- `generate_tiktok_plan()`: 8192 → 16384
+- `run_monthly_review()`: 8192 → 16384
+- `generate_blog_post()` weekly-plan type: 8192 → 12288
+- `generate_replacement_posts()` cap: 4096 → 8192
+
+**Prompt tightening:**
+- Pinterest `weekly_plan.md`: "Do the analysis internally" + reasoning goes in `planning_notes` (max 4 short paragraphs) + explicit no-preamble instruction.
+- TikTok `weekly_plan.md`: Added `planning_notes` field as reasoning relief valve with same constraint.
+
+### Files Modified
+| File | Change |
+|------|--------|
+| `src/shared/apis/claude_api.py` | `require_complete` param, truncation detection, max_tokens increases |
+| `src/shared/apis/openai_chat_api.py` | `finish_reason` truncation detection |
+| `prompts/pinterest/weekly_plan.md` | Reasoning → `planning_notes`, no-preamble instruction |
+| `prompts/tiktok/weekly_plan.md` | Added `planning_notes` relief valve |
+| `ARCHITECTURE.md` | Updated `claude_api.py` and `openai_chat_api.py` descriptions |

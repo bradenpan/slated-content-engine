@@ -45,7 +45,7 @@ The plan must follow the blog-first workflow: define blog posts first, then deri
 ---
 ## PLANNING PROCESS
 
-Follow these steps in order. Do the analysis FIRST, then build the plan based on analysis.
+Follow these steps in order. Do the analysis internally, then build the plan based on analysis. Put your reasoning in the `planning_notes` field (max 4 short paragraphs). Do NOT output any text before or after the JSON object.
 
 ### Step 1: Analyze Inputs
 - Review the content memory summary. Identify topics used **on Pinterest** in the last 10 weeks (these are off-limits). Topics only covered on other channels are NOT off-limits.
@@ -160,7 +160,7 @@ Return valid JSON with exactly this structure. No markdown code fences around th
 {
   "week_number": {{week_number}},
   "date_range": "YYYY-MM-DD to YYYY-MM-DD",
-  "planning_notes": "Brief summary of key decisions: why this pillar mix, what seasonal content, what performance adjustments",
+  "planning_notes": "Your strategic reasoning: why this pillar mix, what seasonal content, what performance adjustments, what you learned from last week's analysis. Max 4 short paragraphs.",
   "pillar_allocation": {
     "P1": { "pins": 0, "pct": 0.0 },
     "P2": { "pins": 0, "pct": 0.0 },

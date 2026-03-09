@@ -143,4 +143,17 @@ def call_gpt5_mini(
         raise OpenAIChatAPIError(
             f"Malformed OpenAI response: missing 'content'. Response: {str(data)[:500]}"
         )
+
+    # Detect truncated responses
+    finish_reason = choices[0].get("finish_reason")
+    if finish_reason == "length":
+        logger.error(
+            "OpenAI response truncated: hit max_tokens=%d. Response is incomplete.",
+            max_tokens,
+        )
+        raise OpenAIChatAPIError(
+            f"Response truncated at max_tokens={max_tokens}. "
+            f"Increase max_tokens for this call or reduce prompt size."
+        )
+
     return content
