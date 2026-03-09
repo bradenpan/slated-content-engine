@@ -1,0 +1,630 @@
+{
+  "generated_at": "2026-03-09T11:11:12.992843",
+  "date_range": {
+    "start": "2026-03-02",
+    "end": "2026-03-09"
+  },
+  "pins_tracked": 48,
+  "pin_analytics": {
+    "W9-01": {
+      "pinterest_pin_id": "1137792293376534022",
+      "period_metrics": {
+        "IMPRESSION": 6,
+        "SAVE": 0,
+        "PIN_CLICK": 0,
+        "OUTBOUND_CLICK": 0
+      },
+      "query_start": "2026-02-25",
+      "query_end": "2026-03-09"
+    },
+    "W9-02": {
+      "pinterest_pin_id": "1137792293376542358",
+      "period_metrics": {
+        "IMPRESSION": 11,
+        "SAVE": 0,
+        "PIN_CLICK": 0,
+        "OUTBOUND_CLICK": 0
+      },
+      "query_start": "2026-02-25",
+      "query_end": "2026-03-09"
+    },
+    "W9-03": {
+      "pinterest_pin_id": "1137792293376562791",
+      "period_metrics": {
+        "IMPRESSION": 2,
+        "SAVE": 0,
+        "PIN_CLICK": 0,
+        "OUTBOUND_CLICK": 0
+      },
+      "query_start": "2026-02-25",
+      "query_end": "2026-03-09"
+    },
+    "W9-04": {
+      "pinterest_pin_id": "1137792293376563363",
+      "period_metrics": {
+        "IMPRESSION": 2,
+        "SAVE": 0,
+        "PIN_CLICK": 0,
+        "OUTBOUND_CLICK": 0
+      },
+      "query_start": "2026-02-25",
+      "query_end": "2026-03-09"
+    },
+    "W9-05": {
+      "pinterest_pin_id": "1137792293376591048",
+      "period_metrics": {
+        "IMPRESSION": 0,
+        "SAVE": 0,
+        "PIN_CLICK": 0,
+        "OUTBOUND_CLICK": 0
+      },
+      "query_start": "2026-02-26",
+      "query_end": "2026-03-09"
+    },
+    "W9-06": {
+      "pinterest_pin_id": "1137792293376605542",
+      "period_metrics": {
+        "IMPRESSION": 0,
+        "SAVE": 0,
+        "PIN_CLICK": 0,
+        "OUTBOUND_CLICK": 0
+      },
+      "query_start": "2026-02-26",
+      "query_end": "2026-03-09"
+    },
+    "W9-07": {
+      "pinterest_pin_id": "1137792293376623780",
+      "period_metrics": {
+        "IMPRESSION": 0,
+        "SAVE": 0,
+        "PIN_CLICK": 0,
+        "OUTBOUND_CLICK": 0
+      },
+      "query_start": "2026-02-26",
+      "query_end": "2026-03-09"
+    },
+    "W9-08": {
+      "pinterest_pin_id": "1137792293376624425",
+      "period_metrics": {
+        "IMPRESSION": 0,
+        "SAVE": 0,
+        "PIN_CLICK": 0,
+        "OUTBOUND_CLICK": 0
+      },
+      "query_start": "2026-02-26",
+      "query_end": "2026-03-09"
+    },
+    "W9-09": {
+      "pinterest_pin_id": "1137792293376652330",
+      "period_metrics": {
+        "IMPRESSION": 0,
+        "SAVE": 0,
+        "PIN_CLICK": 0,
+        "OUTBOUND_CLICK": 0
+      },
+      "query_start": "2026-02-27",
+      "query_end": "2026-03-09"
+    },
+    "W9-10": {
+      "pinterest_pin_id": "1137792293376669204",
+      "period_metrics": {
+        "IMPRESSION": 0,
+        "SAVE": 0,
+        "PIN_CLICK": 0,
+        "OUTBOUND_CLICK": 0
+      },
+      "query_start": "2026-02-27",
+      "query_end": "2026-03-09"
+    },
+    "W9-11": {
+      "pinterest_pin_id": "1137792293376687299",
+      "period_metrics": {
+        "IMPRESSION": 1,
+        "SAVE": 0,
+        "PIN_CLICK": 0,
+        "OUTBOUND_CLICK": 0
+      },
+      "query_start": "2026-02-27",
+      "query_end": "2026-03-09"
+    },
+    "W9-12": {
+      "pinterest_pin_id": "1137792293376687985",
+      "period_metrics": {
+        "IMPRESSION": 3,
+        "SAVE": 0,
+        "PIN_CLICK": 0,
+        "OUTBOUND_CLICK": 0
+      },
+      "query_start": "2026-02-27",
+      "query_end": "2026-03-09"
+    },
+    "W9-13": {
+      "pinterest_pin_id": "1137792293376720056",
+      "period_metrics": {
+        "IMPRESSION": 1,
+        "SAVE": 0,
+        "PIN_CLICK": 0,
+        "OUTBOUND_CLICK": 0
+      },
+      "query_start": "2026-02-28",
+      "query_end": "2026-03-09"
+    },
+    "W9-14": {
+      "pinterest_pin_id": "1137792293376738375",
+      "period_metrics": {
+        "IMPRESSION": 1,
+        "SAVE": 0,
+        "PIN_CLICK": 0,
+        "OUTBOUND_CLICK": 0
+      },
+      "query_start": "2026-02-28",
+      "query_end": "2026-03-09"
+    },
+    "W9-15": {
+      "pinterest_pin_id": "1137792293376758302",
+      "period_metrics": {
+        "IMPRESSION": 1,
+        "SAVE": 0,
+        "PIN_CLICK": 0,
+        "OUTBOUND_CLICK": 0
+      },
+      "query_start": "2026-02-28",
+      "query_end": "2026-03-09"
+    },
+    "W9-16": {
+      "pinterest_pin_id": "1137792293376758698",
+      "period_metrics": {
+        "IMPRESSION": 1,
+        "SAVE": 0,
+        "PIN_CLICK": 0,
+        "OUTBOUND_CLICK": 0
+      },
+      "query_start": "2026-02-28",
+      "query_end": "2026-03-09"
+    },
+    "W9-17": {
+      "pinterest_pin_id": "1137792293376791207",
+      "period_metrics": {
+        "IMPRESSION": 1,
+        "SAVE": 0,
+        "PIN_CLICK": 0,
+        "OUTBOUND_CLICK": 0
+      },
+      "query_start": "2026-03-01",
+      "query_end": "2026-03-09"
+    },
+    "W9-18": {
+      "pinterest_pin_id": "1137792293376808106",
+      "period_metrics": {
+        "IMPRESSION": 1,
+        "SAVE": 0,
+        "PIN_CLICK": 0,
+        "OUTBOUND_CLICK": 0
+      },
+      "query_start": "2026-03-01",
+      "query_end": "2026-03-09"
+    },
+    "W9-19": {
+      "pinterest_pin_id": "1137792293376826735",
+      "period_metrics": {
+        "IMPRESSION": 1,
+        "SAVE": 0,
+        "PIN_CLICK": 0,
+        "OUTBOUND_CLICK": 0
+      },
+      "query_start": "2026-03-01",
+      "query_end": "2026-03-09"
+    },
+    "W9-20": {
+      "pinterest_pin_id": "1137792293376826943",
+      "period_metrics": {
+        "IMPRESSION": 1,
+        "SAVE": 0,
+        "PIN_CLICK": 0,
+        "OUTBOUND_CLICK": 0
+      },
+      "query_start": "2026-03-01",
+      "query_end": "2026-03-09"
+    },
+    "W9-21": {
+      "pinterest_pin_id": "1137792293376861684",
+      "period_metrics": {
+        "IMPRESSION": 1,
+        "SAVE": 0,
+        "PIN_CLICK": 0,
+        "OUTBOUND_CLICK": 0
+      },
+      "query_start": "2026-03-02",
+      "query_end": "2026-03-09"
+    },
+    "W9-22": {
+      "pinterest_pin_id": "1137792293376869688",
+      "period_metrics": {
+        "IMPRESSION": 1,
+        "SAVE": 0,
+        "PIN_CLICK": 0,
+        "OUTBOUND_CLICK": 0
+      },
+      "query_start": "2026-03-02",
+      "query_end": "2026-03-09"
+    },
+    "W9-23": {
+      "pinterest_pin_id": "1137792293376908093",
+      "period_metrics": {
+        "IMPRESSION": 1,
+        "SAVE": 0,
+        "PIN_CLICK": 0,
+        "OUTBOUND_CLICK": 0
+      },
+      "query_start": "2026-03-02",
+      "query_end": "2026-03-09"
+    },
+    "W9-24": {
+      "pinterest_pin_id": "1137792293376908095",
+      "period_metrics": {
+        "IMPRESSION": 1,
+        "SAVE": 0,
+        "PIN_CLICK": 0,
+        "OUTBOUND_CLICK": 0
+      },
+      "query_start": "2026-03-02",
+      "query_end": "2026-03-09"
+    },
+    "W9-25": {
+      "pinterest_pin_id": "1137792293376917402",
+      "period_metrics": {
+        "IMPRESSION": 1,
+        "SAVE": 0,
+        "PIN_CLICK": 0,
+        "OUTBOUND_CLICK": 0
+      },
+      "query_start": "2026-03-03",
+      "query_end": "2026-03-09"
+    },
+    "W9-26": {
+      "pinterest_pin_id": "1137792293376931206",
+      "period_metrics": {
+        "IMPRESSION": 1,
+        "SAVE": 0,
+        "PIN_CLICK": 0,
+        "OUTBOUND_CLICK": 0
+      },
+      "query_start": "2026-03-03",
+      "query_end": "2026-03-09"
+    },
+    "W9-27": {
+      "pinterest_pin_id": "1137792293376950476",
+      "period_metrics": {
+        "IMPRESSION": 1,
+        "SAVE": 0,
+        "PIN_CLICK": 0,
+        "OUTBOUND_CLICK": 0
+      },
+      "query_start": "2026-03-03",
+      "query_end": "2026-03-09"
+    },
+    "W9-28": {
+      "pinterest_pin_id": "1137792293376951147",
+      "period_metrics": {
+        "IMPRESSION": 1,
+        "SAVE": 0,
+        "PIN_CLICK": 0,
+        "OUTBOUND_CLICK": 0
+      },
+      "query_start": "2026-03-03",
+      "query_end": "2026-03-09"
+    },
+    "W10-01": {
+      "pinterest_pin_id": "1137792293376978539",
+      "period_metrics": {
+        "IMPRESSION": 0,
+        "SAVE": 0,
+        "PIN_CLICK": 0,
+        "OUTBOUND_CLICK": 0
+      },
+      "query_start": "2026-03-04",
+      "query_end": "2026-03-09"
+    },
+    "W10-02": {
+      "pinterest_pin_id": "1137792293376993626",
+      "period_metrics": {
+        "IMPRESSION": 0,
+        "SAVE": 0,
+        "PIN_CLICK": 0,
+        "OUTBOUND_CLICK": 0
+      },
+      "query_start": "2026-03-04",
+      "query_end": "2026-03-09"
+    },
+    "W10-03": {
+      "pinterest_pin_id": "1137792293377012581",
+      "period_metrics": {
+        "IMPRESSION": 0,
+        "SAVE": 0,
+        "PIN_CLICK": 0,
+        "OUTBOUND_CLICK": 0
+      },
+      "query_start": "2026-03-04",
+      "query_end": "2026-03-09"
+    },
+    "W10-04": {
+      "pinterest_pin_id": "1137792293377013264",
+      "period_metrics": {
+        "IMPRESSION": 0,
+        "SAVE": 0,
+        "PIN_CLICK": 0,
+        "OUTBOUND_CLICK": 0
+      },
+      "query_start": "2026-03-04",
+      "query_end": "2026-03-09"
+    },
+    "W10-05": {
+      "pinterest_pin_id": "1137792293377042247",
+      "period_metrics": {
+        "IMPRESSION": 0,
+        "SAVE": 0,
+        "PIN_CLICK": 0,
+        "OUTBOUND_CLICK": 0
+      },
+      "query_start": "2026-03-05",
+      "query_end": "2026-03-09"
+    },
+    "W10-06": {
+      "pinterest_pin_id": "1137792293377057030",
+      "period_metrics": {
+        "IMPRESSION": 0,
+        "SAVE": 0,
+        "PIN_CLICK": 0,
+        "OUTBOUND_CLICK": 0
+      },
+      "query_start": "2026-03-05",
+      "query_end": "2026-03-09"
+    },
+    "W10-07": {
+      "pinterest_pin_id": "1137792293377074112",
+      "period_metrics": {
+        "IMPRESSION": 0,
+        "SAVE": 0,
+        "PIN_CLICK": 0,
+        "OUTBOUND_CLICK": 0
+      },
+      "query_start": "2026-03-05",
+      "query_end": "2026-03-09"
+    },
+    "W10-08": {
+      "pinterest_pin_id": "1137792293377074788",
+      "period_metrics": {
+        "IMPRESSION": 0,
+        "SAVE": 0,
+        "PIN_CLICK": 0,
+        "OUTBOUND_CLICK": 0
+      },
+      "query_start": "2026-03-05",
+      "query_end": "2026-03-09"
+    },
+    "W10-09": {
+      "pinterest_pin_id": "1137792293377103099",
+      "period_metrics": {
+        "IMPRESSION": 0,
+        "SAVE": 0,
+        "PIN_CLICK": 0,
+        "OUTBOUND_CLICK": 0
+      },
+      "query_start": "2026-03-06",
+      "query_end": "2026-03-09"
+    },
+    "W10-10": {
+      "pinterest_pin_id": "1137792293377117794",
+      "period_metrics": {
+        "IMPRESSION": 0,
+        "SAVE": 0,
+        "PIN_CLICK": 0,
+        "OUTBOUND_CLICK": 0
+      },
+      "query_start": "2026-03-06",
+      "query_end": "2026-03-09"
+    },
+    "W10-11": {
+      "pinterest_pin_id": "1137792293377138667",
+      "period_metrics": {
+        "IMPRESSION": 0,
+        "SAVE": 0,
+        "PIN_CLICK": 0,
+        "OUTBOUND_CLICK": 0
+      },
+      "query_start": "2026-03-06",
+      "query_end": "2026-03-09"
+    },
+    "W10-12": {
+      "pinterest_pin_id": "1137792293377139429",
+      "period_metrics": {
+        "IMPRESSION": 0,
+        "SAVE": 0,
+        "PIN_CLICK": 0,
+        "OUTBOUND_CLICK": 0
+      },
+      "query_start": "2026-03-06",
+      "query_end": "2026-03-09"
+    },
+    "W10-13": {
+      "pinterest_pin_id": "1137792293377166879",
+      "period_metrics": {
+        "IMPRESSION": 0,
+        "SAVE": 0,
+        "PIN_CLICK": 0,
+        "OUTBOUND_CLICK": 0
+      },
+      "query_start": "2026-03-07",
+      "query_end": "2026-03-09"
+    },
+    "W10-14": {
+      "pinterest_pin_id": "1137792293377185144",
+      "period_metrics": {
+        "IMPRESSION": 0,
+        "SAVE": 0,
+        "PIN_CLICK": 0,
+        "OUTBOUND_CLICK": 0
+      },
+      "query_start": "2026-03-07",
+      "query_end": "2026-03-09"
+    },
+    "W10-15": {
+      "pinterest_pin_id": "1137792293377206943",
+      "period_metrics": {
+        "IMPRESSION": 0,
+        "SAVE": 0,
+        "PIN_CLICK": 0,
+        "OUTBOUND_CLICK": 0
+      },
+      "query_start": "2026-03-07",
+      "query_end": "2026-03-09"
+    },
+    "W10-16": {
+      "pinterest_pin_id": "1137792293377207621",
+      "period_metrics": {
+        "IMPRESSION": 0,
+        "SAVE": 0,
+        "PIN_CLICK": 0,
+        "OUTBOUND_CLICK": 0
+      },
+      "query_start": "2026-03-07",
+      "query_end": "2026-03-09"
+    },
+    "W10-17": {
+      "pinterest_pin_id": "1137792293377239152",
+      "period_metrics": {
+        "IMPRESSION": 0.0,
+        "SAVE": 0.0,
+        "PIN_CLICK": 0.0,
+        "OUTBOUND_CLICK": 0.0
+      },
+      "query_start": "2026-03-08",
+      "query_end": "2026-03-09"
+    },
+    "W10-18": {
+      "pinterest_pin_id": "1137792293377256831",
+      "period_metrics": {
+        "IMPRESSION": 0.0,
+        "SAVE": 0.0,
+        "PIN_CLICK": 0.0,
+        "OUTBOUND_CLICK": 0.0
+      },
+      "query_start": "2026-03-08",
+      "query_end": "2026-03-09"
+    },
+    "W10-19": {
+      "pinterest_pin_id": "1137792293377277342",
+      "period_metrics": {
+        "IMPRESSION": 0.0,
+        "SAVE": 0.0,
+        "PIN_CLICK": 0.0,
+        "OUTBOUND_CLICK": 0.0
+      },
+      "query_start": "2026-03-08",
+      "query_end": "2026-03-09"
+    },
+    "W10-20": {
+      "pinterest_pin_id": "1137792293377277763",
+      "period_metrics": {
+        "IMPRESSION": 0.0,
+        "SAVE": 0.0,
+        "PIN_CLICK": 0.0,
+        "OUTBOUND_CLICK": 0.0
+      },
+      "query_start": "2026-03-08",
+      "query_end": "2026-03-09"
+    }
+  },
+  "account_analytics": {
+    "all": {
+      "summary_metrics": {
+        "SAVE": 0,
+        "PIN_CLICK": 0,
+        "OUTBOUND_CLICK": 0,
+        "IMPRESSION": 29
+      },
+      "daily_metrics": [
+        {
+          "date": "2026-03-02",
+          "data_status": "READY",
+          "metrics": {
+            "SAVE": 0,
+            "PIN_CLICK": 0,
+            "OUTBOUND_CLICK": 0,
+            "IMPRESSION": 0
+          }
+        },
+        {
+          "date": "2026-03-03",
+          "data_status": "READY",
+          "metrics": {
+            "SAVE": 0,
+            "PIN_CLICK": 0,
+            "OUTBOUND_CLICK": 0,
+            "IMPRESSION": 0
+          }
+        },
+        {
+          "date": "2026-03-04",
+          "data_status": "READY",
+          "metrics": {
+            "SAVE": 0,
+            "PIN_CLICK": 0,
+            "OUTBOUND_CLICK": 0,
+            "IMPRESSION": 19
+          }
+        },
+        {
+          "date": "2026-03-05",
+          "data_status": "READY",
+          "metrics": {
+            "SAVE": 0,
+            "PIN_CLICK": 0,
+            "OUTBOUND_CLICK": 0,
+            "IMPRESSION": 6
+          }
+        },
+        {
+          "date": "2026-03-06",
+          "data_status": "READY",
+          "metrics": {
+            "SAVE": 0,
+            "PIN_CLICK": 0,
+            "OUTBOUND_CLICK": 0,
+            "IMPRESSION": 2
+          }
+        },
+        {
+          "date": "2026-03-07",
+          "data_status": "READY",
+          "metrics": {
+            "SAVE": 0,
+            "PIN_CLICK": 0,
+            "OUTBOUND_CLICK": 0,
+            "IMPRESSION": 2
+          }
+        },
+        {
+          "date": "2026-03-08",
+          "data_status": "PROCESSING",
+          "metrics": {
+            "IMPRESSION": 0.0,
+            "SAVE": 0.0,
+            "PIN_CLICK": 0.0,
+            "OUTBOUND_CLICK": 0.0
+          }
+        },
+        {
+          "date": "2026-03-09",
+          "data_status": "PROCESSING",
+          "metrics": {
+            "IMPRESSION": 0.0,
+            "SAVE": 0.0,
+            "PIN_CLICK": 0.0,
+            "OUTBOUND_CLICK": 0.0
+          }
+        }
+      ]
+    }
+  }
+}
