@@ -86,7 +86,7 @@ def generate_plan(
         days_until_monday = (7 - today.weekday()) % 7
         start_date = today + timedelta(days=days_until_monday) if days_until_monday > 0 else today
 
-    week_label = start_date.strftime("W%W-%Y")
+    week_label = f"W{start_date.isocalendar()[1]}-{start_date.isocalendar()[0]}"
     logger.info("Generating weekly plan for week starting %s (%s)", start_date, week_label)
 
     # Step 1: Load the current strategy document

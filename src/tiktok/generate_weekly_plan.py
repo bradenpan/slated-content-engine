@@ -27,9 +27,9 @@ from src.shared.apis.sheets_api import SheetsAPI
 from src.shared.apis.slack_notify import SlackNotify
 from src.shared.content_planner import (
     load_strategy_context,
-    load_latest_analysis,
     get_current_seasonal_window,
 )
+from src.tiktok.weekly_analysis import load_previous_analysis as load_latest_tiktok_analysis
 from src.shared.content_memory import generate_content_memory_summary
 from src.shared.paths import DATA_DIR, STRATEGY_DIR, TIKTOK_DATA_DIR
 from src.tiktok.compute_attribute_weights import load_taxonomy
@@ -95,8 +95,8 @@ def generate_plan(
     strategy_context = load_strategy_context()
     logger.info("Loaded strategy context")
 
-    # Step 2: Load latest analysis
-    latest_analysis = load_latest_analysis()
+    # Step 2: Load latest TikTok analysis (not Pinterest)
+    latest_analysis = load_latest_tiktok_analysis()
 
     # Step 3: Generate content memory summary
     content_memory = generate_content_memory_summary(channel="tiktok")
