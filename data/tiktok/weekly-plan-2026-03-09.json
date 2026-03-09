@@ -1,0 +1,398 @@
+{
+  "carousels": [
+    {
+      "carousel_id": "TK-W11-01",
+      "topic": "invisible-labor",
+      "angle": "empathy-first",
+      "structure": "listicle",
+      "hook_type": "question",
+      "template_family": "clean_educational",
+      "hook_text": "What if dinner was the one thing you didn't have to think about?",
+      "content_slides": [
+        {
+          "headline": "The mental load of dinner is real",
+          "body_text": "It's not just cooking. It's the deciding, the remembering, the managing everyone's preferences — every single day.",
+          "list_items": []
+        },
+        {
+          "headline": "5 decisions you make before 5pm",
+          "body_text": "Every weeknight, you're carrying all of this:",
+          "list_items": [
+            "What does everyone actually like right now?",
+            "What's in the fridge vs. what needs to be bought?",
+            "Who has a practice / late meeting / meltdown tonight?",
+            "Is this fast enough for a Tuesday?",
+            "Will anyone actually eat it?"
+          ]
+        },
+        {
+          "headline": "That's not indecision. That's overload.",
+          "body_text": "Decision fatigue from managing everything else makes dinner feel impossible — even when you're a great cook.",
+          "list_items": []
+        },
+        {
+          "headline": "What it looks like when the system works",
+          "body_text": "The plan is already made. The groceries are already ordered. Your family already agreed. You just cook.",
+          "list_items": []
+        }
+      ],
+      "cta_slide": {
+        "cta_primary": "Follow @slatedapp",
+        "cta_secondary": "Link in bio — get your first week planned free"
+      },
+      "caption": "The dinner question isn't actually about food. It's about everything else you're already carrying. 💙\n\nYou deserve a system, not more decisions.",
+      "hashtags": [
+        "#MentalLoad",
+        "#InvisibleLabor",
+        "#WhatsForDinner",
+        "#MealPlanning",
+        "#FairPlay"
+      ],
+      "sound_suggestion": "original audio — calm, reflective tone",
+      "is_aigc": false,
+      "scheduled_date": "2026-03-11",
+      "image_prompts": []
+    },
+    {
+      "carousel_id": "TK-W11-02",
+      "topic": "whats-for-dinner",
+      "angle": "hot-take",
+      "structure": "before-after",
+      "hook_type": "bold-claim",
+      "template_family": "dark_bold",
+      "hook_text": "\"What's for dinner?\" is the most exhausting question in your house.",
+      "content_slides": [
+        {
+          "headline": "BEFORE: The nightly spiral",
+          "body_text": "5:15pm. Fridge open. Nothing jumps out. You ask the family. They shrug. You suggest something. Someone complains. You make two things. Everyone's annoyed.",
+          "left_label": null,
+          "right_label": null
+        },
+        {
+          "headline": "AFTER: The plan already exists",
+          "body_text": "5:15pm. You know it's Tuesday. Tuesday is the lemon herb chicken. It's already in the fridge. Your family already voted yes on Sunday. You just cook.",
+          "left_label": null,
+          "right_label": null
+        },
+        {
+          "headline": "The difference isn't willpower.",
+          "body_text": "It's not that some families are more organized. It's that some families have a system that removes the question entirely.",
+          "left_label": null,
+          "right_label": null
+        },
+        {
+          "headline": "The question doesn't have to happen every night.",
+          "body_text": "Slated builds your weekly plan, sends it to your family to vote on, and pushes the grocery list to Instacart. The question gets answered once. On Sunday.",
+          "left_label": null,
+          "right_label": null
+        }
+      ],
+      "cta_slide": {
+        "cta_primary": "Follow @slatedapp",
+        "cta_secondary": "Answer the question once. Link in bio."
+      },
+      "caption": "Hot take: \"What's for dinner?\" shouldn't be a daily question. It should be answered once, on Sunday, by a system.\n\nWe built that system. 🍽️",
+      "hashtags": [
+        "#WhatsForDinner",
+        "#MealPlanning",
+        "#MentalLoad",
+        "#DinnerIdeas",
+        "#FamilyDinner"
+      ],
+      "sound_suggestion": "Trending dramatic build — e.g. cinematic tension sound",
+      "is_aigc": false,
+      "scheduled_date": "2026-03-12",
+      "image_prompts": []
+    },
+    {
+      "carousel_id": "TK-W11-03",
+      "topic": "meal-prep-hack",
+      "angle": "tactical-tip",
+      "structure": "step-by-step",
+      "hook_type": "curiosity-gap",
+      "template_family": "photo_forward",
+      "hook_text": "The 10-minute Sunday ritual that makes weeknight dinners disappear.",
+      "content_slides": [
+        {
+          "headline": "Step 1: Pick your 5 nights (2 min)",
+          "body_text": "Monday–Friday. Which nights are tight? Which nights do you have 30 minutes vs. 15? Map it before you pick meals.",
+          "list_items": []
+        },
+        {
+          "headline": "Step 2: Match meals to nights, not vibes (3 min)",
+          "body_text": "Tuesday is soccer night → 15-minute meal. Thursday is WFH → can do 30 min. Stop picking meals in a vacuum.",
+          "list_items": []
+        },
+        {
+          "headline": "Step 3: Send the plan to your family (1 min)",
+          "body_text": "Before you buy a single thing. Let them react. Adjust once. Now they have no grounds to complain mid-week.",
+          "list_items": []
+        },
+        {
+          "headline": "Step 4: One grocery order, done (4 min)",
+          "body_text": "Combined list for all 5 nights. Order it or shop it. No mid-week \"we're out of\" emergencies.",
+          "list_items": []
+        },
+        {
+          "headline": "That's the whole system.",
+          "body_text": "10 minutes on Sunday. Zero dinner decisions Monday through Friday. Slated automates every step of this.",
+          "list_items": []
+        }
+      ],
+      "cta_slide": {
+        "cta_primary": "Follow @slatedapp",
+        "cta_secondary": "Try it free — link in bio"
+      },
+      "caption": "The families who never stress about dinner aren't doing more. They're doing it once, on Sunday, with a system. Here's the exact method. 🗓️",
+      "hashtags": [
+        "#MealPlanning",
+        "#MealPrepHack",
+        "#WhatsForDinner",
+        "#DinnerIdeas",
+        "#MealPrep"
+      ],
+      "sound_suggestion": "Upbeat, focused productivity sound — e.g. lo-fi with light percussion",
+      "is_aigc": true,
+      "scheduled_date": "2026-03-13",
+      "image_prompts": [
+        {
+          "slide_index": 0,
+          "prompt": "Warm overhead shot of a butcher block kitchen counter with a weekly planner notepad, a pen, and a small bowl of fresh spring herbs. The planner has handwritten weekday columns, partially filled. Editorial food photography style, warm natural lighting, shot on Canon R5."
+        },
+        {
+          "slide_index": 3,
+          "prompt": "Overhead flat lay of fresh spring produce — asparagus, snap peas, lemons, cherry tomatoes — arranged loosely on a marble countertop alongside a phone showing a grocery list app. Editorial food photography style, warm natural lighting, shot on Canon R5."
+        }
+      ]
+    },
+    {
+      "carousel_id": "TK-W11-04",
+      "topic": "picky-eaters",
+      "angle": "myth-bust",
+      "structure": "comparison",
+      "hook_type": "pattern-interrupt",
+      "template_family": "comparison_grid",
+      "hook_text": "Picky eaters aren't the problem. The planning process is.",
+      "content_slides": [
+        {
+          "headline": "The myth vs. the reality",
+          "body_text": "We've been solving the wrong problem for years.",
+          "left_label": "The Myth",
+          "right_label": "The Reality",
+          "left_text": "Your kid is just difficult and won't eat anything",
+          "right_text": "Your kid was never asked what they wanted before you cooked it"
+        },
+        {
+          "headline": "What actually causes dinner meltdowns",
+          "body_text": "The protest isn't about the food — it's about the surprise.",
+          "left_label": "Old approach",
+          "right_label": "What works",
+          "left_text": "Decide alone → cook → present → hear complaints",
+          "right_text": "Show options → let them pick → cook → no surprises"
+        },
+        {
+          "headline": "Buy-in before cooking changes everything",
+          "body_text": "When kids (and partners) vote on the plan before you shop, they've already said yes. Wednesday complaints evaporate.",
+          "left_label": "Without buy-in",
+          "right_label": "With buy-in",
+          "left_text": "\"I don't like this\" at the table",
+          "right_text": "\"I picked this\" at the table"
+        },
+        {
+          "headline": "Slated's Dinner Draft does this automatically",
+          "body_text": "It generates options based on your family's preferences, sends them a vote, and builds the week from the results. No negotiating at 6pm.",
+          "left_label": "Without Slated",
+          "right_label": "With Slated",
+          "left_text": "You decide alone and hope for the best",
+          "right_text": "Family votes Sunday. Everyone's already agreed by Monday."
+        }
+      ],
+      "cta_slide": {
+        "cta_primary": "Follow @slatedapp",
+        "cta_secondary": "End the dinner argument — link in bio"
+      },
+      "caption": "The picky eater problem is actually a buy-in problem. Get the family involved before you cook, not after. Game changer. 🙌\n\n#PickyEaters #FamilyDinner #MentalLoad",
+      "hashtags": [
+        "#PickyEaters",
+        "#FamilyDinner",
+        "#MentalLoad",
+        "#InvisibleLabor",
+        "#MealPlanning"
+      ],
+      "sound_suggestion": "original audio — confident, matter-of-fact delivery",
+      "is_aigc": false,
+      "scheduled_date": "2026-03-14",
+      "image_prompts": []
+    },
+    {
+      "carousel_id": "TK-W11-05",
+      "topic": "invisible-labor",
+      "angle": "relatable-rant",
+      "structure": "story-arc",
+      "hook_type": "pattern-interrupt",
+      "template_family": "dark_bold",
+      "hook_text": "Nobody sees the 47 decisions you made before dinner hit the table.",
+      "content_slides": [
+        {
+          "headline": "It started at 2pm.",
+          "body_text": "You checked what was in the fridge. Mentally catalogued what needed to be used before it went bad. Cross-referenced everyone's schedule. Did math on cooking time.",
+          "list_items": []
+        },
+        {
+          "headline": "Then came the research phase.",
+          "body_text": "Scrolled for a recipe that was fast, that your youngest would eat, that didn't require a grocery run, that wasn't the same thing you made last Tuesday.",
+          "list_items": []
+        },
+        {
+          "headline": "Then the negotiation.",
+          "body_text": "\"What do you want for dinner?\" \"I don't know.\" \"How about X?\" \"Not that.\" \"Y?\" \"Maybe.\" You made Y. Someone said they weren't hungry.",
+          "list_items": []
+        },
+        {
+          "headline": "And nobody saw any of it.",
+          "body_text": "They saw a meal appear on the table. They didn't see the hour of invisible work that made it happen. Every. Single. Night.",
+          "list_items": []
+        },
+        {
+          "headline": "This is the labor that deserves a system.",
+          "body_text": "Not more effort. Not more scrolling. A system that handles the deciding so you can just cook — or not cook — without the weight.",
+          "list_items": []
+        }
+      ],
+      "cta_slide": {
+        "cta_primary": "Follow @slatedapp",
+        "cta_secondary": "The system exists. Link in bio."
+      },
+      "caption": "The invisible labor of dinner isn't the cooking. It's everything that happens before the cooking. And it happens every single day. 💙\n\nYou're not alone in this.",
+      "hashtags": [
+        "#InvisibleLabor",
+        "#MentalLoad",
+        "#FairPlay",
+        "#WhatsForDinner",
+        "#MomLife"
+      ],
+      "sound_suggestion": "Soft emotional piano or ambient — builds through slides",
+      "is_aigc": false,
+      "scheduled_date": "2026-03-15",
+      "image_prompts": []
+    },
+    {
+      "carousel_id": "TK-W11-06",
+      "topic": "weeknight-speed",
+      "angle": "tactical-tip",
+      "structure": "listicle",
+      "hook_type": "curiosity-gap",
+      "template_family": "photo_forward",
+      "hook_text": "5 spring dinners that go from fridge to table in under 25 minutes.",
+      "content_slides": [
+        {
+          "headline": "Why spring is actually the easiest season to cook",
+          "body_text": "Lighter ingredients, shorter cook times, and produce that basically seasons itself. These five dinners are your new rotation.",
+          "list_items": []
+        },
+        {
+          "headline": "1. Lemon Herb Chicken Thighs",
+          "body_text": "One pan, 20 minutes. Bright, fresh, and the whole family eats it without negotiation. Serve over rice or with crusty bread.",
+          "list_items": []
+        },
+        {
+          "headline": "2. Shrimp & Snap Pea Stir Fry",
+          "body_text": "15 minutes start to finish. High protein, kid-friendly sauce, and snap peas are peak right now. This is your Tuesday.",
+          "list_items": []
+        },
+        {
+          "headline": "3. Spring Pasta Primavera",
+          "body_text": "Asparagus, peas, lemon zest, parmesan. 20 minutes. Vegetarian-friendly and genuinely delicious — not just \"healthy.\"",
+          "list_items": []
+        },
+        {
+          "headline": "4. Sheet Pan Salmon with Broccolini",
+          "body_text": "Into the oven, walk away for 18 minutes. One pan to wash. Omega-3s your family didn't know they were eating.",
+          "list_items": []
+        },
+        {
+          "headline": "5. Chicken Tacos with Mango Slaw",
+          "body_text": "Rotisserie chicken shortcut. The mango slaw takes 5 minutes and makes it feel like you tried. Everyone builds their own = zero complaints.",
+          "list_items": []
+        }
+      ],
+      "cta_slide": {
+        "cta_primary": "Follow @slatedapp",
+        "cta_secondary": "Get all 5 in a ready-made plan — link in bio"
+      },
+      "caption": "Spring produce = shorter cook times + better flavor. These 5 dinners are your weeknight reset for March. 🌿\n\nSave this for your next grocery run.",
+      "hashtags": [
+        "#WhatsForDinner",
+        "#DinnerIdeas",
+        "#SpringRecipes",
+        "#WeeknightDinner",
+        "#MealPlanning",
+        "#EasyDinner"
+      ],
+      "sound_suggestion": "Light, upbeat acoustic — spring energy",
+      "is_aigc": true,
+      "scheduled_date": "2026-03-16",
+      "image_prompts": [
+        {
+          "slide_index": 0,
+          "prompt": "Overhead shot of a bright spring dinner spread on a marble countertop — lemon wedges, fresh herbs, snap peas, and a cast iron skillet with golden-seared chicken thighs. Soft afternoon light streaming from the side. Editorial food photography style, warm natural lighting, shot on Canon R5."
+        },
+        {
+          "slide_index": 4,
+          "prompt": "Close-up 45-degree angle shot of a sheet pan with perfectly roasted salmon fillets and bright green broccolini, charred at the edges, on a butcher block surface. A halved lemon sits alongside. Editorial food photography style, warm natural lighting, shot on Canon R5."
+        }
+      ]
+    },
+    {
+      "carousel_id": "TK-W11-07",
+      "topic": "whats-for-dinner",
+      "angle": "myth-bust",
+      "structure": "before-after",
+      "hook_type": "question",
+      "template_family": "clean_educational",
+      "hook_text": "What if your family answered \"What's for dinner?\" before you asked?",
+      "content_slides": [
+        {
+          "headline": "The old way: you decide alone",
+          "body_text": "You pick the meals. You buy the groceries. You cook. Someone says they don't like it. You absorb the complaint. You do it again tomorrow.",
+          "list_items": []
+        },
+        {
+          "headline": "The new way: the family decides together",
+          "body_text": "You send the plan options on Sunday. Everyone votes. The winning meals become the week. When Wednesday's dinner lands on the table, it was already agreed to.",
+          "list_items": []
+        },
+        {
+          "headline": "What changes when they're involved",
+          "body_text": "Complaints drop. Eating improves. And the invisible labor of solo decision-making finally gets shared — even if you're still the one cooking.",
+          "list_items": [
+            "No more \"I didn't ask for this\"",
+            "No more guessing what everyone wants",
+            "No more carrying the whole decision alone"
+          ]
+        },
+        {
+          "headline": "This is what Slated's Dinner Draft does",
+          "body_text": "It generates a personalized plan, sends it to your family to vote on, and locks in the week. The deciding is done before Sunday ends.",
+          "list_items": []
+        }
+      ],
+      "cta_slide": {
+        "cta_primary": "Follow @slatedapp",
+        "cta_secondary": "Try Dinner Draft free — link in bio"
+      },
+      "caption": "What if dinner was something your family agreed to, not something you imposed? That shift alone changes everything. 🗳️\n\nSlated's Dinner Draft makes it happen automatically.",
+      "hashtags": [
+        "#WhatsForDinner",
+        "#MentalLoad",
+        "#InvisibleLabor",
+        "#FamilyDinner",
+        "#MealPlanning"
+      ],
+      "sound_suggestion": "original audio — warm, conversational tone",
+      "is_aigc": false,
+      "scheduled_date": "2026-03-17",
+      "image_prompts": []
+    }
+  ]
+}
