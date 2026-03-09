@@ -398,12 +398,10 @@ def _load_board_id_map() -> dict:
     """
     Build a board name -> board ID mapping.
 
-    In practice, board IDs come from the Pinterest API (boards are created
-    and their IDs stored). For now, this returns an empty map since the
-    boards haven't been created yet. The pipeline will need to be run
-    after boards are created and their IDs stored.
+    Reads from a cached data/board-ids.json file. If the file doesn't
+    exist, fetches live board data from the Pinterest API, caches it,
+    and returns the mapping.
     """
-    # Look for a stored board ID mapping file
     board_ids_path = DATA_DIR / "board-ids.json"
     if board_ids_path.exists():
         try:
@@ -411,8 +409,27 @@ def _load_board_id_map() -> dict:
         except json.JSONDecodeError:
             pass
 
-    logger.info("No board ID mapping found -- board IDs will need to be resolved at posting time")
-    return {}
+    # Fetch from Pinterest API and cache
+    try:
+        from src.shared.apis.pinterest_api import PinterestAPI
+        pinterest = PinterestAPI()
+        boards = pinterest.list_boards()
+        board_map = {}
+        for board in boards:
+            name = safe_get(board, "name", "")
+            board_id = safe_get(board, "id", "")
+            if name and board_id:
+                board_map[name] = board_id
+        if board_map:
+            board_ids_path.write_text(
+                json.dumps(board_map, indent=2, ensure_ascii=False),
+                encoding="utf-8",
+            )
+            logger.info("Fetched and cached %d board IDs to %s", len(board_map), board_ids_path)
+        return board_map
+    except Exception as e:
+        logger.warning("Could not fetch board IDs from Pinterest API: %s", e)
+        return {}
 
 
 def _generate_all_copy(

@@ -42,8 +42,8 @@ from src.shared.analytics_utils import (
     compute_derived_metrics,
     aggregate_by_dimension,
 )
-from src.shared.content_planner import load_strategy_context, load_content_memory
-from src.shared.content_memory import generate_cross_channel_summary
+from src.shared.content_planner import load_strategy_context
+from src.shared.content_memory import generate_content_memory_summary, generate_cross_channel_summary
 from src.shared.paths import ANALYSIS_DIR as _ANALYSIS_BASE, DATA_DIR
 from src.shared.utils.content_log import load_content_log
 
@@ -93,7 +93,7 @@ def run_weekly_analysis(week_number: Optional[int] = None, channel: str = "pinte
     # Step 2b: Load strategy context and content memory
     strategy_context = load_strategy_context()
     strategy_doc = strategy_context.get("strategy_doc", "")
-    content_memory = load_content_memory()
+    content_memory = generate_content_memory_summary(channel="pinterest")
     cross_channel = generate_cross_channel_summary(exclude_channel="pinterest")
 
     # Step 3: Load previous week's analysis

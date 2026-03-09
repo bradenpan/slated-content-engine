@@ -101,7 +101,7 @@ def generate_plan(
         logger.info("No previous weekly analysis found (first run)")
 
     # Step 3: Generate the content memory summary
-    content_memory = generate_content_memory_summary()
+    content_memory = generate_content_memory_summary(channel="pinterest")
     logger.info("Generated content memory summary")
 
     # Step 4: Determine current seasonal window
