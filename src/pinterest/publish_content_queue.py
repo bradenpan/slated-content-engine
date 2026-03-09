@@ -100,6 +100,16 @@ def publish() -> None:
             )
             upload_failed = True
 
+    # Fall back to existing GCS/Drive URLs for pins that weren't uploaded
+    # (e.g., rendered PNG not on this runner but a previous upload exists)
+    for pin in generated_pins:
+        pid = safe_get(pin, "pin_id", "")
+        if pid and pid not in pin_image_urls:
+            existing_url = safe_get(pin, "_drive_image_url", "")
+            if existing_url:
+                pin_image_urls[pid] = existing_url
+                logger.debug("Using existing image URL for %s", pid)
+
     # Save image URLs back to pin-generation-results.json so the regen
     # workflow can download hero images on a fresh runner
     if pin_image_urls:
