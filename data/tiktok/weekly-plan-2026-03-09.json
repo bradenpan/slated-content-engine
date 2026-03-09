@@ -394,5 +394,95 @@
       "scheduled_date": "2026-03-17",
       "image_prompts": []
     }
+  ],
+  "_rendered": [
+    {
+      "carousel_id": "TK-W11-01",
+      "slide_count": 6,
+      "rendered_slides": [
+        "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/tiktok/TK-W11-01/TK-W11-01-slide-01.png",
+        "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/tiktok/TK-W11-01/TK-W11-01-slide-02.png",
+        "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/tiktok/TK-W11-01/TK-W11-01-slide-03.png",
+        "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/tiktok/TK-W11-01/TK-W11-01-slide-04.png",
+        "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/tiktok/TK-W11-01/TK-W11-01-slide-05.png",
+        "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/tiktok/TK-W11-01/TK-W11-01-slide-06.png"
+      ]
+    },
+    {
+      "carousel_id": "TK-W11-02",
+      "slide_count": 6,
+      "rendered_slides": [
+        "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/tiktok/TK-W11-02/TK-W11-02-slide-01.png",
+        "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/tiktok/TK-W11-02/TK-W11-02-slide-02.png",
+        "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/tiktok/TK-W11-02/TK-W11-02-slide-03.png",
+        "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/tiktok/TK-W11-02/TK-W11-02-slide-04.png",
+        "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/tiktok/TK-W11-02/TK-W11-02-slide-05.png",
+        "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/tiktok/TK-W11-02/TK-W11-02-slide-06.png"
+      ]
+    },
+    {
+      "carousel_id": "TK-W11-03",
+      "slide_count": 7,
+      "rendered_slides": [
+        "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/tiktok/TK-W11-03/TK-W11-03-slide-01.png",
+        "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/tiktok/TK-W11-03/TK-W11-03-slide-02.png",
+        "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/tiktok/TK-W11-03/TK-W11-03-slide-03.png",
+        "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/tiktok/TK-W11-03/TK-W11-03-slide-04.png",
+        "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/tiktok/TK-W11-03/TK-W11-03-slide-05.png",
+        "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/tiktok/TK-W11-03/TK-W11-03-slide-06.png",
+        "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/tiktok/TK-W11-03/TK-W11-03-slide-07.png"
+      ]
+    },
+    {
+      "carousel_id": "TK-W11-04",
+      "slide_count": 6,
+      "rendered_slides": [
+        "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/tiktok/TK-W11-04/TK-W11-04-slide-01.png",
+        "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/tiktok/TK-W11-04/TK-W11-04-slide-02.png",
+        "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/tiktok/TK-W11-04/TK-W11-04-slide-03.png",
+        "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/tiktok/TK-W11-04/TK-W11-04-slide-04.png",
+        "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/tiktok/TK-W11-04/TK-W11-04-slide-05.png",
+        "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/tiktok/TK-W11-04/TK-W11-04-slide-06.png"
+      ]
+    },
+    {
+      "carousel_id": "TK-W11-05",
+      "slide_count": 7,
+      "rendered_slides": [
+        "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/tiktok/TK-W11-05/TK-W11-05-slide-01.png",
+        "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/tiktok/TK-W11-05/TK-W11-05-slide-02.png",
+        "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/tiktok/TK-W11-05/TK-W11-05-slide-03.png",
+        "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/tiktok/TK-W11-05/TK-W11-05-slide-04.png",
+        "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/tiktok/TK-W11-05/TK-W11-05-slide-05.png",
+        "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/tiktok/TK-W11-05/TK-W11-05-slide-06.png",
+        "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/tiktok/TK-W11-05/TK-W11-05-slide-07.png"
+      ]
+    },
+    {
+      "carousel_id": "TK-W11-06",
+      "slide_count": 8,
+      "rendered_slides": [
+        "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/tiktok/TK-W11-06/TK-W11-06-slide-01.png",
+        "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/tiktok/TK-W11-06/TK-W11-06-slide-02.png",
+        "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/tiktok/TK-W11-06/TK-W11-06-slide-03.png",
+        "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/tiktok/TK-W11-06/TK-W11-06-slide-04.png",
+        "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/tiktok/TK-W11-06/TK-W11-06-slide-05.png",
+        "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/tiktok/TK-W11-06/TK-W11-06-slide-06.png",
+        "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/tiktok/TK-W11-06/TK-W11-06-slide-07.png",
+        "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/tiktok/TK-W11-06/TK-W11-06-slide-08.png"
+      ]
+    },
+    {
+      "carousel_id": "TK-W11-07",
+      "slide_count": 6,
+      "rendered_slides": [
+        "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/tiktok/TK-W11-07/TK-W11-07-slide-01.png",
+        "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/tiktok/TK-W11-07/TK-W11-07-slide-02.png",
+        "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/tiktok/TK-W11-07/TK-W11-07-slide-03.png",
+        "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/tiktok/TK-W11-07/TK-W11-07-slide-04.png",
+        "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/tiktok/TK-W11-07/TK-W11-07-slide-05.png",
+        "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/tiktok/TK-W11-07/TK-W11-07-slide-06.png"
+      ]
+    }
   ]
 }
