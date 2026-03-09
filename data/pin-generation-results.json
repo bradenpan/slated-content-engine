@@ -626,59 +626,466 @@
       "image_retries": 0,
       "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W11-20.png",
       "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W11-20.png"
-    }
-  ],
-  "failures": [
+    },
     {
       "pin_id": "W11-12",
-      "error": "Image generation failed after 3 attempts. Last error: OpenAI image generation failed (HTTP 400): Billing hard limit has been reached."
+      "title": "Dairy-Free Coconut Curry with Chickpeas — Anti-Inflammatory Family Dinner",
+      "description": "Dairy-free dinner ideas don't get much better than this coconut chickpea curry. It's rich, warming, and naturally anti-inflammatory — made with coconut milk, turmeric, and pantry spices that do most of the heavy lifting. Gluten-free dinner ideas like this one work because the whole family actually wants to eat them. One pot, minimal cleanup, and a flavor that makes it a regular in the weekly rotation.",
+      "alt_text": "Overhead view of a bowl of golden coconut curry with chickpeas, garnished with fresh cilantro and served over white rice, with a pot of curry visible in the background. Dairy-free anti-inflammatory dinner recipe for families.",
+      "text_overlay": {
+        "headline": "Coconut Chickpea Curry the Family Loves",
+        "sub_text": null,
+        "bullet_1": "Naturally dairy-free and anti-inflammatory",
+        "bullet_2": "One pot, ready in under 35 minutes",
+        "bullet_3": "Pantry spices, no specialty ingredients needed",
+        "category_label": "Dairy-Free Dinners",
+        "cta_text": "Save These Tips"
+      },
+      "image_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/pins/W11-12.png",
+      "hero_image_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/pins/W11-12-hero.png",
+      "board_name": "Healthy Family Dinner Recipes",
+      "board_id": "",
+      "link": "https://goslated.com/blog/dairy-free-coconut-curry-chickpeas",
+      "blog_slug": "dairy-free-coconut-curry-chickpeas",
+      "scheduled_date": "2026-03-13",
+      "scheduled_slot": "evening-2",
+      "image_source": "ai_generated",
+      "image_id": "ai_1c69dc2d0c61",
+      "pillar": 5,
+      "pin_type": "primary",
+      "template": "tip-pin",
+      "content_type": "recipe",
+      "primary_keyword": "dairy free dinner ideas",
+      "secondary_keywords": [
+        "anti-inflammatory recipes",
+        "gluten free dinner ideas"
+      ],
+      "treatment_number": 1,
+      "source_post_id": "W11-P10",
+      "funnel_layer": "discovery",
+      "image_retries": 0
     },
     {
       "pin_id": "W11-13",
-      "error": "Image generation failed after 3 attempts. Last error: OpenAI image generation failed (HTTP 400): Billing hard limit has been reached."
+      "title": "Garlic Roasted Chicken Thighs with Spring Peas — Easy Weeknight Dinner",
+      "description": "Easy dinner ideas for spring start here. Garlic roasted chicken thighs come together with fresh peas for a bright, satisfying weeknight meal that feels a little special without any extra effort. It's one of those spring dinner ideas that works for the whole family — crispy skin, tender meat, and a side that practically cooks itself. Part of a full weekly plan with a combined grocery list.",
+      "alt_text": "Close-up of golden garlic roasted chicken thighs in a cast iron skillet surrounded by bright green spring peas and fresh herbs. Easy spring weeknight dinner recipe for families.",
+      "text_overlay": {
+        "headline": "Garlic Roasted Chicken with Spring Peas",
+        "sub_text": "Easy / One Pan",
+        "time_badge": "35 min",
+        "cta_text": "Get the Recipe"
+      },
+      "image_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/pins/W11-13.png",
+      "hero_image_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/pins/W11-13-hero.png",
+      "board_name": "Easy Dinner Ideas for Families",
+      "board_id": "",
+      "link": "https://goslated.com/blog/weekly-plan-spring-family-dinners",
+      "blog_slug": "weekly-plan-spring-family-dinners",
+      "scheduled_date": "2026-03-14",
+      "scheduled_slot": "morning",
+      "image_source": "ai_generated",
+      "image_id": "ai_e3cbd87b6617",
+      "pillar": 1,
+      "pin_type": "recipe-pull",
+      "template": "recipe-pin",
+      "content_type": "weekly-plan",
+      "primary_keyword": "easy dinner ideas",
+      "secondary_keywords": [
+        "spring dinner ideas",
+        "easy weeknight dinners"
+      ],
+      "treatment_number": 1,
+      "source_post_id": "W11-P01",
+      "funnel_layer": "discovery",
+      "image_retries": 0
     },
     {
       "pin_id": "W11-15",
-      "error": "Image generation failed after 3 attempts. Last error: OpenAI image generation failed (HTTP 400): Billing hard limit has been reached."
+      "title": "Ground Turkey Taco Skillet — What to Cook for Dinner in 20 Minutes",
+      "description": "Wondering what to cook for dinner on a busy night? This ground turkey taco skillet is the answer. Everything cooks in one pan in about 20 minutes — seasoned turkey, black beans, corn, and tomatoes with all the taco flavors your family already loves. Quick family meals like this one earn a permanent spot in the weeknight dinner rotation because nobody complains and cleanup takes two minutes.",
+      "alt_text": "Overhead view of a cast iron skillet filled with seasoned ground turkey taco filling, topped with shredded cheese, diced tomatoes, and fresh cilantro. Quick 20-minute family weeknight dinner recipe.",
+      "text_overlay": {
+        "headline": "Turkey Taco Skillet — Dinner in 20 Min",
+        "sub_text": "One Pan / 20 Min",
+        "time_badge": "20 min",
+        "cta_text": "Get the Recipe"
+      },
+      "image_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/pins/W11-15.png",
+      "hero_image_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/pins/W11-15-hero.png",
+      "board_name": "Quick Weeknight Dinner Recipes",
+      "board_id": "",
+      "link": "https://goslated.com/blog/ground-turkey-taco-skillet",
+      "blog_slug": "ground-turkey-taco-skillet",
+      "scheduled_date": "2026-03-14",
+      "scheduled_slot": "evening-1",
+      "image_source": "ai_generated",
+      "image_id": "ai_4ed537bb04ff",
+      "pillar": 3,
+      "pin_type": "primary",
+      "template": "recipe-pin",
+      "content_type": "recipe",
+      "primary_keyword": "what to cook for dinner",
+      "secondary_keywords": [
+        "quick family meals",
+        "weeknight dinner ideas"
+      ],
+      "treatment_number": 1,
+      "source_post_id": "W11-P07",
+      "funnel_layer": "discovery",
+      "image_retries": 0
     },
     {
       "pin_id": "W11-17",
-      "error": "Image generation failed after 3 attempts. Last error: OpenAI image generation failed (HTTP 400): Billing hard limit has been reached."
+      "title": "5 Family Dinners Under 30 Minutes — Meal Planning Tips for Busy Weeks",
+      "description": "Family meal planning gets a lot easier when someone else picks the five dinners. This week's plan covers Monday through Friday with 30-minute meals the whole family will eat — no repeats, no stress, and one grocery list that covers everything. Each recipe is genuinely quick, not 'quick if you prepped for an hour.' The full week is mapped out so the hardest decision you make tonight is which pan to grab.",
+      "alt_text": "Flat lay of five different weeknight dinner ingredients arranged in separate sections on a kitchen counter, representing a full week of 30-minute family meals. Meal planning tips for busy families.",
+      "text_overlay": {
+        "headline": "5 Family Dinners Under 30 Minutes",
+        "sub_text": null,
+        "number": "5",
+        "list_items": [
+          "Garlic Roasted Chicken & Spring Peas",
+          "Ground Turkey Taco Skillet",
+          "Spring Pea & Mint Risotto",
+          "Sheet Pan Lemon Herb Salmon",
+          "One-Pot Pasta with Sausage & Greens"
+        ],
+        "cta_text": "See All 5 Recipes"
+      },
+      "image_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/pins/W11-17.png",
+      "hero_image_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/pins/W11-17-hero.png",
+      "board_name": "Meal Planning & Grocery Tips",
+      "board_id": "",
+      "link": "https://goslated.com/blog/weekly-plan-busy-weeknight-dinners-under-30-minutes",
+      "blog_slug": "weekly-plan-busy-weeknight-dinners-under-30-minutes",
+      "scheduled_date": "2026-03-15",
+      "scheduled_slot": "morning",
+      "image_source": "ai_generated",
+      "image_id": "ai_f7be45a509ed",
+      "pillar": 1,
+      "pin_type": "recipe-pull",
+      "template": "listicle-pin",
+      "content_type": "weekly-plan",
+      "primary_keyword": "meal planning tips",
+      "secondary_keywords": [
+        "family meal planning",
+        "30 minute meals"
+      ],
+      "treatment_number": 1,
+      "source_post_id": "W11-P02",
+      "funnel_layer": "consideration",
+      "image_retries": 0
     },
     {
       "pin_id": "W11-21",
-      "error": "Image generation failed after 3 attempts. Last error: OpenAI image generation failed (HTTP 400): Billing hard limit has been reached."
+      "title": "Spring Pea and Mint Risotto — Light Vegetarian Dinner for the Family",
+      "description": "Spring dinner ideas don't have to be complicated. This pea and mint risotto is creamy, fresh, and genuinely satisfying — the kind of vegetarian family meal that doesn't feel like a compromise. Easy enough for a Tuesday, pretty enough for company. It's part of a full weekly spring dinner plan, so if you're looking for easy dinner ideas that actually make use of the season, the full week is worth a look.",
+      "alt_text": "Overhead view of a bowl of creamy spring pea and mint risotto topped with fresh mint leaves, pea shoots, and a sprinkle of parmesan. Light vegetarian spring dinner recipe for families.",
+      "text_overlay": {
+        "headline": "Spring Pea & Mint Risotto",
+        "sub_text": "Light / Vegetarian",
+        "time_badge": "35 min",
+        "cta_text": "Get the Recipe"
+      },
+      "image_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/pins/W11-21.png",
+      "hero_image_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/pins/W11-21-hero.png",
+      "board_name": "Easy Dinner Ideas for Families",
+      "board_id": "",
+      "link": "https://goslated.com/blog/weekly-plan-spring-family-dinners",
+      "blog_slug": "weekly-plan-spring-family-dinners",
+      "scheduled_date": "2026-03-16",
+      "scheduled_slot": "morning",
+      "image_source": "ai_generated",
+      "image_id": "ai_9aef86cfcbb2",
+      "pillar": 1,
+      "pin_type": "recipe-pull",
+      "template": "recipe-pin",
+      "content_type": "weekly-plan",
+      "primary_keyword": "spring dinner ideas",
+      "secondary_keywords": [
+        "easy dinner ideas",
+        "vegetarian family meals"
+      ],
+      "treatment_number": 1,
+      "source_post_id": "W11-P01",
+      "funnel_layer": "discovery",
+      "image_retries": 0
     },
     {
       "pin_id": "W11-22",
-      "error": "Image generation failed after 3 attempts. Last error: OpenAI image generation failed (HTTP 400): Billing hard limit has been reached."
+      "title": "Slow Cooker White Bean Kale Soup — Gluten-Free Family Dinner, Minimal Prep",
+      "description": "Slow cooker family meals don't get easier than this. White bean and kale soup comes together with almost no prep — just add everything to the pot in the morning and dinner's ready when you are. It's naturally gluten-free and dairy-free, which makes it one of those rare dinners that works for the whole table without any substitutions. Hearty enough to satisfy, light enough that you won't feel heavy after.",
+      "alt_text": "Close-up of a rustic bowl of slow cooker white bean and kale soup with a rich broth, topped with a drizzle of olive oil and served with crusty bread on the side. Gluten-free dairy-free family dinner recipe.",
+      "text_overlay": {
+        "headline": "White Bean Kale Soup — Set It & Forget It",
+        "sub_text": null,
+        "number": "4",
+        "list_items": [
+          "Dump-and-go slow cooker method",
+          "Naturally gluten-free and dairy-free",
+          "White beans for hearty protein",
+          "Ready in 6–8 hours, hands-off"
+        ],
+        "cta_text": "Get the Full Recipe"
+      },
+      "image_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/pins/W11-22.png",
+      "hero_image_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/pins/W11-22-hero.png",
+      "board_name": "Gluten-Free Dinner Ideas",
+      "board_id": "",
+      "link": "https://goslated.com/blog",
+      "blog_slug": "",
+      "scheduled_date": "2026-03-16",
+      "scheduled_slot": "afternoon",
+      "image_source": "ai_generated",
+      "image_id": "ai_d8d3e1006a3c",
+      "pillar": 5,
+      "pin_type": "fresh-treatment",
+      "template": "listicle-pin",
+      "content_type": "recipe",
+      "primary_keyword": "slow cooker family meals",
+      "secondary_keywords": [
+        "gluten free dinner ideas",
+        "dairy free dinner ideas"
+      ],
+      "treatment_number": 4,
+      "source_post_id": "existing:slow-cooker-white-bean-kale-soup",
+      "funnel_layer": "discovery",
+      "image_retries": 0
     },
     {
       "pin_id": "W11-23",
-      "error": "Image generation failed after 3 attempts. Last error: OpenAI image generation failed (HTTP 400): Billing hard limit has been reached."
+      "title": "Easy Family Dinner Recipes: 5 Reasons Spring Pasta Primavera Belongs on Your Table",
+      "description": "Easy family dinner recipes don't get much better than a spring pasta primavera. Light, colorful, and on the table in under 30 minutes, it's the kind of weeknight meal that actually feels like a treat. Seasonal vegetables, a simple sauce, and one pot to clean up after. These five reasons will convince you to add it to your regular rotation — especially when spring produce hits its peak.",
+      "alt_text": "Overhead view of a bowl of spring pasta primavera with fresh peas, asparagus, zucchini, and cherry tomatoes tossed in a light sauce. Easy family dinner recipe for spring weeknights.",
+      "text_overlay": {
+        "headline": "5 Reasons to Make Pasta Primavera Tonight",
+        "sub_text": null,
+        "number": "5",
+        "list_items": [
+          "Ready in Under 30 Minutes",
+          "One Pot, Minimal Cleanup",
+          "Seasonal Veggies, Maximum Flavor",
+          "Kids and Adults Both Love It",
+          "Light Enough for Warm Evenings"
+        ],
+        "cta_text": "See All 5 Reasons"
+      },
+      "image_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/pins/W11-23.png",
+      "hero_image_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/pins/W11-23-hero.png",
+      "board_name": "Easy Dinner Ideas for Families",
+      "board_id": "",
+      "link": "https://goslated.com/blog/spring-vegetable-pasta-primavera",
+      "blog_slug": "spring-vegetable-pasta-primavera",
+      "scheduled_date": "2026-03-16",
+      "scheduled_slot": "evening-1",
+      "image_source": "ai_generated",
+      "image_id": "ai_559556a17623",
+      "pillar": 3,
+      "pin_type": "primary",
+      "template": "listicle-pin",
+      "content_type": "recipe",
+      "primary_keyword": "easy family dinner recipes",
+      "secondary_keywords": [
+        "spring dinner ideas",
+        "easy weeknight dinners"
+      ],
+      "treatment_number": 1,
+      "source_post_id": "W11-P05",
+      "funnel_layer": "discovery",
+      "image_retries": 0
     },
     {
       "pin_id": "W11-24",
-      "error": "Image generation failed after 3 attempts. Last error: OpenAI image generation failed (HTTP 400): Billing hard limit has been reached."
+      "title": "Dinner Ideas for Family: Sheet Pan Teriyaki Salmon with Broccoli — 25 Minutes",
+      "description": "Dinner ideas for family don't have to mean complicated. Sheet pan teriyaki salmon with broccoli comes together in 25 minutes — one pan, a handful of pantry ingredients, and almost no cleanup. It's the kind of easy weeknight dinner that earns a spot in the regular rotation. Flaky salmon, caramelized broccoli, and a sticky-sweet teriyaki glaze the whole table will ask for again.",
+      "alt_text": "Sheet pan with glazed teriyaki salmon fillets and roasted broccoli florets fresh from the oven, on a parchment-lined pan. Easy 25-minute dinner idea for families.",
+      "text_overlay": {
+        "headline": "Sheet Pan Teriyaki Salmon & Broccoli",
+        "sub_text": "One Pan / 25 Min",
+        "time_badge": "25 min",
+        "cta_text": "Get the Recipe"
+      },
+      "image_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/pins/W11-24.png",
+      "hero_image_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/pins/W11-24-hero.png",
+      "board_name": "Quick Weeknight Dinner Recipes",
+      "board_id": "",
+      "link": "https://goslated.com/blog/weekly-plan-busy-weeknight-dinners-under-30-minutes",
+      "blog_slug": "weekly-plan-busy-weeknight-dinners-under-30-minutes",
+      "scheduled_date": "2026-03-16",
+      "scheduled_slot": "evening-2",
+      "image_source": "ai_generated",
+      "image_id": "ai_737fa4b6732c",
+      "pillar": 1,
+      "pin_type": "recipe-pull",
+      "template": "recipe-pin",
+      "content_type": "weekly-plan",
+      "primary_keyword": "dinner ideas for family",
+      "secondary_keywords": [
+        "30 minute meals",
+        "easy weeknight dinners"
+      ],
+      "treatment_number": 1,
+      "source_post_id": "W11-P02",
+      "funnel_layer": "discovery",
+      "image_retries": 0
     },
     {
       "pin_id": "W11-25",
-      "error": "Image generation failed after 3 attempts. Last error: OpenAI image generation failed (HTTP 400): Billing hard limit has been reached."
+      "title": "Gluten Free Dinner Ideas: Coconut Chickpea Curry the Whole Family Will Eat",
+      "description": "Gluten free dinner ideas that are also dairy free and genuinely delicious are hard to find — this coconut chickpea curry is all three. Creamy coconut milk, warm spices, and tender chickpeas make a satisfying weeknight meal that fits anti-inflammatory eating without tasting like a compromise. Ready in about 30 minutes and naturally kid-friendly. One pot, one dinner, zero complaints.",
+      "alt_text": "Bowl of creamy coconut chickpea curry garnished with fresh cilantro and served over white rice, photographed from above on a warm wooden surface. Gluten free dairy free dinner idea for families.",
+      "text_overlay": {
+        "headline": "Coconut Chickpea Curry for the Whole Family",
+        "sub_text": "Dairy-Free / Gluten-Free",
+        "time_badge": "30 min",
+        "cta_text": "Get the Recipe"
+      },
+      "image_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/pins/W11-25.png",
+      "hero_image_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/pins/W11-25-hero.png",
+      "board_name": "Gluten-Free Dinner Ideas",
+      "board_id": "",
+      "link": "https://goslated.com/blog/dairy-free-coconut-curry-chickpeas",
+      "blog_slug": "dairy-free-coconut-curry-chickpeas",
+      "scheduled_date": "2026-03-17",
+      "scheduled_slot": "morning",
+      "image_source": "ai_generated",
+      "image_id": "ai_8f50cf580dea",
+      "pillar": 5,
+      "pin_type": "primary",
+      "template": "recipe-pin",
+      "content_type": "recipe",
+      "primary_keyword": "gluten free dinner ideas",
+      "secondary_keywords": [
+        "dairy free dinner ideas",
+        "anti-inflammatory recipes"
+      ],
+      "treatment_number": 1,
+      "source_post_id": "W11-P10",
+      "funnel_layer": "discovery",
+      "image_retries": 0
     },
     {
       "pin_id": "W11-26",
-      "error": "Image generation failed after 3 attempts. Last error: OpenAI image generation failed (HTTP 400): Billing hard limit has been reached."
+      "title": "Toddler Dinner Ideas: Mini Turkey Taco Bowls the Whole Family Actually Wants",
+      "description": "Toddler dinner ideas that the rest of the family is equally happy to eat are rare. Mini turkey taco bowls solve that problem — seasoned ground turkey, simple toppings, and a build-your-own setup that gives little ones control without a meltdown. Kid friendly dinners work best when everyone at the table gets what they want. These three tips make taco bowl night easier every single time.",
+      "alt_text": "Small bowls of mini turkey taco bowls with ground turkey, shredded cheese, sour cream, and diced tomatoes arranged on a family dinner table. Toddler friendly dinner idea the whole family loves.",
+      "text_overlay": {
+        "headline": "Mini Turkey Taco Bowls Kids Love",
+        "sub_text": null,
+        "bullet_1": "Build-your-own setup reduces mealtime battles",
+        "bullet_2": "Season the turkey mild — toppings add flavor",
+        "bullet_3": "Prep toppings ahead for a 15-minute dinner",
+        "category_label": "Toddler Dinner Ideas",
+        "cta_text": "Save These Tips"
+      },
+      "image_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/pins/W11-26.png",
+      "hero_image_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/pins/W11-26-hero.png",
+      "board_name": "Family Dinner Ideas Even Picky Eaters Love",
+      "board_id": "",
+      "link": "https://goslated.com/blog",
+      "blog_slug": "",
+      "scheduled_date": "2026-03-17",
+      "scheduled_slot": "afternoon",
+      "image_source": "ai_generated",
+      "image_id": "ai_abdb44eced5f",
+      "pillar": 2,
+      "pin_type": "fresh-treatment",
+      "template": "tip-pin",
+      "content_type": "recipe",
+      "primary_keyword": "toddler dinner ideas",
+      "secondary_keywords": [
+        "kid friendly dinners",
+        "easy dinners kids will eat"
+      ],
+      "treatment_number": 4,
+      "source_post_id": "existing:mini-turkey-taco-bowls-toddler-dinner-ideas",
+      "funnel_layer": "discovery",
+      "image_retries": 0
     },
     {
       "pin_id": "W11-27",
-      "error": "Image generation failed after 3 attempts. Last error: OpenAI image generation failed (HTTP 400): Billing hard limit has been reached."
+      "title": "Instant Pot Dinner Ideas: Chicken and Rice — The Easiest Weeknight Family Meal",
+      "description": "Instant Pot dinner ideas belong in every family meal plan, and chicken and rice is the one to start with. Dump everything in, set the timer, and walk away — it's genuinely that straightforward. These five reasons explain why this recipe earns a permanent spot in the weekly rotation, from the minimal prep time to the way it adapts to whatever's in the pantry. Easy weeknight dinners don't get more reliable than this.",
+      "alt_text": "Instant Pot on a kitchen counter with the lid open showing fluffy cooked chicken and rice inside, ready to serve. Easy Instant Pot dinner idea for family weeknight meals.",
+      "text_overlay": {
+        "headline": "5 Reasons Instant Pot Chicken & Rice Wins",
+        "sub_text": null,
+        "number": "5",
+        "list_items": [
+          "Dump-and-Go — Zero Babysitting",
+          "Ready in 25 Minutes Flat",
+          "Works with Pantry Staples",
+          "One Pot, One Cleanup",
+          "Scales Up for Leftovers"
+        ],
+        "cta_text": "See All 5 Reasons"
+      },
+      "image_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/pins/W11-27.png",
+      "hero_image_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/pins/W11-27-hero.png",
+      "board_name": "Meal Planning & Grocery Tips",
+      "board_id": "",
+      "link": "https://goslated.com/blog/instant-pot-chicken-and-rice",
+      "blog_slug": "instant-pot-chicken-and-rice",
+      "scheduled_date": "2026-03-17",
+      "scheduled_slot": "evening-1",
+      "image_source": "ai_generated",
+      "image_id": "ai_d1eaf5469ed4",
+      "pillar": 5,
+      "pin_type": "primary",
+      "template": "listicle-pin",
+      "content_type": "recipe",
+      "primary_keyword": "instant pot dinner ideas",
+      "secondary_keywords": [
+        "meal planning tips",
+        "easy weeknight dinners"
+      ],
+      "treatment_number": 1,
+      "source_post_id": "W11-P09",
+      "funnel_layer": "consideration",
+      "image_retries": 0
     },
     {
       "pin_id": "W11-28",
-      "error": "Image generation failed after 3 attempts. Last error: OpenAI image generation failed (HTTP 400): Billing hard limit has been reached."
+      "title": "Tired of Meal Kits? 7 Reasons Families Are Quitting — and What's Working Instead",
+      "description": "Tired of meal kits that arrive with wilted produce, recipes you didn't choose, and a price tag that creeps up every month? You're not alone. Families across the country are canceling their HelloFresh and every meal kit alternative and going back to planning their own dinners — with better results. These seven reasons explain exactly why the meal kit model breaks down for busy families, and what most of them are doing instead.",
+      "alt_text": "Flat lay of a meal planning notebook, fresh groceries, and a handwritten weekly dinner list on a kitchen counter. Guide to HelloFresh alternatives and why families are quitting meal kits.",
+      "text_overlay": {
+        "headline": "7 Reasons Families Are Quitting Meal Kits",
+        "sub_text": null,
+        "bullet_1": "Meal kit costs quietly double over time",
+        "bullet_2": "You're cooking their recipes, not yours",
+        "bullet_3": "Planning your own dinners costs far less",
+        "category_label": "Meal Kit Alternatives",
+        "cta_text": "Save These Tips"
+      },
+      "image_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/pins/W11-28.png",
+      "hero_image_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/pins/W11-28-hero.png",
+      "board_name": "Better Than a Meal Kit",
+      "board_id": "",
+      "link": "https://goslated.com/blog",
+      "blog_slug": "",
+      "scheduled_date": "2026-03-17",
+      "scheduled_slot": "evening-2",
+      "image_source": "ai_generated",
+      "image_id": "ai_f4fc41e3163b",
+      "pillar": 4,
+      "pin_type": "fresh-treatment",
+      "template": "tip-pin",
+      "content_type": "listicle",
+      "primary_keyword": "tired of meal kits",
+      "secondary_keywords": [
+        "hellofresh alternative",
+        "meal kit comparison"
+      ],
+      "treatment_number": 3,
+      "source_post_id": "existing:reasons-families-quitting-meal-kits",
+      "funnel_layer": "consideration",
+      "image_retries": 0
     }
   ],
-  "generated_count": 16,
-  "failure_count": 12,
-  "generated_at": "2026-03-09T17:31:48.491044"
+  "failures": [],
+  "generated_count": 28,
+  "failure_count": 0,
+  "generated_at": "2026-03-09T20:27:26.572140"
 }
