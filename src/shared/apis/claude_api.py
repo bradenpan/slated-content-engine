@@ -751,6 +751,7 @@ class ClaudeAPI:
                 "by_pin_type": safe_get(performance_data, "by_pin_type", {}),
                 "plan_vs_recipe": safe_get(performance_data, "plan_vs_recipe", {}),
             },
+            "data_quality_notes": safe_get(performance_data, "data_quality_notes", "No data quality issues detected."),
             "last_week_analysis": previous_analysis or "No previous analysis available (first run).",
             "content_plan_vs_actual": content_plan or "No content plan data available.",
             "per_pillar_metrics": safe_get(performance_data, "by_pillar", {}),

@@ -133,8 +133,10 @@ def build_analysis_context(
     """
     Build the full context object for the weekly analysis prompt.
 
-    Computes aggregates across every relevant dimension and structures
-    them for Claude.
+    Uses raw analytics snapshots to compute period-specific deltas
+    (what happened THIS week) across ALL active pins, not just
+    recently-posted ones.  Falls back to cumulative content-log
+    metrics when snapshots are unavailable.
 
     Args:
         entries: Content log entries with up-to-date analytics.
@@ -147,49 +149,71 @@ def build_analysis_context(
     today = date.today()
     week_ago = (today - timedelta(days=7)).isoformat()
 
-    # Separate this week's pins from all-time
-    # Exclude blog_deployer placeholder entries (pin_id=None, 0 metrics)
-    # so they don't inflate counts or dilute averages.
-    this_week_entries = [
-        e for e in entries
+    # All posted pins (exclude blog_deployer placeholders with pin_id=None)
+    posted_entries = [e for e in entries if e.get("pin_id")]
+
+    # --- Period-specific data from raw snapshot diffs ---
+    snapshots = _load_raw_snapshots(num_weeks=4)
+
+    if len(snapshots) >= 2:
+        period_entries = _compute_period_deltas(
+            snapshots[0][1], snapshots[1][1], posted_entries,
+        )
+        logger.info(
+            "Period deltas computed from %s vs %s: %d pins",
+            snapshots[0][0], snapshots[1][0], len(period_entries),
+        )
+    elif len(snapshots) == 1:
+        # Only one snapshot — use its raw metrics as the period data
+        period_entries = _snapshot_to_entries(snapshots[0][1], posted_entries)
+        logger.info(
+            "Single snapshot %s: using raw metrics for %d pins",
+            snapshots[0][0], len(period_entries),
+        )
+    else:
+        # No snapshots — fall back to cumulative content-log data
+        period_entries = posted_entries
+        logger.warning("No analytics snapshots found; using cumulative metrics")
+
+    # Content execution tracking: pins POSTED this week
+    new_pins = [
+        e for e in posted_entries
         if e.get("posted_date", "") >= week_ago
-        and e.get("pin_id")
     ]
 
-    # Per-dimension aggregates (this week)
-    by_pillar = aggregate_by_dimension(this_week_entries, "pillar")
-    by_content_type = aggregate_by_dimension(this_week_entries, "content_type")
-    by_keyword = aggregate_by_dimension(this_week_entries, "primary_keyword")
-    by_board = aggregate_by_dimension(this_week_entries, "board")
-    by_funnel = aggregate_by_dimension(this_week_entries, "funnel_layer")
-    by_template = aggregate_by_dimension(this_week_entries, "template")
-    by_image_source = aggregate_by_dimension(this_week_entries, "image_source")
-    by_pin_type = aggregate_by_dimension(this_week_entries, "pin_type")
+    # Per-dimension aggregates (period metrics — what happened this week)
+    by_pillar = aggregate_by_dimension(period_entries, "pillar")
+    by_content_type = aggregate_by_dimension(period_entries, "content_type")
+    by_keyword = aggregate_by_dimension(period_entries, "primary_keyword")
+    by_board = aggregate_by_dimension(period_entries, "board")
+    by_funnel = aggregate_by_dimension(period_entries, "funnel_layer")
+    by_template = aggregate_by_dimension(period_entries, "template")
+    by_image_source = aggregate_by_dimension(period_entries, "image_source")
+    by_pin_type = aggregate_by_dimension(period_entries, "pin_type")
 
-    # All-time aggregates for trend context (exclude placeholders)
-    posted_entries = [e for e in entries if e.get("pin_id")]
+    # All-time cumulative aggregates for trend context
     all_by_pillar = aggregate_by_dimension(posted_entries, "pillar")
 
-    # Top and bottom performing pins (by save_rate, with minimum impression threshold)
-    sorted_by_saves = sorted(
-        [e for e in this_week_entries if e.get("impressions", 0) > 10],
-        key=lambda x: x.get("save_rate", 0),
+    # Top and bottom performing pins (by period impressions)
+    sorted_by_impressions = sorted(
+        [e for e in period_entries if e.get("impressions", 0) > 0],
+        key=lambda x: x.get("impressions", 0),
         reverse=True,
     )
-    top_pins = sorted_by_saves[:5]
-    bottom_pins = sorted_by_saves[-5:] if len(sorted_by_saves) >= 5 else []
+    top_pins = sorted_by_impressions[:5]
+    bottom_pins = sorted_by_impressions[-5:] if len(sorted_by_impressions) >= 5 else []
 
     # Plan-level pin performance vs. standalone recipe pin performance
     plan_level_entries = [
-        e for e in this_week_entries
+        e for e in period_entries
         if e.get("pin_type") in ("primary",) and e.get("content_type") == "weekly-plan"
     ]
     recipe_pull_entries = [
-        e for e in this_week_entries
+        e for e in period_entries
         if e.get("pin_type") == "recipe-pull"
     ]
     standalone_recipe_entries = [
-        e for e in this_week_entries
+        e for e in period_entries
         if e.get("content_type") == "recipe"
         and e.get("pin_type") != "recipe-pull"
     ]
@@ -200,25 +224,34 @@ def build_analysis_context(
         "standalone_recipe": _aggregate_list(standalone_recipe_entries),
     }
 
-    # Account-level trends: this week vs. last week vs. 4-week rolling avg
-    account_trends = _compute_account_trends(posted_entries)
+    # Account-level trends from snapshot diffs
+    account_trends = _compute_account_trends_from_snapshots(snapshots)
 
-    # 4-week rolling average per pillar
-    four_weeks_ago = (today - timedelta(days=28)).isoformat()
-    rolling_entries = [
-        e for e in entries
-        if e.get("posted_date", "") >= four_weeks_ago
-        and e.get("pin_id")
-    ]
-    rolling_by_pillar = aggregate_by_dimension(rolling_entries, "pillar")
+    # 4-week rolling average per pillar (from snapshots if available)
+    rolling_by_pillar = all_by_pillar  # fallback: cumulative
+    if len(snapshots) >= 2:
+        # Combine all period entries across available snapshots
+        all_period = []
+        for i in range(min(len(snapshots) - 1, 4)):
+            all_period.extend(
+                _compute_period_deltas(
+                    snapshots[i][1], snapshots[i + 1][1], posted_entries,
+                )
+            )
+        if all_period:
+            rolling_by_pillar = aggregate_by_dimension(all_period, "pillar")
+
+    # Data quality check
+    data_quality = _check_data_freshness(posted_entries)
 
     context = {
         "week_summary": {
-            "total_pins_posted": len(this_week_entries),
-            "total_impressions": sum(e.get("impressions", 0) for e in this_week_entries),
-            "total_saves": sum(e.get("saves", 0) for e in this_week_entries),
-            "total_outbound_clicks": sum(e.get("outbound_clicks", 0) for e in this_week_entries),
-            "total_pin_clicks": sum(e.get("pin_clicks", 0) for e in this_week_entries),
+            "total_pins_active": len(posted_entries),
+            "new_pins_this_week": len(new_pins),
+            "total_impressions": sum(e.get("impressions", 0) for e in period_entries),
+            "total_saves": sum(e.get("saves", 0) for e in period_entries),
+            "total_outbound_clicks": sum(e.get("outbound_clicks", 0) for e in period_entries),
+            "total_pin_clicks": sum(e.get("pin_clicks", 0) for e in period_entries),
         },
         "by_pillar": by_pillar,
         "by_content_type": by_content_type,
@@ -236,6 +269,7 @@ def build_analysis_context(
         "rolling_4wk_by_pillar": rolling_by_pillar,
         "content_plan": content_plan,
         "all_time_pin_count": len(posted_entries),
+        "data_quality_notes": data_quality,
     }
 
     return context
@@ -366,55 +400,228 @@ def _aggregate_list(entries: list[dict]) -> dict:
     }
 
 
-def _compute_account_trends(entries: list[dict]) -> dict:
+def _load_raw_snapshots(num_weeks: int = 4) -> list[tuple[str, dict]]:
     """
-    Compute account-level trends: this week vs. last week vs. 4-week rolling average.
+    Load recent raw analytics snapshots from data/analytics/.
 
-    Groups entries by week and computes weekly totals.
+    Args:
+        num_weeks: Maximum number of snapshots to load.
+
+    Returns:
+        List of (week_label, snapshot_dict) sorted newest-first.
+        Empty list if no snapshots exist.
+    """
+    if not ANALYTICS_DIR.exists():
+        return []
+
+    files = sorted(ANALYTICS_DIR.glob("*-w*-raw.json"), reverse=True)
+    results = []
+    for f in files[:num_weeks]:
+        try:
+            with open(f, "r", encoding="utf-8") as fh:
+                data = json.load(fh)
+            label = f.stem.replace("-raw", "")  # e.g. "2026-w12"
+            results.append((label, data))
+        except (json.JSONDecodeError, OSError) as e:
+            logger.warning("Failed to load snapshot %s: %s", f.name, e)
+
+    return results
+
+
+def _compute_period_deltas(
+    current_snapshot: dict,
+    previous_snapshot: dict,
+    entries: list[dict],
+) -> list[dict]:
+    """
+    Compute per-pin metric deltas between two consecutive snapshots.
+
+    Each snapshot's period_metrics are cumulative from the pin's post date.
+    The delta (current - previous) gives what happened between the two
+    snapshot dates.
+
+    Args:
+        current_snapshot: The more recent snapshot dict.
+        previous_snapshot: The older snapshot dict.
+        entries: Content log entries (for metadata: pillar, keyword, etc.).
+
+    Returns:
+        List of entry-like dicts with impressions/saves/outbound_clicks/pin_clicks
+        set to period delta values.  Includes content-log metadata for each pin.
+    """
+    cur_pins = current_snapshot.get("pin_analytics", {})
+    prev_pins = previous_snapshot.get("pin_analytics", {})
+
+    # Build lookup from pin_id to content-log entry for metadata
+    entry_by_pin = {e["pin_id"]: e for e in entries if e.get("pin_id")}
+
+    results = []
+    for pin_id, cur_data in cur_pins.items():
+        cur_m = cur_data.get("period_metrics", {})
+        prev_m = prev_pins.get(pin_id, {}).get("period_metrics", {})
+
+        delta = {
+            "impressions": max(0, cur_m.get("IMPRESSION", 0) - prev_m.get("IMPRESSION", 0)),
+            "saves": max(0, cur_m.get("SAVE", 0) - prev_m.get("SAVE", 0)),
+            "pin_clicks": max(0, cur_m.get("PIN_CLICK", 0) - prev_m.get("PIN_CLICK", 0)),
+            "outbound_clicks": max(0, cur_m.get("OUTBOUND_CLICK", 0) - prev_m.get("OUTBOUND_CLICK", 0)),
+        }
+
+        # Merge with content-log metadata
+        base = entry_by_pin.get(pin_id, {})
+        result = {**base, **delta}
+        result["pin_id"] = pin_id
+        results.append(result)
+
+    return results
+
+
+def _snapshot_to_entries(
+    snapshot: dict,
+    entries: list[dict],
+) -> list[dict]:
+    """
+    Convert a single snapshot's raw metrics into entry-like dicts.
+
+    Used when only one snapshot exists (no previous to diff against).
+    """
+    pin_analytics = snapshot.get("pin_analytics", {})
+    entry_by_pin = {e["pin_id"]: e for e in entries if e.get("pin_id")}
+
+    results = []
+    for pin_id, pin_data in pin_analytics.items():
+        m = pin_data.get("period_metrics", {})
+        base = entry_by_pin.get(pin_id, {})
+        result = {
+            **base,
+            "pin_id": pin_id,
+            "impressions": m.get("IMPRESSION", 0),
+            "saves": m.get("SAVE", 0),
+            "pin_clicks": m.get("PIN_CLICK", 0),
+            "outbound_clicks": m.get("OUTBOUND_CLICK", 0),
+        }
+        results.append(result)
+
+    return results
+
+
+def _check_data_freshness(entries: list[dict]) -> str:
+    """
+    Check analytics data freshness and quality.
+
+    Returns a warning string if issues are found, empty string otherwise.
+    """
+    warnings = []
+
+    pull_dates = [
+        e.get("last_analytics_pull", "")
+        for e in entries
+        if e.get("last_analytics_pull")
+    ]
+    if pull_dates:
+        latest_pull = max(pull_dates)
+        try:
+            pull_date = date.fromisoformat(latest_pull)
+            age_days = (date.today() - pull_date).days
+            if age_days > 2:
+                warnings.append(
+                    f"Analytics data is {age_days} days old (last pull: {latest_pull}). "
+                    "Metrics may not reflect recent activity."
+                )
+        except ValueError:
+            pass
+
+    total_impressions = sum(e.get("impressions", 0) for e in entries)
+    total_saves = sum(e.get("saves", 0) for e in entries)
+    total_clicks = sum(e.get("outbound_clicks", 0) for e in entries)
+    if total_impressions > 0 and total_saves == 0 and total_clicks == 0:
+        warnings.append(
+            f"{int(total_impressions)} impressions but 0 saves and 0 outbound clicks across "
+            f"all pins. The Pinterest dashboard may show different numbers due to API "
+            "reporting lag."
+        )
+
+    return " | ".join(warnings) if warnings else ""
+
+
+def _compute_account_trends_from_snapshots(
+    snapshots: list[tuple[str, dict]],
+) -> dict:
+    """
+    Compute account-level trends from raw analytics snapshots.
+
+    Diffs consecutive snapshots to get per-week totals, then computes
+    week-over-week changes and a rolling average.
+
+    Args:
+        snapshots: List of (week_label, snapshot_dict) sorted newest-first.
 
     Returns:
         dict with keys: this_week, last_week, rolling_4wk_avg
     """
-    today = date.today()
+    def _snapshot_totals(snap: dict) -> dict:
+        """Sum all pin metrics in a snapshot."""
+        total = {"impressions": 0, "saves": 0, "outbound_clicks": 0, "pin_clicks": 0}
+        for pin_data in snap.get("pin_analytics", {}).values():
+            m = pin_data.get("period_metrics", {})
+            total["impressions"] += m.get("IMPRESSION", 0)
+            total["saves"] += m.get("SAVE", 0)
+            total["outbound_clicks"] += m.get("OUTBOUND_CLICK", 0)
+            total["pin_clicks"] += m.get("PIN_CLICK", 0)
+        return total
 
-    def _week_metrics(start: date, end: date) -> dict:
-        start_str = start.isoformat()
-        end_str = end.isoformat()
-        week_entries = [
-            e for e in entries
-            if start_str <= e.get("posted_date", "") <= end_str
-        ]
-        return _aggregate_list(week_entries)
+    def _diff_totals(newer: dict, older: dict) -> dict:
+        return {
+            k: max(0, newer.get(k, 0) - older.get(k, 0))
+            for k in ("impressions", "saves", "outbound_clicks", "pin_clicks")
+        }
 
-    # This week (last 7 days)
-    this_week_start = today - timedelta(days=7)
-    this_week = _week_metrics(this_week_start, today)
+    def _with_rates(totals: dict) -> dict:
+        imp = totals.get("impressions", 0)
+        return {
+            **totals,
+            "save_rate": round(totals["saves"] / imp, 6) if imp > 0 else 0.0,
+            "click_through_rate": round(totals["outbound_clicks"] / imp, 6) if imp > 0 else 0.0,
+        }
 
-    # Last week (8-14 days ago)
-    last_week_start = today - timedelta(days=14)
-    last_week_end = today - timedelta(days=7)
-    last_week = _week_metrics(last_week_start, last_week_end)
+    empty = _with_rates({"impressions": 0, "saves": 0, "outbound_clicks": 0, "pin_clicks": 0})
 
-    # 4-week rolling average
-    weekly_totals = []
-    for w in range(4):
-        w_start = today - timedelta(days=7 * (w + 1))
-        w_end = today - timedelta(days=7 * w)
-        weekly_totals.append(_week_metrics(w_start, w_end))
+    if len(snapshots) < 2:
+        # Not enough data for trends
+        if snapshots:
+            this_week = _with_rates(_snapshot_totals(snapshots[0][1]))
+        else:
+            this_week = empty
+        return {
+            "this_week": this_week,
+            "last_week": empty,
+            "rolling_4wk_avg": empty,
+        }
 
-    if weekly_totals:
-        avg_impressions = sum(w["impressions"] for w in weekly_totals) / len(weekly_totals)
-        avg_saves = sum(w["saves"] for w in weekly_totals) / len(weekly_totals)
-        avg_clicks = sum(w["outbound_clicks"] for w in weekly_totals) / len(weekly_totals)
+    # Compute per-week deltas by diffing consecutive snapshot cumulative totals
+    cumulative = [_snapshot_totals(s[1]) for s in snapshots]
+    weekly_deltas = []
+    for i in range(len(cumulative) - 1):
+        weekly_deltas.append(_diff_totals(cumulative[i], cumulative[i + 1]))
+
+    this_week = _with_rates(weekly_deltas[0]) if weekly_deltas else empty
+    last_week = _with_rates(weekly_deltas[1]) if len(weekly_deltas) > 1 else empty
+
+    # Rolling average across all available weekly deltas (up to 4)
+    if weekly_deltas:
+        n = len(weekly_deltas)
+        avg_imp = sum(d["impressions"] for d in weekly_deltas) / n
+        avg_saves = sum(d["saves"] for d in weekly_deltas) / n
+        avg_clicks = sum(d["outbound_clicks"] for d in weekly_deltas) / n
         rolling_avg = {
-            "impressions": round(avg_impressions),
+            "impressions": round(avg_imp),
             "saves": round(avg_saves),
             "outbound_clicks": round(avg_clicks),
-            "save_rate": round(avg_saves / avg_impressions, 6) if avg_impressions > 0 else 0.0,
-            "click_through_rate": round(avg_clicks / avg_impressions, 6) if avg_impressions > 0 else 0.0,
+            "save_rate": round(avg_saves / avg_imp, 6) if avg_imp > 0 else 0.0,
+            "click_through_rate": round(avg_clicks / avg_imp, 6) if avg_imp > 0 else 0.0,
         }
     else:
-        rolling_avg = {"impressions": 0, "saves": 0, "outbound_clicks": 0}
+        rolling_avg = empty
 
     return {
         "this_week": this_week,
@@ -445,7 +652,8 @@ def _generate_fallback_analysis(context: dict, year: int, week: int) -> str:
         "**Note:** Claude API was unavailable. This is a data-only report.",
         "",
         "## Summary",
-        f"- Pins posted this week: {context['week_summary']['total_pins_posted']}",
+        f"- Active pins: {context['week_summary']['total_pins_active']}",
+        f"- New pins this week: {context['week_summary']['new_pins_this_week']}",
         f"- Total impressions: {context['week_summary']['total_impressions']:,}",
         f"- Total saves: {context['week_summary']['total_saves']:,}",
         f"- Total outbound clicks: {context['week_summary']['total_outbound_clicks']:,}",
@@ -510,6 +718,13 @@ def _generate_fallback_analysis(context: dict, year: int, week: int) -> str:
                     f"{data.get('saves', 0)} saves, "
                     f"save_rate={data.get('save_rate', 0):.4f}"
                 )
+        lines.append("")
+
+    # Data quality notes
+    dq = context.get("data_quality_notes", "")
+    if dq:
+        lines.append("## Data Quality Notes")
+        lines.append(dq)
         lines.append("")
 
     return "\n".join(lines)

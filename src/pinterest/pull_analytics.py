@@ -169,8 +169,20 @@ def pull_analytics(days_back: int = 7) -> dict:
                 summed.get("SAVE", 0), summed.get("OUTBOUND_CLICK", 0),
             )
 
-            # Rate-limit: small delay between API calls to avoid 429
-            time.sleep(0.2)
+            # Rate-limit: pause proactively when approaching the limit
+            remaining = pinterest.get_rate_limit_remaining()
+            if remaining is not None and remaining < 5:
+                reset_ts = pinterest.get_rate_limit_reset()
+                if reset_ts and reset_ts > int(time.time()):
+                    wait = reset_ts - int(time.time()) + 1
+                    wait = min(wait, 120)  # cap at 2 minutes
+                else:
+                    wait = 5  # fallback when reset timestamp unknown or in the past
+                logger.info(
+                    "Rate limit low (%d remaining), pausing %ds for reset",
+                    remaining, wait,
+                )
+                time.sleep(wait)
 
         except PinterestAPIError as e:
             error_msg = f"Failed to pull analytics for pin {pin_id}: {e}"

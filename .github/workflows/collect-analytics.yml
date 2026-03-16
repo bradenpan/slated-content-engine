@@ -44,7 +44,37 @@ jobs:
         run: python -m src.pinterest.token_manager
 
       - name: Pull Pinterest analytics
+        id: pinterest-analytics
         run: python -m src.pinterest.pull_analytics
+
+      - name: Notify Pinterest analytics summary
+        if: always() && steps.pinterest-analytics.outcome != 'skipped'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          python -c "
+          import json, pathlib, sys
+          try:
+              from src.shared.apis.slack_notify import SlackNotify
+              snap_dir = pathlib.Path('data/analytics')
+              snapshots = sorted(snap_dir.glob('*-raw.json'))
+              if not snapshots:
+                  SlackNotify().notify('Pinterest analytics: no snapshot created.', level='warning')
+                  sys.exit(0)
+              data = json.loads(snapshots[-1].read_text())
+              pins = data.get('pins_tracked', 0)
+              total_imp = sum(p.get('period_metrics', {}).get('IMPRESSION', 0) for p in data.get('pin_analytics', {}).values())
+              total_saves = sum(p.get('period_metrics', {}).get('SAVE', 0) for p in data.get('pin_analytics', {}).values())
+              total_clicks = sum(p.get('period_metrics', {}).get('OUTBOUND_CLICK', 0) for p in data.get('pin_analytics', {}).values())
+              msg = f'Pinterest analytics: {pins} pins tracked, {int(total_imp)} impressions, {int(total_saves)} saves, {int(total_clicks)} outbound clicks ({snapshots[-1].name})'
+              level = 'info'
+              if total_imp > 0 and total_saves == 0 and total_clicks == 0:
+                  msg += ' | Warning: 0 saves/clicks despite impressions (possible API lag)'
+                  level = 'warning'
+              SlackNotify().notify(msg, level=level)
+          except Exception as e:
+              print(f'Slack notification failed (non-fatal): {e}')
+          "
 
       - name: Pull TikTok analytics
         id: tiktok-analytics

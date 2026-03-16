@@ -14,8 +14,12 @@ You never present inferences as facts. When you interpret data, you say so expli
 ---
 ## CONTEXT
 
-### This Week's Performance Data (pin-level)
+### This Week's Performance Data (period metrics across ALL active pins)
+Performance metrics below are period-specific deltas: they reflect activity that occurred in the past 7 days across the entire pin portfolio, not just recently-posted pins. A pin posted 3 weeks ago that gained impressions this week is included.
 {{this_week_data}}
+
+### Data Quality Notes
+{{data_quality_notes}}
 
 ### Last Week's Analysis
 {{last_week_analysis}}
@@ -58,11 +62,12 @@ Analyze the past week's Pinterest performance and produce a structured analysis 
 Follow these steps. Do the analysis first, then build conclusions from the analysis. Do NOT start with conclusions and work backward.
 
 ### Step 1: Calculate Key Metrics
+Performance metrics are period-specific deltas computed across ALL active pins in the portfolio, not just pins posted this week. "This week" means activity that occurred in the last 7 days, regardless of when the pin was posted. This captures Pinterest's long-tail distribution model.
 - Total impressions (this week vs. last week, % change)
 - Total saves and save rate (saves / impressions)
 - Total outbound clicks and outbound click rate (outbound clicks / impressions)
 - Total pin clicks
-- Pins posted vs. planned
+- New pins posted this week vs. planned
 
 ### Step 2: Identify Top and Bottom Performers
 - Top 5 pins by save rate (with minimum impression threshold of 100 to filter noise)

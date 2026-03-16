@@ -3267,6 +3267,49 @@ Created `architecture/tiktok-two-phase-approval/technical-debt-and-design-todos.
 
 ---
 
+## Fix: Weekly Review Scope + Rate Limiting + Observability (2026-03-16)
+
+### Problem
+W12 weekly review reported 0 impressions and diagnosed a "delivery problem." The analytics collection actually returned 75 impressions, 1 save, 1 outbound click across 76 pins. Root cause: `build_analysis_context()` filtered to `posted_date >= (today - 7 days)`, excluding the 48 W9 pins that had all the traction. Only 29 recently-posted pins with 0 impressions passed the filter. Additionally, rate limiting was nearly exhausted (hit 1/60 remaining at 76 API calls) and there was no Slack notification on successful analytics pulls.
+
+### Changes
+
+**Review scope rewrite (`src/pinterest/weekly_analysis.py`):**
+- `build_analysis_context()` rewritten: loads raw analytics snapshots (`data/analytics/YYYY-wNN-raw.json`) and computes period deltas (snapshot B - snapshot A) across ALL active pins. No more `posted_date` filter for performance data.
+- New functions: `_load_raw_snapshots()`, `_compute_period_deltas()`, `_snapshot_to_entries()`, `_check_data_freshness()`
+- `_compute_account_trends()` replaced with `_compute_account_trends_from_snapshots()` — diffs consecutive snapshots for true week-over-week trends instead of using broken posted-date windows with cumulative metrics.
+- `_generate_fallback_analysis()` updated for new context keys.
+
+**Prompt + API updates:**
+- `prompts/pinterest/weekly_analysis.md`: Added `{{data_quality_notes}}` section, clarified that metrics are period deltas across all active pins.
+- `src/shared/apis/claude_api.py`: Passes `data_quality_notes` to template context.
+
+**Rate-limit-aware pausing (`src/pinterest/pull_analytics.py`):**
+- Replaced fixed `time.sleep(0.2)` with proactive pause: checks `get_rate_limit_remaining()` after each API call, sleeps until reset when remaining < 5.
+- Added `get_rate_limit_remaining()` and `get_rate_limit_reset()` getters to `PinterestAPI`.
+- Scales to any pin count without hitting 429s.
+
+**Slack notification (`.github/workflows/collect-analytics.yml`):**
+- New step after Pinterest analytics pull: sends Slack message with pins tracked, impressions, saves, clicks. Warns if all engagement metrics are 0 despite impressions.
+
+### Files Modified
+| File | Change |
+|------|--------|
+| `src/pinterest/weekly_analysis.py` | Rewrite `build_analysis_context()`, `_compute_account_trends()`. Add snapshot loading, period deltas, data freshness check. |
+| `prompts/pinterest/weekly_analysis.md` | Add data quality notes section, clarify period delta semantics. |
+| `src/shared/apis/claude_api.py` | Add `data_quality_notes` to template context. |
+| `src/pinterest/apis/pinterest_api.py` | Add rate limit getters. |
+| `src/pinterest/pull_analytics.py` | Replace fixed sleep with rate-limit-aware pause. |
+| `.github/workflows/collect-analytics.yml` | Add Slack analytics summary step. |
+
+### Verified
+- Snapshot diffs produce correct period deltas: W12 vs W11 = 34 period impressions, 1 save, 1 click
+- Account trends show growth (34 this week, 29 last week) instead of fake "decline to zero"
+- All 77 pins included in analysis (not 29)
+- QA: 56/58 tests pass (2 false failures in test harness)
+
+---
+
 ## Hotfix: LLM Response Truncation Detection + max_tokens Increase (2026-03-09)
 
 ### Problem

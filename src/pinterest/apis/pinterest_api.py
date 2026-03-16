@@ -506,6 +506,14 @@ class PinterestAPI:
                     self._rate_limit_limit,
                 )
 
+    def get_rate_limit_remaining(self) -> Optional[int]:
+        """Return the most recent X-RateLimit-Remaining value, or None."""
+        return self._rate_limit_remaining
+
+    def get_rate_limit_reset(self) -> Optional[int]:
+        """Return the most recent X-RateLimit-Reset timestamp, or None."""
+        return self._rate_limit_reset
+
     def _get_retry_after(self, response: requests.Response, attempt: int) -> float:
         """
         Determine how long to wait before retrying after a 429.
