@@ -1,37 +1,37 @@
 {
-  "W11-P01": {
-    "slug": "weekly-plan-spring-family-dinners",
-    "title": "This Week's Family Dinner Plan — 5 Fresh Spring Dinners with One Grocery List",
-    "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/weekly-plan-spring-family-dinners.mdx",
+  "W12-P01": {
+    "slug": "weekly-plan-spring-light-fresh-dinners-30-minutes",
+    "title": "This Week's Family Dinner Plan — 5 Light, Fresh Spring Dinners Ready in 30 Minutes",
+    "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/weekly-plan-spring-light-fresh-dinners-30-minutes.mdx",
     "pillar": 1,
     "content_type": "weekly-plan",
-    "hero_image": "/assets/blog/weekly-plan-spring-family-dinners.jpg",
+    "hero_image": "/assets/blog/weekly-plan-spring-light-fresh-dinners-30-minutes.jpg",
     "status": "success",
     "error": null
   },
-  "W11-P02": {
-    "slug": "weekly-plan-busy-weeknight-dinners-under-30-minutes",
-    "title": "This Week's Family Dinner Plan — 5 Busy Weeknight Meals Under 30 Minutes",
-    "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/weekly-plan-busy-weeknight-dinners-under-30-minutes.mdx",
+  "W12-P02": {
+    "slug": "weekly-plan-5-easy-weeknight-meals-one-grocery-list",
+    "title": "This Week's Family Dinner Plan — 5 Easy Weeknight Meals, One Grocery List",
+    "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/weekly-plan-5-easy-weeknight-meals-one-grocery-list.mdx",
     "pillar": 1,
     "content_type": "weekly-plan",
-    "hero_image": "/assets/blog/weekly-plan-busy-weeknight-dinners-under-30-minutes.jpg",
+    "hero_image": "/assets/blog/weekly-plan-5-easy-weeknight-meals-one-grocery-list.jpg",
     "status": "success",
     "error": null
   },
-  "W11-P03": {
-    "slug": "cheesy-baked-pasta-casserole",
-    "title": "Cheesy Baked Pasta Casserole — The Kid Friendly Dinner Everyone Actually Eats",
-    "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/cheesy-baked-pasta-casserole.mdx",
+  "W12-P03": {
+    "slug": "teriyaki-chicken-rice-bowls",
+    "title": "Teriyaki Chicken Rice Bowls — Easy Kid Friendly Dinner Ready in 30 Minutes",
+    "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/teriyaki-chicken-rice-bowls.mdx",
     "pillar": 2,
     "content_type": "recipe",
-    "hero_image": "/assets/blog/cheesy-baked-pasta-casserole.jpg",
+    "hero_image": "/assets/blog/teriyaki-chicken-rice-bowls.jpg",
     "status": "success",
     "error": null
   },
-  "W11-P04": {
+  "W12-P04": {
     "slug": "meals-for-picky-families-one-dinner-everyone-agrees-on",
-    "title": "Meals for Picky Families: How to Plan One Dinner Everyone Actually Eats",
+    "title": "Meals for Picky Families: How to Get One Dinner Everyone Actually Eats",
     "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/meals-for-picky-families-one-dinner-everyone-agrees-on.mdx",
     "pillar": 2,
     "content_type": "guide",
@@ -39,63 +39,63 @@
     "status": "success",
     "error": null
   },
-  "W11-P05": {
-    "slug": "spring-vegetable-pasta-primavera",
-    "title": "Spring Vegetable Pasta Primavera — Easy Weeknight Dinner Ready in 20 Minutes",
-    "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/spring-vegetable-pasta-primavera.mdx",
+  "W12-P05": {
+    "slug": "one-pan-maple-dijon-salmon",
+    "title": "One-Pan Maple Dijon Salmon — Easy Dinner Ready in 25 Minutes",
+    "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/one-pan-maple-dijon-salmon.mdx",
     "pillar": 3,
     "content_type": "recipe",
-    "hero_image": "/assets/blog/spring-vegetable-pasta-primavera.jpg",
+    "hero_image": "/assets/blog/one-pan-maple-dijon-salmon.jpg",
     "status": "success",
     "error": null
   },
-  "W11-P06": {
-    "slug": "garlic-butter-sausage-and-peppers-skillet",
-    "title": "Garlic Butter Sausage and Peppers Skillet — Ready in 30 Minutes",
-    "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/garlic-butter-sausage-and-peppers-skillet.mdx",
+  "W12-P06": {
+    "slug": "turkey-meatballs-zucchini-noodles",
+    "title": "30-Minute Turkey Meatballs with Zucchini Noodles — Quick Weeknight Dinner",
+    "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/turkey-meatballs-zucchini-noodles.mdx",
     "pillar": 3,
     "content_type": "recipe",
-    "hero_image": "/assets/blog/garlic-butter-sausage-and-peppers-skillet.jpg",
+    "hero_image": "/assets/blog/turkey-meatballs-zucchini-noodles.jpg",
     "status": "success",
     "error": null
   },
-  "W11-P07": {
-    "slug": "ground-turkey-taco-skillet",
-    "title": "Ground Turkey Taco Skillet — Easy Family Dinner in 20 Minutes",
-    "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/ground-turkey-taco-skillet.mdx",
+  "W12-P07": {
+    "slug": "smashed-burger-tacos",
+    "title": "Smashed Burger Tacos — What to Make for Dinner on a Busy Tuesday",
+    "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/smashed-burger-tacos.mdx",
     "pillar": 3,
     "content_type": "recipe",
-    "hero_image": "/assets/blog/ground-turkey-taco-skillet.jpg",
+    "hero_image": "/assets/blog/smashed-burger-tacos.jpg",
     "status": "success",
     "error": null
   },
-  "W11-P08": {
-    "slug": "better-than-hello-fresh-build-your-own-meal-plan",
-    "title": "Better Than Hello Fresh: How to Build Your Own Weekly Dinner Plan",
-    "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/better-than-hello-fresh-build-your-own-meal-plan.mdx",
+  "W12-P08": {
+    "slug": "tired-of-meal-kits-better-weekly-plan",
+    "title": "Tired of Meal Kits? Here's How to Build a Better Weekly Dinner Plan at Home",
+    "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/tired-of-meal-kits-better-weekly-plan.mdx",
     "pillar": 4,
     "content_type": "guide",
-    "hero_image": "/assets/blog/better-than-hello-fresh-build-your-own-meal-plan.jpg",
+    "hero_image": "/assets/blog/tired-of-meal-kits-better-weekly-plan.jpg",
     "status": "success",
     "error": null
   },
-  "W11-P09": {
-    "slug": "instant-pot-chicken-and-rice",
-    "title": "Instant Pot Chicken and Rice — Easy Family Dinner Ready in 25 Minutes",
-    "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/instant-pot-chicken-and-rice.mdx",
+  "W12-P09": {
+    "slug": "high-protein-sheet-pan-chicken-and-asparagus",
+    "title": "High Protein Sheet Pan Chicken and Asparagus — Ready in 25 Minutes",
+    "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/high-protein-sheet-pan-chicken-and-asparagus.mdx",
     "pillar": 5,
     "content_type": "recipe",
-    "hero_image": "/assets/blog/instant-pot-chicken-and-rice.jpg",
+    "hero_image": "/assets/blog/high-protein-sheet-pan-chicken-and-asparagus.jpg",
     "status": "success",
     "error": null
   },
-  "W11-P10": {
-    "slug": "dairy-free-coconut-curry-chickpeas",
-    "title": "Dairy-Free Coconut Curry with Chickpeas — Easy Anti-Inflammatory Weeknight Dinner",
-    "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/dairy-free-coconut-curry-chickpeas.mdx",
+  "W12-P10": {
+    "slug": "gluten-free-lemon-herb-baked-cod",
+    "title": "Gluten-Free Lemon Herb Baked Cod — Light Spring Dinner Ready in 20 Minutes",
+    "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/gluten-free-lemon-herb-baked-cod.mdx",
     "pillar": 5,
     "content_type": "recipe",
-    "hero_image": "/assets/blog/dairy-free-coconut-curry-chickpeas.jpg",
+    "hero_image": "/assets/blog/gluten-free-lemon-herb-baked-cod.jpg",
     "status": "success",
     "error": null
   }
