@@ -803,11 +803,23 @@ def _resolve_blog_slug(pin_spec: dict, blog_posts: dict) -> str:
 
     # Try to resolve from source_post_id
     source_id = safe_get(pin_spec, "source_post_id", "")
-    if source_id and source_id in blog_posts:
-        return safe_get(blog_posts[source_id], "slug", "")
+    if source_id:
+        # Fresh treatments reference existing posts via "existing:slug-here"
+        if source_id.startswith("existing:"):
+            return source_id[len("existing:"):]
+        # New content pins reference this week's blog generation results
+        if source_id in blog_posts:
+            return safe_get(blog_posts[source_id], "slug", "")
 
     # For fresh treatments, the slug should be in the pin spec
-    return safe_get(pin_spec, "existing_slug", "")
+    existing = safe_get(pin_spec, "existing_slug", "")
+    if not existing:
+        logger.warning(
+            "Could not resolve blog_slug for pin %s (source_post_id=%s)",
+            safe_get(pin_spec, "pin_id", "unknown"),
+            source_id,
+        )
+    return existing
 
 
 
