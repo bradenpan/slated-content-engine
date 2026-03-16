@@ -1,144 +1,144 @@
-# Weekly Performance Analysis — Week 11, March 11–17, 2026
+# Weekly Performance Analysis — Week 12, March 18–24, 2026
 
 ---
 
-## ⚠️ Data Integrity Notices (Read Before Any Analysis)
+## ⚠️ Data Integrity Notices
 
-**Notice 1 — Complete impression collapse: all metrics are zero.** This week's data shows 0.0 impressions, 0.0 saves, 0.0 outbound clicks, and 0.0 pin clicks across all 28 pins. Last week showed 8 total impressions (already near-zero). The account has now posted 160 pins over approximately 10 weeks and has accumulated a lifetime total of approximately 75 impressions with 1 save. **This is not a performance problem — this is a delivery problem.** The data is consistent with pins not being published or indexed at all, not with pins being published and simply underperforming.
+**Notice 1 — Board ID failure appears resolved.** This week's data shows 34 total impressions across 77 active pins, up from 0 impressions last week (W11) and 29 impressions the week prior (W10, which itself reflected mostly older pins). Critically, the current week's content plan (W11 pins) shows board assignments populated — the `board_id: ""` failure that caused two consecutive weeks of near-zero delivery appears to have been corrected. This is the most important operational development this week.
 
-**Notice 2 — Board ID failure is now in its second consecutive week at 100% scope.** Every single pin in the Week 11 content plan has `"board_id": ""`. This is the same failure mode flagged last week for all 28 Week 10 pins. Two consecutive weeks of universal board ID failure is the most likely explanation for zero impressions. If pins are being posted without board assignment, Pinterest cannot classify or distribute them. **This is the #1 operational priority before any content decisions are made.**
+**Notice 2 — Impression base is still extremely small.** 34 total impressions across 77 active pins means most pins received 0 impressions this period. The top pin (W9-12, Teriyaki Salmon) accounts for 16 of 34 total impressions — 47% of all weekly impressions concentrated in a single pin. No statistical conclusions can be drawn from this data. All save rates and CTRs are computed on impression bases of 9 or fewer, well below the 100-impression minimum threshold for meaningful rate analysis.
 
-**Notice 3 — Four pins link to `goslated.com/blog` (homepage) instead of a specific blog post.** W11-19 (lemon garlic butter shrimp pasta), W11-22 (slow cooker white bean kale soup), W11-26 (toddler dinner ideas / mini turkey taco bowls), and W11-28 (tired of meal kits) all have `"blog_slug": ""` and link to the blog root. This is a recurring content production error — three pins had the same issue last week (W10-16, W10-18, W10-23). The error is not being caught in the approval gate. These four pins cannot drive outbound clicks or CTA conversions regardless of distribution.
+**Notice 3 — The data appears to reflect Week 9 pins, not Week 11 pins.** The top performers listed (W9-12, W9-16, W9-17, W9-02, W9-05) are all Week 9 pins. The bottom performers are also Week 9 pins. Week 11 pins (W11-xx) do not appear in the top or bottom performer lists despite being the most recently posted. This is consistent with Pinterest's distribution lag — new pins take days to weeks to enter distribution. The metrics this week likely reflect the tail-end distribution of older pins (W9 era) rather than W11 content. **This means W11's board ID fix has not yet produced measurable impressions — those will appear in coming weeks.**
 
-**Notice 4 — Treatment tracker shows critical overrun.** The content memory treatment tracker shows six blog post URLs already at or exceeding the 5-treatment limit (some at 9–12 treatments), and sixteen URLs approaching the limit at 4/5. The strategy's fresh pin rules (Section 8.2) cap URLs at 5 treatments in 60 days. The pipeline is violating this constraint at scale. This is not a performance issue this week, but it is a content integrity issue that will suppress distribution as Pinterest detects near-duplicate content pointing to the same URLs.
+**Notice 4 — Treatment tracker is in critical violation.** Six URLs are at 12/5, 10/5, 10/5, 10/5, 10/5, and 9/5 treatments — all far exceeding the 60-day limit of 5. An additional 16 URLs are at 4/5 (approaching limit). The pipeline is generating fresh treatments for URLs that are already at 2x–3x the allowed limit. This is a content integrity issue that will suppress distribution as Pinterest detects near-duplicate content. **This must be resolved before next week's plan is generated.**
 
-**Notice 5 — Engagement targets are not applicable.** This is Week 3 of active posting (Week 11 of the overall project). The >2% save rate and >0.5% outbound CTR targets are Month 3+ benchmarks. The meaningful question is not whether targets are met — it is whether pins are being delivered and indexed at all. The answer, based on two consecutive weeks of zero impressions on new pins, is: **no, or nearly no.**
-
-**Notice 6 — Rolling 4-week average discrepancy.** The account-level trends data shows a rolling 4-week average save rate and CTR of 1.27% each. This appears to be a data artifact — the raw data shows 0 saves and 0 outbound clicks across all pins in the content plan, and the content memory confirms 0.0% save rate on all keywords except `high protein dinner recipes` (1 save, 9.1% rate, 11 impressions). The 1.27% rolling average likely reflects a single early save event inflating the percentage on a tiny impression base. It should not be interpreted as a meaningful benchmark.
+**Notice 5 — Four W11 pins link to `goslated.com/blog` (homepage) instead of a specific post.** W11-19, W11-22, W11-26, and W11-28 have `blog_slug: ""`. This is the third consecutive week this error has appeared. It is not being caught in the approval gate.
 
 ---
 
 ## Key Metrics Summary
 
-| Metric | This Week (W11) | Last Week (W10) | Change |
-|--------|-----------------|-----------------|--------|
-| Impressions | 0 | 8 | −100% |
-| Saves | 0 | 0 | — |
-| Save Rate | 0.0% | 0.0% | — |
-| Outbound Clicks | 0 | 0 | — |
-| Outbound Click Rate | 0.0% | 0.0% | — |
-| Pin Clicks | 0 | 0 | — |
-| Pins Posted | 28 scheduled (delivery unconfirmed) | 28 scheduled (delivery unconfirmed) | — |
-| Impressions per Pin | 0.00 | 0.29 | −100% |
-| Rolling 4-wk Avg Impressions | 20 (account-level) | ~11 (per prior analysis) | — |
+| Metric | This Week (W12 period) | Last Week (W11) | Change |
+|--------|------------------------|-----------------|--------|
+| Impressions | 34 | 0 | +∞ (from zero) |
+| Saves | 1 | 0 | +1 |
+| Save Rate | 2.9% | 0.0% | +2.9 pp |
+| Outbound Clicks | 1 | 0 | +1 |
+| Outbound Click Rate | 2.9% | 0.0% | +2.9 pp |
+| Pin Clicks | 2 | 0 | +2 |
+| New Pins Posted | 29 (W11 pins, delivery now confirmed) | 28 (delivery unconfirmed) | — |
+| Impressions per Active Pin | 0.44 | 0.00 | Recovery |
+| Rolling 4-wk Avg Impressions | 32 | ~20 | +60% |
 
-**vs. Targets:** Save rate and CTR targets (>2% and >0.5%) are Month 3+ benchmarks and are not applicable at Week 3. These targets are not the concern. The concern is that this week shows zero impressions across 28 pins — a complete absence of any distribution signal. The rolling 4-week average of 20 impressions reflects the account's entire history, which is itself extremely low. No performance targets can be evaluated until the board ID failure is resolved and pins are confirmed as delivered.
+**vs. Targets:** Save rate (>2%) and outbound CTR (>0.5%) targets are Month 3+ benchmarks and are not applicable as performance criteria at Week 12. The account is in Month 3 of the launch phase. However, it is worth noting that the single meaningful engagement event this week — W9-16 (High Protein Turkey Meatball Bowls) — produced a 11.1% save rate and 11.1% outbound CTR on 9 impressions. This is a single data point and not statistically significant, but it is the second time this pin/keyword has generated the account's only save event. The signal is consistent even if the sample is too small to act on definitively.
 
-**Trend note:** Impressions per pin have declined three consecutive weeks: Week 9 (estimated ~1.5+), Week 10 (0.29), Week 11 (0.00). This is a declining trend, not noise.
+**Trend note:** Impressions have now moved: W9 (~34 impressions from that week's pins), W10 (29 impressions, mostly older pins), W11 (0 impressions — board ID failure), W12 period (34 impressions, recovery). The recovery is real but the absolute level remains extremely low. The board ID fix is necessary but not sufficient for growth.
 
 ---
 
 ## Top 5 Performing Pins
 
-**Cannot be reported.** Zero impressions across all 28 Week 11 pins. The minimum threshold for save-rate analysis is 100 impressions per pin. No pin approaches this threshold. Ranking is not meaningful.
+*The 100-impression minimum threshold for statistically meaningful save rate analysis cannot be met by any pin in the portfolio. The account's all-time top performer has 16 impressions. All rankings below are by raw impressions and engagement events, not save rate. Treat as directional signals only.*
 
-**What the data does show:** The only non-zero performance signal in the entire account history is from the content memory's Performance History section:
+| Rank | Pin | Pillar | Template | Impressions | Saves | Outbound Clicks | Notes |
+|------|-----|--------|----------|-------------|-------|-----------------|-------|
+| 1 | W9-12: 15-Minute Teriyaki Salmon Bowls | P3 | recipe-pin | 16 | 0 | 0 | Highest reach; zero conversion |
+| 2 | W9-16: High Protein Turkey Meatball Bowls | P5 | recipe-pin | 9 | 1 | 1 | Only save + click this week |
+| 3 | W9-17: Spring Chicken and Rice Skillet | P1 | recipe-pin | 3 | 0 | 0 | Recipe-pull pin |
+| 4 | W9-02: Lemon Herb Chicken with Spring Vegetables | P1 | recipe-pin | 2 | 0 | 0 | Recipe-pull pin |
+| 5 | W9-05: Family Meal Planning Made Simple | P1 | tip-pin | 2 | 0 | 0 | Plan-level pin |
 
-- `high protein dinner recipes`: 4 pins, 11 impressions, **1 save, 9.1% save rate** — the account's only recorded save, on a Pillar 5 pin targeting a P5 primary keyword. This is a single data point on 11 impressions and is not statistically significant, but it is the only positive signal in 160 pins of history and is worth noting for Week 12 planning.
+**Why W9-12 leads on impressions:** "Quick weeknight dinners" is the primary keyword — this keyword has accumulated 19 total impressions across 4 pins in the account's history, the highest impression volume of any keyword. The board ("Easy Dinner Ideas for Families") has 20 impressions this period — the highest-performing board. The recipe-pin template is the account's dominant impression driver (32 of 34 total impressions). However, 16 impressions with 0 saves suggests the content is being surfaced but not resonating enough to earn a save. This could reflect image quality, title framing, or simply that 16 impressions is too small a sample to draw conclusions.
 
-All other keywords show 0.0% save rate. No other top-performer analysis is possible.
+**Why W9-16 is the only pin generating engagement:** "High protein dinner recipes" is the only keyword in the account's history with a recorded save (1 save, 9.1% rate, 11 impressions lifetime). This week it generated the account's only save and only outbound click again. The keyword targets a specific dietary intent (P5) rather than a generic dinner search — this specificity may be why it converts when generic keywords don't. The "Healthy Family Dinner Recipes" board has the account's only non-zero save rate (11.1% this period). This is a consistent signal across two separate measurement periods, though the sample remains too small for statistical confidence.
+
+**Why W9-17, W9-02, W9-05 appear:** These are Week 9 pins still receiving tail-end distribution. Their 1-3 impressions each represent the long tail of Pinterest's distribution window, not new traction. No engagement on any of them.
 
 ---
 
 ## Bottom 5 Performing Pins
 
-**Cannot be reported** for the same reasons. All pins have 0 impressions, 0 saves, 0 clicks.
+*Same caveat: minimum impression threshold cannot be met. Bottom performers are those with impressions but zero engagement, or zero impressions entirely.*
 
-**Structural flags from the Week 11 content plan:**
+| Rank | Pin | Pillar | Template | Impressions | Saves | Issue |
+|------|-----|--------|----------|-------------|-------|-------|
+| 1 | W9-08: Sheet Pan Sausage and Vegetables | P1 | recipe-pin | 1 | 0 | Minimal reach; unsplash image source |
+| 2 | W9-18: Easy Beef and Broccoli Stir-Fry | P1 | recipe-pin | 1 | 0 | Minimal reach |
+| 3 | W9-17: Spring Chicken and Rice Skillet | P1 | recipe-pin | 3 | 0 | In top 5 by impressions but zero conversion |
+| 4 | W9-02: Lemon Herb Chicken | P1 | recipe-pin | 2 | 0 | Zero conversion |
+| 5 | W9-05: Family Meal Planning Made Simple | P1 | tip-pin | 2 | 0 | Zero conversion |
 
-| Pin | Issue | Impact |
-|-----|-------|--------|
-| W11-19 | `blog_slug: ""` — links to `goslated.com/blog` | Cannot convert; no specific content delivered |
-| W11-22 | `blog_slug: ""` — links to `goslated.com/blog` | Cannot convert; no specific content delivered |
-| W11-26 | `blog_slug: ""` — links to `goslated.com/blog` | Cannot convert; no specific content delivered |
-| W11-28 | `blog_slug: ""` — links to `goslated.com/blog` | Cannot convert; no specific content delivered |
-| W11-14 | `image_id: ""` — template-only image source | Possible distribution suppression (pattern from prior weeks) |
-| W11-07 | `problem-solution-pin` template — 0 impressions across 4 pins over 2 weeks | Consistent zero-impression pattern on this template type |
-| W11-20 | `problem-solution-pin` template — same concern | Same pattern |
+**Pattern:** All bottom performers are Pillar 1 pins. All are recipe-pull pins or plan-level pins from Week 9. All have zero saves and zero clicks. This is consistent with the broader data: P1 has 28 pins and 9 impressions lifetime with 0 saves — the weakest save rate of any pillar with meaningful impression volume. However, this may reflect keyword competitiveness (P1 targets high-volume, highly competitive keywords like "easy dinner ideas" and "easy weeknight dinners") rather than content quality. The algorithm may be testing these pins against established accounts and finding Slated's domain authority insufficient to rank.
 
-Additionally, the treatment tracker shows that the two P4 pins this week (W11-09 `better-than-hello-fresh-build-your-own-meal-plan` at 4/5 treatments, W11-20 `better-than-hello-fresh-build-your-own-meal-plan` also at 4/5) are approaching the treatment limit on URLs that have already been heavily treated. The `better-than-hello-fresh` URL has now received 4 treatments; one more treatment is the limit before the 60-day window resets.
+**Structural underperformers not in top/bottom lists (zero impressions this week):**
+- All 11 guide-type pins: 0 impressions
+- All 6 problem-solution-pin template pins: 0 impressions (now 3+ consecutive weeks)
+- All 11 listicle-pin template pins: 0 impressions
+- All 4 infographic-pin template pins: 0 impressions
+- All 9 secondary pin types: 0 impressions
+- All 11 fresh-treatment pins: 0 impressions
+
+The recipe-pin template on AI-generated images is the only format generating any distribution at all.
 
 ---
 
 ## Pillar Performance
 
-| Pillar | Pins This Week | Impressions | Save Rate | CTR | Trend vs. Last Week |
-|--------|---------------|-------------|-----------|-----|---------------------|
-| P1: Your Whole Week, Planned | 10 | 0.0 | 0.0% | 0.0% | ↓ (was 0 last week too; no change) |
-| P2: Everyone Eats, Nobody Argues | 6 | 0.0 | 0.0% | 0.0% | Flat |
-| P3: Dinner, Decided | 7 | 0.0 | 0.0% | 0.0% | Flat |
-| P4: Smarter Than a Meal Kit | 2 | 0.0 | 0.0% | 0.0% | Flat |
-| P5: Your Kitchen, Your Rules | 3 | 0.0 | 0.0% | 0.0% | Flat |
+| Pillar | Pins (portfolio) | Impressions | Saves | Save Rate | CTR | Trend vs. Last Week |
+|--------|-----------------|-------------|-------|-----------|-----|---------------------|
+| P1: Your Whole Week, Planned | 28 | 9 | 0 | 0.0% | 0.0% | ↑ (was 0) |
+| P2: Everyone Eats, Nobody Argues | 16 | 0 | 0 | 0.0% | 0.0% | Flat (0 both weeks) |
+| P3: Dinner, Decided | 13 | 16 | 0 | 0.0% | 0.0% | ↑ (was 0) |
+| P4: Smarter Than a Meal Kit | 5 | 0 | 0 | 0.0% | 0.0% | Flat (0 both weeks) |
+| P5: Your Kitchen, Your Rules | 6 | 9 | 1 | 11.1% | 11.1% | ↑ (was 0) |
 
-**Pillar ranking by save rate:** Cannot be ranked — all save rates are 0.0%.
+**Pillar ranking by save rate:** P5 (11.1%) > P1/P2/P3/P4 (0.0% — tied)
+
+*Critical caveat: P5's 11.1% rate is computed on 9 impressions, all from a single pin (W9-16). This is not a statistically valid rate. It is a directional signal only.*
 
 **Pillar mix this week vs. strategy targets:**
 
-| Pillar | This Week % (of 28 pins) | Strategy Target | Gap |
+| Pillar | Portfolio % (of 77 pins) | Strategy Target | Gap |
 |--------|--------------------------|-----------------|-----|
-| P1 | 36% (10/28) | 32–36% | Within range |
-| P2 | 21% (6/28) | 25–29% | −4–8 pp under target |
-| P3 | 25% (7/28) | 18–21% | +4–7 pp over target |
-| P4 | 7% (2/28) | 7–10% | Within range |
-| P5 | 11% (3/28) | 14–18% | −3–7 pp under target |
+| P1 | 36% (28/77) | 32–36% | Within range |
+| P2 | 21% (16/77) | 25–29% | −4–8 pp under |
+| P3 | 17% (13/77) | 18–21% | −1–4 pp under |
+| P4 | 6% (5/77) | 7–10% | −1–4 pp under |
+| P5 | 8% (6/77) | 14–18% | −6–10 pp under |
 
-**Pillar mix observations:**
-
-- **P2 is under-represented at 21% vs. 25–29% target.** The strategy identifies P2 as "blue ocean" — the highest-differentiation pillar with no competitive content on Pinterest. Under-producing here is a strategic miss, not just a mix issue. This week's 6 P2 pins include 3 recipe pins (W11-03, W11-18, W11-26) and 2 guide/problem-solution pins (W11-07, W11-14), plus 1 fresh treatment (W11-26). The guide/problem-solution content is correct for P2's conversion intent, but the overall count is below target.
-
-- **P3 is over-represented at 25% vs. 18–21% target.** Standalone recipe content is the commodity backbone, not the differentiator. Running 4–7 pp over target on P3 while P2 and P5 are under target is a content generation gap — the pipeline is defaulting to the easiest content type (standalone recipes) rather than the strategically important types.
-
-- **P5 is under-represented at 11% vs. 14–18% target** for the second consecutive week (last week: 5% vs. 14–18%). The strategy calls for 4–5 P5 pins per week covering dietary and appliance-specific content. This week delivered 3 (W11-04 Instant Pot, W11-12 dairy-free curry, W11-22 slow cooker soup, W11-25 gluten-free curry — actually 4 pins; the per-pillar data shows count: 3, which may reflect a data discrepancy). Even at 4 pins, P5 is below its 14–18% target on a 28-pin week (target: 4–5 pins).
-
-**Lifetime pillar mix (from content memory):** P1: 37%, P2: 21%, P3: 19%, P4: 8%, P5: 11%. P2 and P5 are both running below their strategy targets on a cumulative basis. This is a persistent pipeline gap, not a single-week anomaly.
+**Persistent pillar mix gaps:** P2 and P5 have been under-represented for the entire account history (P2: 21% vs. 25–29% target; P5: 11% lifetime vs. 14–18% target). This is not a single-week anomaly — the content memory confirms these gaps have persisted across all 10 weeks. P5 is the account's only pillar with a recorded save, making its under-representation a strategic concern: the one content area showing any engagement signal is also the most under-produced.
 
 ---
 
 ## Content Type Performance
 
-| Template | Pins This Week | Impressions | Save Rate | CTR | Notes |
-|----------|---------------|-------------|-----------|-----|-------|
-| recipe-pin | 12 | 0.0 | 0.0% | 0.0% | Largest template type; 0 impressions |
-| tip-pin | 8 | 0.0 | 0.0% | 0.0% | Includes P1 plan pins and P5 dietary content |
-| listicle-pin | 4 | 0.0 | 0.0% | 0.0% | Used across P2, P3, P5 |
-| infographic-pin | 2 | 0.0 | 0.0% | 0.0% | W11-14 (template-only image); W11-05 (ai_generated) |
-| problem-solution-pin | 2 | 0.0 | 0.0% | 0.0% | W11-07 (P2 guide), W11-20 (P4 meal kit); **0 impressions for 3rd consecutive week across 6 total problem-solution pins** |
+| Template | Pins | Impressions | Saves | Save Rate | CTR | Notes |
+|----------|------|-------------|-------|-----------|-----|-------|
+| recipe-pin | 37 | 32 | 1 | 3.1% | 3.1% | Sole driver of all impressions and engagement |
+| tip-pin | 18 | 2 | 0 | 0.0% | 0.0% | Minimal distribution |
+| listicle-pin | 11 | 0 | 0 | 0.0% | 0.0% | Zero impressions, 3+ consecutive weeks |
+| problem-solution-pin | 6 | 0 | 0 | 0.0% | 0.0% | Zero impressions, 3+ consecutive weeks |
+| infographic-pin | 4 | 0 | 0 | 0.0% | 0.0% | Zero impressions |
 
-**Template pattern worth flagging:** The `problem-solution-pin` template has now accumulated 6 pins across 3 weeks with 0 impressions total. This is the only template type with a consistent zero-impression pattern. However, given that all templates show 0 impressions this week due to the board ID failure, it is not possible to isolate whether this is a template-specific issue or a delivery issue. The pattern predates this week's total collapse — problem-solution pins also showed 0 impressions in Week 10 when other templates showed minimal impressions. This warrants monitoring once delivery is confirmed.
+**Template ranking:** recipe-pin dominates entirely. All other templates are generating zero distribution.
+
+**Important context:** The recipe-pin template's apparent outperformance may partly reflect that it is the most-used template (37 of 76 classified pins) and that recipe content targets high-volume search keywords. However, the pattern is now consistent across 3+ weeks: non-recipe-pin templates generate no impressions. This warrants investigation — either these templates are being suppressed by Pinterest's algorithm, or the keywords they target (planning, strategy, picky eaters) have insufficient search volume to surface a new account's content.
+
+**The problem-solution-pin pattern is the most concerning:** 6 pins, 3+ weeks, 0 impressions. This template is used primarily for P2 and P4 conversion content — the highest-intent content in the strategy. If it cannot achieve distribution, the conversion layer of the funnel is effectively non-functional.
 
 ---
 
 ## Board Performance
 
-| Board | Pins This Week | Impressions | Save Rate | CTR | Notes |
-|-------|---------------|-------------|-----------|-----|-------|
-| Easy Dinner Ideas for Families | 6 | 0.0 | 0.0% | 0.0% | Highest pin count; 0 impressions |
-| Quick Weeknight Dinner Recipes | 6 | 0.0 | 0.0% | 0.0% | 0 impressions for 3rd consecutive week (9 total pins) |
-| Family Meal Planning Strategies | 4 | 0.0 | 0.0% | 0.0% | 0 impressions |
-| Healthy Family Dinner Recipes | 3 | 0.0 | 0.0% | 0.0% | 0 impressions |
-| Weekly Meal Plans & Meal Planning Tips | 2 | 0.0 | 0.0% | 0.0% | Was top board in W9 (5 impr); 0 for 2 consecutive weeks |
-| Family Dinner Ideas Even Picky Eaters Love | 2 | 0.0 | 0.0% | 0.0% | Was 2nd-best board in W9 (5 impr); 0 for 2 consecutive weeks |
-| Meal Planning & Grocery Tips | 2 | 0.0 | 0.0% | 0.0% | 0 impressions |
-| Better Than a Meal Kit | 2 | 0.0 | 0.0% | 0.0% | 0 impressions |
-| Air Fryer & Instant Pot Dinner Recipes | 1 | 0.0 | 0.0% | 0.0% | 0 impressions |
-| Gluten-Free Dinner Ideas | 0 | — | — | — | No pins assigned this week per board data |
-
-**Board observations:**
-
-1. **Every board shows 0 impressions this week.** This is consistent with the board ID failure hypothesis — if pins are not being delivered with board assignments, no board receives new content to distribute.
-
-2. **"Weekly Meal Plans & Meal Planning Tips" and "Family Dinner Ideas Even Picky Eaters Love" have both dropped from their Week 9 highs (5 impressions each) to 0 for two consecutive weeks.** These were the two best-performing boards in the account's history. Their collapse coincides exactly with the board ID failure beginning in Week 10.
-
-3. **"Quick Weeknight Dinner Recipes" has now received 9 pins across 3 weeks with 0 impressions total.** This board's zero-impression pattern predates the universal board ID failure (it showed 0 in Week 10 even when other boards showed minimal impressions). This may indicate a board-level classification issue independent of the delivery problem, or it may simply reflect that this is a highly competitive keyword space where a new account with no domain authority cannot break through. Cannot distinguish these explanations from current data.
-
-4. **Cumulative board distribution (from content memory, 10 weeks):** "Easy Dinner Ideas for Families" (34 pins) and "
+| Board | Pins (portfolio) | Impressions | Saves | Save Rate | CTR | Notes |
+|-------|-----------------|-------------|-------|-----------|-----|-------|
+| Easy Dinner Ideas for Families | 16 | 20 | 0 | 0.0% | 0.0% | Highest impression volume |
+| Healthy Family Dinner Recipes | 6 | 9 | 1 | 11.1% | 11.1% | Only board with saves/clicks |
+| Quick Weeknight Dinner Recipes | 15 | 3 | 0 | 0.0% | 0.0% | Disproportionately low vs. pin count |
+| Weekly Meal Plans & Meal Planning Tips | 6 | 2 | 0 | 0.0% | 0.0% | Recovering from W11 zero |
+| Dinner Ideas Even Picky Eaters Love | 9 | 0 | 0 | 0.0% | 0.0% | Zero impressions |
+| Family Meal Planning Strategies | 9 | 0 | 0 | 0.0% | 0.0% | Zero impressions |
+| Better Than a Meal Kit | 6 | 0 | 0 | 0.0% | 0.0% | Zero impressions |
+| Air Fryer & Instant Pot Dinner Recipes | 3 | 0 | 0 | 0.0% | 0.0% | Zero impressions |
+| Meal Planning & Grocery Tips | 5 | 0 | 0 | 0.0% | 0.0% | Zero impressions |
+| Gluten-Free Dinner Ideas | 1 | 0 | 0 | 0.0% | 0
