@@ -36,7 +36,9 @@
       "treatment_number": 1,
       "source_post_id": "W13-P02",
       "funnel_layer": "consideration",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-01.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-01.png"
     },
     {
       "pin_id": "W13-02",
@@ -71,7 +73,9 @@
       "treatment_number": 1,
       "source_post_id": "W13-P03",
       "funnel_layer": "discovery",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-02.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-02.png"
     },
     {
       "pin_id": "W13-03",
@@ -106,7 +110,9 @@
       "treatment_number": 1,
       "source_post_id": "W13-P09",
       "funnel_layer": "discovery",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-03.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-03.png"
     },
     {
       "pin_id": "W13-04",
@@ -148,7 +154,9 @@
       "treatment_number": 1,
       "source_post_id": "W13-P01",
       "funnel_layer": "consideration",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-04.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-04.png"
     },
     {
       "pin_id": "W13-05",
@@ -183,7 +191,9 @@
       "treatment_number": 1,
       "source_post_id": "W13-P04",
       "funnel_layer": "discovery",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-05.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-05.png"
     },
     {
       "pin_id": "W13-06",
@@ -218,7 +228,9 @@
       "treatment_number": 1,
       "source_post_id": "W13-P06",
       "funnel_layer": "discovery",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-06.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-06.png"
     },
     {
       "pin_id": "W13-07",
@@ -254,7 +266,9 @@
       "treatment_number": 1,
       "source_post_id": "W13-P05",
       "funnel_layer": "conversion",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-07.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-07.png"
     },
     {
       "pin_id": "W13-08",
@@ -289,7 +303,9 @@
       "treatment_number": 1,
       "source_post_id": "W13-P02",
       "funnel_layer": "discovery",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-08.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-08.png"
     },
     {
       "pin_id": "W13-09",
@@ -327,7 +343,9 @@
       "treatment_number": 1,
       "source_post_id": "W13-P10",
       "funnel_layer": "consideration",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-09.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-09.png"
     },
     {
       "pin_id": "W13-10",
@@ -369,7 +387,9 @@
       "treatment_number": 1,
       "source_post_id": "W13-P08",
       "funnel_layer": "conversion",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-10.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-10.png"
     },
     {
       "pin_id": "W13-11",
@@ -404,7 +424,9 @@
       "treatment_number": 1,
       "source_post_id": "W13-P01",
       "funnel_layer": "discovery",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-11.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-11.png"
     },
     {
       "pin_id": "W13-12",
@@ -439,7 +461,9 @@
       "treatment_number": 1,
       "source_post_id": "W13-P07",
       "funnel_layer": "discovery",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-12.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-12.png"
     },
     {
       "pin_id": "W13-13",
@@ -474,7 +498,9 @@
       "treatment_number": 1,
       "source_post_id": "W13-P02",
       "funnel_layer": "discovery",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-13.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-13.png"
     },
     {
       "pin_id": "W13-14",
@@ -512,7 +538,9 @@
       "treatment_number": 2,
       "source_post_id": "W13-P05",
       "funnel_layer": "conversion",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-14.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-14.png"
     },
     {
       "pin_id": "W13-15",
@@ -547,7 +575,9 @@
       "treatment_number": 1,
       "source_post_id": "W13-P01",
       "funnel_layer": "discovery",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-15.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-15.png"
     },
     {
       "pin_id": "W13-16",
@@ -582,7 +612,9 @@
       "treatment_number": 4,
       "source_post_id": "existing:one-pan-maple-dijon-salmon",
       "funnel_layer": "discovery",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-16.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-16.png"
     },
     {
       "pin_id": "W13-17",
@@ -623,7 +655,9 @@
       "treatment_number": 2,
       "source_post_id": "W13-P03",
       "funnel_layer": "discovery",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-17.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-17.png"
     },
     {
       "pin_id": "W13-18",
@@ -673,7 +707,9 @@
       "treatment_number": 2,
       "source_post_id": "W13-P10",
       "funnel_layer": "consideration",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-18.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-18.png"
     },
     {
       "pin_id": "W13-19",
@@ -708,7 +744,9 @@
       "treatment_number": 1,
       "source_post_id": "W13-P02",
       "funnel_layer": "discovery",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-19.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-19.png"
     },
     {
       "pin_id": "W13-20",
@@ -743,7 +781,9 @@
       "treatment_number": 1,
       "source_post_id": "W13-P01",
       "funnel_layer": "discovery",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-20.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-20.png"
     },
     {
       "pin_id": "W13-21",
@@ -778,7 +818,9 @@
       "treatment_number": 4,
       "source_post_id": "existing:turkey-meatballs-zucchini-noodles",
       "funnel_layer": "discovery",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-21.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-21.png"
     },
     {
       "pin_id": "W13-22",
@@ -816,7 +858,9 @@
       "treatment_number": 2,
       "source_post_id": "W13-P09",
       "funnel_layer": "discovery",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-22.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-22.png"
     },
     {
       "pin_id": "W13-23",
@@ -851,7 +895,9 @@
       "treatment_number": 2,
       "source_post_id": "W13-P04",
       "funnel_layer": "discovery",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-23.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-23.png"
     },
     {
       "pin_id": "W13-24",
@@ -887,7 +933,9 @@
       "treatment_number": 2,
       "source_post_id": "W13-P08",
       "funnel_layer": "conversion",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-24.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-24.png"
     },
     {
       "pin_id": "W13-25",
@@ -927,7 +975,9 @@
       "treatment_number": 3,
       "source_post_id": "existing:lemon-garlic-butter-shrimp-pasta",
       "funnel_layer": "discovery",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-25.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-25.png"
     },
     {
       "pin_id": "W13-26",
@@ -965,7 +1015,9 @@
       "treatment_number": 2,
       "source_post_id": "W13-P07",
       "funnel_layer": "consideration",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-26.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-26.png"
     },
     {
       "pin_id": "W13-27",
@@ -1000,7 +1052,9 @@
       "treatment_number": 2,
       "source_post_id": "W13-P06",
       "funnel_layer": "discovery",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-27.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-27.png"
     },
     {
       "pin_id": "W13-28",
@@ -1035,7 +1089,9 @@
       "treatment_number": 1,
       "source_post_id": "W13-P01",
       "funnel_layer": "consideration",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-28.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W13-28.png"
     }
   ],
   "failures": [],
