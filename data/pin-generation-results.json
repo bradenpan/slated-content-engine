@@ -36,7 +36,9 @@
       "treatment_number": 1,
       "source_post_id": "W14-P01",
       "funnel_layer": "consideration",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-01.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-01.png"
     },
     {
       "pin_id": "W14-02",
@@ -71,7 +73,9 @@
       "treatment_number": 1,
       "source_post_id": "W14-P03",
       "funnel_layer": "discovery",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-02.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-02.png"
     },
     {
       "pin_id": "W14-03",
@@ -106,7 +110,9 @@
       "treatment_number": 1,
       "source_post_id": "W14-P06",
       "funnel_layer": "discovery",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-03.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-03.png"
     },
     {
       "pin_id": "W14-04",
@@ -142,7 +148,9 @@
       "treatment_number": 1,
       "source_post_id": "W14-P05",
       "funnel_layer": "conversion",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-04.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-04.png"
     },
     {
       "pin_id": "W14-05",
@@ -184,7 +192,9 @@
       "treatment_number": 1,
       "source_post_id": "W14-P02",
       "funnel_layer": "consideration",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-05.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-05.png"
     },
     {
       "pin_id": "W14-06",
@@ -219,7 +229,9 @@
       "treatment_number": 1,
       "source_post_id": "W14-P04",
       "funnel_layer": "discovery",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-06.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-06.png"
     },
     {
       "pin_id": "W14-07",
@@ -254,7 +266,9 @@
       "treatment_number": 1,
       "source_post_id": "W14-P08",
       "funnel_layer": "discovery",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-07.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-07.png"
     },
     {
       "pin_id": "W14-08",
@@ -292,7 +306,9 @@
       "treatment_number": 3,
       "source_post_id": "existing:lemon-garlic-butter-shrimp-pasta",
       "funnel_layer": "discovery",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-08.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-08.png"
     },
     {
       "pin_id": "W14-09",
@@ -327,7 +343,9 @@
       "treatment_number": 1,
       "source_post_id": "W14-P01",
       "funnel_layer": "discovery",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-09.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-09.png"
     },
     {
       "pin_id": "W14-10",
@@ -362,7 +380,9 @@
       "treatment_number": 1,
       "source_post_id": "W14-P09",
       "funnel_layer": "discovery",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-10.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-10.png"
     },
     {
       "pin_id": "W14-11",
@@ -397,7 +417,9 @@
       "treatment_number": 1,
       "source_post_id": "W14-P02",
       "funnel_layer": "discovery",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-11.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-11.png"
     },
     {
       "pin_id": "W14-12",
@@ -439,7 +461,9 @@
       "treatment_number": 3,
       "source_post_id": "existing:reasons-families-quitting-meal-kits",
       "funnel_layer": "conversion",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-12.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-12.png"
     },
     {
       "pin_id": "W14-13",
@@ -474,7 +498,9 @@
       "treatment_number": 1,
       "source_post_id": "W14-P01",
       "funnel_layer": "discovery",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-13.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-13.png"
     },
     {
       "pin_id": "W14-14",
@@ -509,7 +535,9 @@
       "treatment_number": 1,
       "source_post_id": "W14-P07",
       "funnel_layer": "discovery",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-14.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-14.png"
     },
     {
       "pin_id": "W14-15",
@@ -559,7 +587,9 @@
       "treatment_number": 1,
       "source_post_id": "W14-P05",
       "funnel_layer": "conversion",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-15.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-15.png"
     },
     {
       "pin_id": "W14-16",
@@ -594,7 +624,9 @@
       "treatment_number": 1,
       "source_post_id": "W14-P02",
       "funnel_layer": "discovery",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-16.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-16.png"
     },
     {
       "pin_id": "W14-17",
@@ -629,7 +661,9 @@
       "treatment_number": 1,
       "source_post_id": "W14-P10",
       "funnel_layer": "discovery",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-17.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-17.png"
     },
     {
       "pin_id": "W14-18",
@@ -664,7 +698,9 @@
       "treatment_number": 1,
       "source_post_id": "W14-P03",
       "funnel_layer": "discovery",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-18.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-18.png"
     },
     {
       "pin_id": "W14-19",
@@ -699,7 +735,9 @@
       "treatment_number": 1,
       "source_post_id": "W14-P01",
       "funnel_layer": "discovery",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-19.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-19.png"
     },
     {
       "pin_id": "W14-20",
@@ -739,7 +777,9 @@
       "treatment_number": 3,
       "source_post_id": "existing:garlic-butter-sausage-and-peppers-skillet",
       "funnel_layer": "discovery",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-20.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-20.png"
     },
     {
       "pin_id": "W14-21",
@@ -777,7 +817,9 @@
       "treatment_number": 1,
       "source_post_id": "W14-P08",
       "funnel_layer": "discovery",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-21.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-21.png"
     },
     {
       "pin_id": "W14-22",
@@ -812,7 +854,9 @@
       "treatment_number": 1,
       "source_post_id": "W14-P02",
       "funnel_layer": "discovery",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-22.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-22.png"
     },
     {
       "pin_id": "W14-23",
@@ -848,7 +892,9 @@
       "treatment_number": 1,
       "source_post_id": "W14-P04",
       "funnel_layer": "conversion",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-23.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-23.png"
     },
     {
       "pin_id": "W14-24",
@@ -883,7 +929,9 @@
       "treatment_number": 3,
       "source_post_id": "existing:one-pan-honey-mustard-pork-tenderloin",
       "funnel_layer": "discovery",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-24.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-24.png"
     },
     {
       "pin_id": "W14-25",
@@ -921,7 +969,9 @@
       "treatment_number": 1,
       "source_post_id": "W14-P09",
       "funnel_layer": "consideration",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-25.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-25.png"
     },
     {
       "pin_id": "W14-26",
@@ -979,7 +1029,9 @@
       "treatment_number": 1,
       "source_post_id": "W14-P01",
       "funnel_layer": "consideration",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-26.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-26.png"
     },
     {
       "pin_id": "W14-27",
@@ -1014,7 +1066,9 @@
       "treatment_number": 3,
       "source_post_id": "existing:smashed-burger-tacos",
       "funnel_layer": "discovery",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-27.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-27.png"
     },
     {
       "pin_id": "W14-28",
@@ -1050,7 +1104,9 @@
       "treatment_number": 4,
       "source_post_id": "existing:hellofresh-alternative-why-families-switch-custom-meal-planning",
       "funnel_layer": "conversion",
-      "image_retries": 0
+      "image_retries": 0,
+      "_drive_image_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-28.png",
+      "_drive_download_url": "https://storage.googleapis.com/slated-pipeline-pins/W14-28.png"
     }
   ],
   "failures": [],
