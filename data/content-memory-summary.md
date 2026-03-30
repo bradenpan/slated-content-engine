@@ -1,7 +1,7 @@
 # Content Memory Summary
 Generated: 2026-03-30
 Content log entries: 270
-Channels: all
+Channel filter: pinterest
 ---
 ## 1. RECENT TOPICS (Last 10 Weeks)
 
