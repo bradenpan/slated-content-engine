@@ -1,101 +1,101 @@
 {
-  "W15-P01": {
-    "slug": "weekly-plan-summer-grilling-dinners",
-    "title": "This Week's Family Dinner Plan — Summer Grilling Edition",
-    "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/weekly-plan-summer-grilling-dinners.mdx",
+  "W16-P01": {
+    "slug": "weekly-plan-5-easy-weeknight-meals-30-minutes",
+    "title": "This Week's Family Dinner Plan — 5 Easy Weeknight Meals Ready in 30 Minutes",
+    "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/weekly-plan-5-easy-weeknight-meals-30-minutes.mdx",
     "pillar": 1,
     "content_type": "weekly-plan",
-    "hero_image": "/assets/blog/weekly-plan-summer-grilling-dinners.jpg",
+    "hero_image": "/assets/blog/weekly-plan-5-easy-weeknight-meals-30-minutes.jpg",
     "status": "success",
     "error": null
   },
-  "W15-P02": {
-    "slug": "weekly-plan-5-quick-one-pan-meals",
-    "title": "This Week's Family Dinner Plan — 5 Quick One-Pan Meals, One Shopping List",
-    "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/weekly-plan-5-quick-one-pan-meals.mdx",
+  "W16-P02": {
+    "slug": "weekly-plan-summer-backyard-grilling",
+    "title": "This Week's Family Dinner Plan — Summer Backyard Grilling Edition",
+    "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/weekly-plan-summer-backyard-grilling.mdx",
     "pillar": 1,
     "content_type": "weekly-plan",
-    "hero_image": "/assets/blog/weekly-plan-5-quick-one-pan-meals.jpg",
+    "hero_image": "/assets/blog/weekly-plan-summer-backyard-grilling.jpg",
     "status": "success",
     "error": null
   },
-  "W15-P03": {
-    "slug": "cheesy-ground-beef-quesadillas",
-    "title": "Cheesy Ground Beef Quesadillas — Easy Dinners Kids Will Eat in 20 Minutes",
-    "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/cheesy-ground-beef-quesadillas.mdx",
+  "W16-P03": {
+    "slug": "cheesy-chicken-and-rice-casserole",
+    "title": "Cheesy Chicken and Rice Casserole — Easy Dinner Kids Will Eat in 35 Minutes",
+    "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/cheesy-chicken-and-rice-casserole.mdx",
     "pillar": 2,
     "content_type": "recipe",
-    "hero_image": "/assets/blog/cheesy-ground-beef-quesadillas.jpg",
+    "hero_image": "/assets/blog/cheesy-chicken-and-rice-casserole.jpg",
     "status": "success",
     "error": null
   },
-  "W15-P04": {
-    "slug": "stop-being-the-only-one-who-decides-dinner",
-    "title": "How to Stop Being the Only One Who Decides What's for Dinner",
-    "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/stop-being-the-only-one-who-decides-dinner.mdx",
+  "W16-P04": {
+    "slug": "honey-bbq-pulled-chicken-sliders",
+    "title": "Honey BBQ Pulled Chicken Sliders — Easy Kid Friendly Dinner Ready in 35 Minutes",
+    "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/honey-bbq-pulled-chicken-sliders.mdx",
+    "pillar": 2,
+    "content_type": "recipe",
+    "hero_image": "/assets/blog/honey-bbq-pulled-chicken-sliders.jpg",
+    "status": "success",
+    "error": null
+  },
+  "W16-P05": {
+    "slug": "meals-for-picky-families-weekly-dinner-plan",
+    "title": "Meals for Picky Families: How to Plan a Week of Dinners Everyone Will Actually Agree On",
+    "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/meals-for-picky-families-weekly-dinner-plan.mdx",
     "pillar": 2,
     "content_type": "guide",
-    "hero_image": "/assets/blog/stop-being-the-only-one-who-decides-dinner.jpg",
+    "hero_image": "/assets/blog/meals-for-picky-families-weekly-dinner-plan.jpg",
     "status": "success",
     "error": null
   },
-  "W15-P05": {
-    "slug": "one-pan-honey-garlic-ground-beef-and-broccoli",
-    "title": "One-Pan Honey Garlic Ground Beef and Broccoli — Easy Dinner in 25 Minutes",
-    "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/one-pan-honey-garlic-ground-beef-and-broccoli.mdx",
+  "W16-P06": {
+    "slug": "one-pan-garlic-butter-chicken-orzo",
+    "title": "One-Pan Garlic Butter Chicken with Orzo — Easy Weeknight Dinner Ready in 30 Minutes",
+    "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/one-pan-garlic-butter-chicken-orzo.mdx",
     "pillar": 3,
     "content_type": "recipe",
-    "hero_image": "/assets/blog/one-pan-honey-garlic-ground-beef-and-broccoli.jpg",
+    "hero_image": "/assets/blog/one-pan-garlic-butter-chicken-orzo.jpg",
     "status": "success",
     "error": null
   },
-  "W15-P06": {
-    "slug": "easy-grilled-chicken-tacos",
-    "title": "Easy Grilled Chicken Tacos — Summer Weeknight Dinner Ready in 25 Minutes",
-    "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/easy-grilled-chicken-tacos.mdx",
+  "W16-P07": {
+    "slug": "quick-grilled-steak-fajitas",
+    "title": "Quick Grilled Steak Fajitas — What to Cook for Dinner in 25 Minutes",
+    "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/quick-grilled-steak-fajitas.mdx",
     "pillar": 3,
     "content_type": "recipe",
-    "hero_image": "/assets/blog/easy-grilled-chicken-tacos.jpg",
+    "hero_image": "/assets/blog/quick-grilled-steak-fajitas.jpg",
     "status": "success",
     "error": null
   },
-  "W15-P07": {
-    "slug": "creamy-pesto-pasta-with-italian-sausage",
-    "title": "Creamy Pesto Pasta with Italian Sausage — 30-Minute Weeknight Dinner",
-    "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/creamy-pesto-pasta-with-italian-sausage.mdx",
-    "pillar": 3,
-    "content_type": "recipe",
-    "hero_image": "/assets/blog/creamy-pesto-pasta-with-italian-sausage.jpg",
-    "status": "success",
-    "error": null
-  },
-  "W15-P08": {
-    "slug": "meal-planning-vs-hellofresh",
-    "title": "5 Ways Meal Planning at Home Beats HelloFresh — Flexibility, Taste, and Family Buy-In",
-    "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/meal-planning-vs-hellofresh.mdx",
+  "W16-P08": {
+    "slug": "hellofresh-alternative-weekly-family-dinners",
+    "title": "HelloFresh Alternative: What to Do Instead for Weekly Family Dinners",
+    "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/hellofresh-alternative-weekly-family-dinners.mdx",
     "pillar": 4,
-    "content_type": "listicle",
-    "hero_image": "/assets/blog/meal-planning-vs-hellofresh.jpg",
+    "content_type": "guide",
+    "hero_image": "/assets/blog/hellofresh-alternative-weekly-family-dinners.jpg",
     "status": "success",
     "error": null
   },
-  "W15-P09": {
-    "slug": "skillet-chicken-thighs-roasted-cauliflower-garlic-butter",
-    "title": "Skillet Chicken Thighs with Roasted Cauliflower and Garlic Butter — A High Protein Dinner Ready in 40 Minutes",
-    "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/skillet-chicken-thighs-roasted-cauliflower-garlic-butter.mdx",
+  "W16-P09": {
+    "slug": "air-fryer-lemon-pepper-salmon-green-beans",
+    "title": "Air Fryer Lemon Pepper Salmon with Green Beans — Ready in 20 Minutes",
+    "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/air-fryer-lemon-pepper-salmon-green-beans.mdx",
     "pillar": 5,
     "content_type": "recipe",
-    "hero_image": "/assets/blog/skillet-chicken-thighs-roasted-cauliflower-garlic-butter.jpg",
+    "hero_image": "/assets/blog/air-fryer-lemon-pepper-salmon-green-beans.jpg",
     "status": "success",
     "error": null
   },
-  "W15-P10": {
-    "slug": "hidden-veggie-pasta-sauce",
-    "title": "Hidden Veggie Pasta Sauce — Kid Friendly Dinner the Whole Family Will Actually Eat",
-    "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/hidden-veggie-pasta-sauce.mdx",
-    "pillar": 2,
+  "W16-P10": {
+    "slug": "sheet-pan-sausage-and-peppers-with-potatoes",
+    "title": "Sheet Pan Sausage and Peppers with Potatoes — Gluten Free Dinner in 35 Minutes",
+    "file_path": "/home/runner/work/slated-content-engine/slated-content-engine/data/generated/blog/sheet-pan-sausage-and-peppers-with-potatoes.mdx",
+    "pillar": 5,
     "content_type": "recipe",
-    "hero_image": "/assets/blog/hidden-veggie-pasta-sauce.jpg",
+    "hero_image": "/assets/blog/sheet-pan-sausage-and-peppers-with-potatoes.jpg",
     "status": "success",
     "error": null
   }
