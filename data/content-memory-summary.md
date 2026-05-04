@@ -1,5 +1,5 @@
 # Content Memory Summary
-Generated: 2026-04-27
+Generated: 2026-05-04
 Content log entries: 431
 Channel filter: pinterest
 ---
@@ -263,19 +263,18 @@ Blog posts with no new pin in 4+ weeks, sorted by performance:
 - Meal Planning Made Easy — 5 Family Dinners Under 30 Minutes This Week (weekly-plan-5-easy-weeknight-meals-one-grocery-list) | P1 | Saves: 0 | Impressions: 7 | Treatment 2/5 | Last pin: 2026-03-23
 - Slow Cooker Family Meals — White Bean and Kale Soup (Gluten Free) (slow-cooker-white-bean-kale-soup) | P5 | Saves: 0 | Impressions: 1 | Treatment 2/5 | Last pin: 2026-03-09
 - Mini Turkey Taco Bowls — Toddler Dinner Ideas the Whole Family Eats (mini-turkey-taco-bowls-toddler-dinner-ideas) | P2 | Saves: 0 | Impressions: 1 | Treatment 2/5 | Last pin: 2026-03-09
+- 7 Reasons Families Are Quitting Meal Kits — and the Better Alternative (reasons-families-quitting-meal-kits) | P4 | Saves: 0 | Impressions: 0 | Treatment 3/5 | Last pin: 2026-04-03
 - Vegetarian Family Meals: Black Bean & Sweet Potato Tacos Everyone Will Eat (black-bean-sweet-potato-tacos) | P3 | Saves: 0 | Impressions: 3 | Treatment 2/5 | Last pin: 2026-03-10
 - Weekly Dinner Plan for Spring — 5 Light, Fresh Meals with One Grocery List (weekly-plan-spring-family-dinners) | P1 | Saves: 0 | Impressions: 10 | Treatment 1/5 | Last pin: 2026-03-16
 - Instant Pot Chicken and Rice — Easy Family Dinner Ready in 25 Minutes (instant-pot-chicken-and-rice) | P5 | Saves: 0 | Impressions: 6 | Treatment 1/5 | Last pin: 2026-03-17
 - Family Meal Planning Made Easy — 5 Dinners Under 30 Minutes, One Shopping List (weekly-plan-busy-weeknight-dinners-under-30-minutes) | P1 | Saves: 0 | Impressions: 31 | Treatment 1/5 | Last pin: 2026-03-16
 - Spring Vegetable Pasta Primavera — Easy Weeknight Dinner Ready in 20 Minutes (spring-vegetable-pasta-primavera) | P3 | Saves: 0 | Impressions: 2 | Treatment 1/5 | Last pin: 2026-03-16
-- Meals for Picky Families — How to Get Everyone to Agree on Dinner (meals-for-picky-families-one-dinner-everyone-agrees-on) | P2 | Saves: 0 | Impressions: 12 | Treatment 1/5 | Last pin: 2026-03-20
 
 ## 7. TREATMENT TRACKER
 
 URLs with treatments in the last 60 days:
 
-- Meal Planning Made Easy — 5 Family Dinners Under 30 Minutes This Week (weekly-plan-5-easy-weeknight-meals-one-grocery-list): 18/5 treatments [AT LIMIT - NO MORE TREATMENTS]
-- Weekly Meal Plan — 5 Light Spring Dinners with One Grocery List (weekly-plan-spring-refresh-light-weeknight-dinners): 10/5 treatments [AT LIMIT - NO MORE TREATMENTS]
+- weekly-plan-5-easy-weeknight-meals-one-grocery-list (weekly-plan-5-easy-weeknight-meals-one-grocery-list): 13/5 treatments [AT LIMIT - NO MORE TREATMENTS]
 - Weekly Dinner Plan for Spring — 5 Light, Fresh Meals with One Grocery List (weekly-plan-spring-family-dinners): 10/5 treatments [AT LIMIT - NO MORE TREATMENTS]
 - Family Meal Planning Made Easy — 5 Dinners Under 30 Minutes, One Shopping List (weekly-plan-busy-weeknight-dinners-under-30-minutes): 10/5 treatments [AT LIMIT - NO MORE TREATMENTS]
 - Meal Plan for the Week — 5 Light Spring Dinners, One Grocery List (weekly-plan-spring-light-fresh-dinners-30-minutes): 10/5 treatments [AT LIMIT - NO MORE TREATMENTS]
@@ -288,21 +287,13 @@ URLs with treatments in the last 60 days:
 - Meal Plan for the Week — 5 Light Spring Dinners Ready in 30 Minutes Each (weekly-plan-light-spring-dinners-30-minutes): 8/5 treatments [AT LIMIT - NO MORE TREATMENTS]
 - Meal Plan for the Week — 5 One-Pan Family Dinners, One Shopping List (weekly-plan-5-quick-one-pan-meals): 8/5 treatments [AT LIMIT - NO MORE TREATMENTS]
 - Family Meal Planning Made Easy — 5 Dinners, 30 Minutes Each, One Grocery List (weekly-plan-5-easy-weeknight-meals-30-minutes): 8/5 treatments [AT LIMIT - NO MORE TREATMENTS]
-- Dinner Ideas for Picky Eaters — How a Family Vote System Ends the Argument (dinner-ideas-picky-eaters-family-meal-planning-system): 6/5 treatments [AT LIMIT - NO MORE TREATMENTS]
-- Easy Dinners Kids Will Eat — Sheet Pan Chicken Drumsticks with Roasted Veggies (sheet-pan-chicken-drumsticks-roasted-vegetables): 6/5 treatments [AT LIMIT - NO MORE TREATMENTS]
 - Cheesy Baked Pasta Casserole — Kid Friendly Dinner the Whole Family Will Eat (cheesy-baked-pasta-casserole): 6/5 treatments [AT LIMIT - NO MORE TREATMENTS]
 - Easy Dinner Ideas — One-Pan Maple Dijon Salmon Ready in 25 Minutes (one-pan-maple-dijon-salmon): 6/5 treatments [AT LIMIT - NO MORE TREATMENTS]
 - Kid Friendly Dinners — Teriyaki Chicken Rice Bowls the Whole Family Loves (teriyaki-chicken-rice-bowls): 6/5 treatments [AT LIMIT - NO MORE TREATMENTS]
 - Turkey Meatballs with Zucchini Noodles — Quick Weeknight Dinner Everyone Eats (turkey-meatballs-zucchini-noodles): 6/5 treatments [AT LIMIT - NO MORE TREATMENTS]
 - HelloFresh Alternative for Families — 5 Things Meal Kits Will Never Do (hellofresh-alternative-why-families-switch-custom-meal-planning): 6/5 treatments [AT LIMIT - NO MORE TREATMENTS]
 - Family Friendly Meals That End the Two-Dinner Problem for Good (stop-making-two-dinners-family-meal-system): 6/5 treatments [AT LIMIT - NO MORE TREATMENTS]
-- beef-broccoli-stir-fry (beef-broccoli-stir-fry): 5/5 treatments [AT LIMIT - NO MORE TREATMENTS]
-- high-protein-turkey-meatball-bowls (high-protein-turkey-meatball-bowls): 4/5 treatments [APPROACHING LIMIT]
-- Quick Weeknight Dinner — Lemon Garlic Butter Shrimp Pasta in 20 Minutes (lemon-garlic-butter-shrimp-pasta): 4/5 treatments [APPROACHING LIMIT]
-- Slow Cooker Family Meals — White Bean and Kale Soup (Gluten Free) (slow-cooker-white-bean-kale-soup): 4/5 treatments [APPROACHING LIMIT]
-- Mini Turkey Taco Bowls — Toddler Dinner Ideas the Whole Family Eats (mini-turkey-taco-bowls-toddler-dinner-ideas): 4/5 treatments [APPROACHING LIMIT]
-- Simple Dinner Recipe: One-Pan Honey Mustard Pork Tenderloin (one-pan-honey-mustard-pork-tenderloin): 4/5 treatments [APPROACHING LIMIT]
-- Vegetarian Family Meals: Black Bean & Sweet Potato Tacos Everyone Will Eat (black-bean-sweet-potato-tacos): 4/5 treatments [APPROACHING LIMIT]
+- weekly-plan-spring-refresh-light-weeknight-dinners (weekly-plan-spring-refresh-light-weeknight-dinners): 4/5 treatments [APPROACHING LIMIT]
 - Instant Pot Chicken and Rice — Easy Family Dinner Ready in 25 Minutes (instant-pot-chicken-and-rice): 4/5 treatments [APPROACHING LIMIT]
 - Spring Vegetable Pasta Primavera — Easy Weeknight Dinner Ready in 20 Minutes (spring-vegetable-pasta-primavera): 4/5 treatments [APPROACHING LIMIT]
 - Better Than Hello Fresh — Build Your Own Flexible Weekly Meal Plan (better-than-hello-fresh-build-your-own-meal-plan): 4/5 treatments [APPROACHING LIMIT]
@@ -332,8 +323,8 @@ URLs with treatments in the last 60 days:
 - The Best HelloFresh Alternative for Flexible Weekly Family Dinners (hellofresh-alternative-weekly-family-dinners): 4/5 treatments [APPROACHING LIMIT]
 - Air Fryer Dinner Recipes: Lemon Pepper Salmon with Green Beans in 20 Minutes (air-fryer-lemon-pepper-salmon-green-beans): 4/5 treatments [APPROACHING LIMIT]
 - What to Cook for Dinner: Quick Grilled Steak Fajitas in 25 Minutes (quick-grilled-steak-fajitas): 4/5 treatments [APPROACHING LIMIT]
-- meals-for-picky-families-agreement-strategy (meals-for-picky-families-agreement-strategy): 3/5 treatments
-- 7 Reasons Families Are Quitting Meal Kits — and the Better Alternative (reasons-families-quitting-meal-kits): 3/5 treatments
+- one-pan-honey-mustard-pork-tenderloin (one-pan-honey-mustard-pork-tenderloin): 3/5 treatments
+- sheet-pan-chicken-drumsticks-roasted-vegetables (sheet-pan-chicken-drumsticks-roasted-vegetables): 3/5 treatments
 - Last Minute Dinner Sorted — Garlic Butter Sausage and Peppers in One Skillet (garlic-butter-sausage-and-peppers-skillet): 3/5 treatments
 - What Should I Make for Dinner? Creamy Mushroom Spinach Gnocchi in 20 Min (creamy-mushroom-spinach-gnocchi-20-minutes): 3/5 treatments
 - Air Fryer Crispy Parmesan Salmon Bites with Roasted Zucchini — 25 Min (air-fryer-crispy-parmesan-salmon-bites-roasted-zucchini): 3/5 treatments
@@ -341,16 +332,16 @@ URLs with treatments in the last 60 days:
 - High Protein Dinner: Keto Skillet Chicken Thighs with Garlic Butter Cauliflower (skillet-chicken-thighs-roasted-cauliflower-garlic-butter): 3/5 treatments
 - Cheesy Chicken and Rice Casserole — Easy Dinner Kids Will Actually Eat (cheesy-chicken-and-rice-casserole): 3/5 treatments
 - Gluten Free Dinner Ideas: Sheet Pan Sausage and Peppers with Potatoes (sheet-pan-sausage-and-peppers-with-potatoes): 3/5 treatments
-- hidden-veggie-mac-and-cheese-kids-love (hidden-veggie-mac-and-cheese-kids-love): 2/5 treatments
-- one-pan-lemon-herb-chicken-spring-vegetables (one-pan-lemon-herb-chicken-spring-vegetables): 2/5 treatments
-- 15-minute-teriyaki-salmon-bowls (15-minute-teriyaki-salmon-bowls): 2/5 treatments
-- creamy-tuscan-chicken-pasta (creamy-tuscan-chicken-pasta): 2/5 treatments
-- hellofresh-alternative-meal-planning (hellofresh-alternative-meal-planning): 2/5 treatments
-- air-fryer-honey-garlic-chicken-thighs (air-fryer-honey-garlic-chicken-thighs): 2/5 treatments
-- shrimp-avocado-tacos (shrimp-avocado-tacos): 2/5 treatments
+- slow-cooker-white-bean-kale-soup (slow-cooker-white-bean-kale-soup): 2/5 treatments
+- mini-turkey-taco-bowls-toddler-dinner-ideas (mini-turkey-taco-bowls-toddler-dinner-ideas): 2/5 treatments
+- reasons-families-quitting-meal-kits (reasons-families-quitting-meal-kits): 2/5 treatments
+- dinner-ideas-picky-eaters-family-meal-planning-system (dinner-ideas-picky-eaters-family-meal-planning-system): 2/5 treatments
+- black-bean-sweet-potato-tacos (black-bean-sweet-potato-tacos): 2/5 treatments
 - Easy Weeknight Dinner: Lemon Asparagus Pasta with White Beans (lemon-asparagus-pasta-white-beans): 2/5 treatments
 - 30 Minute Meal: Sheet Pan Chicken Sausage with Spring Vegetables (sheet-pan-chicken-sausage-spring-vegetables-mustard-glaze): 2/5 treatments
+- lemon-garlic-butter-shrimp-pasta (lemon-garlic-butter-shrimp-pasta): 2/5 treatments
 - Easy Dinner Ideas: One-Pan Honey Garlic Ground Beef and Broccoli in 25 Min (one-pan-honey-garlic-ground-beef-and-broccoli): 2/5 treatments
+- High Protein Turkey Meatball Bowls — Healthy Dinner the Whole Family Eats (high-protein-turkey-meatball-bowls): 2/5 treatments
 - One-Pan Garlic Butter Chicken with Orzo — Easy Weeknight Dinner in 30 Min (one-pan-garlic-butter-chicken-orzo): 2/5 treatments
 
 ## 8. PERFORMANCE HISTORY
@@ -358,7 +349,7 @@ URLs with treatments in the last 60 days:
 ### Per-Pillar Lifetime
   P0: 8 pins, 13 impr, 0 saves, save_rate=0.0%, trend=stable (recent=0.0%, prior=0.0%)
   P1: 149 pins, 159.0 impr, 0.0 saves, save_rate=0.0%, trend=stable (recent=0.0%, prior=0.0%)
-  P2: 97 pins, 330.0 impr, 3.0 saves, save_rate=0.9%, trend=declining (recent=0.0%, prior=0.9%)
+  P2: 97 pins, 330.0 impr, 3.0 saves, save_rate=0.9%, trend=stable (recent=0.0%, prior=0.0%)
   P3: 88 pins, 148.0 impr, 0.0 saves, save_rate=0.0%, trend=stable (recent=0.0%, prior=0.0%)
   P4: 32 pins, 8 impr, 0 saves, save_rate=0.0%, trend=stable (recent=0.0%, prior=0.0%)
   P5: 57 pins, 151 impr, 2 saves, save_rate=1.3%, trend=stable (recent=0.0%, prior=0.0%)
@@ -381,11 +372,11 @@ URLs with treatments in the last 60 days:
   hidden veggie recipes: 4 pins, 1 impr, 0 saves, save_rate=0.0%
 
 ### Compounding Signal
-  <30d: 165 pins, avg_impressions=0
-  30-60d: 230 pins, avg_impressions=3
-  60-90d: 36 pins, avg_impressions=1
+  <30d: 116 pins, avg_impressions=0
+  30-60d: 223 pins, avg_impressions=1
+  60-90d: 92 pins, avg_impressions=6
   90+d: 0 pins, avg_impressions=0
-  Verdict: active (60-90d avg > 50% of <30d)
+  Verdict: flat
 
 ### Top All-Time Performers
   - High Protein Turkey Meatball Bowls — Healthy Dinner Kids Act | save_rate=1.7%, 117 impr, 2 saves

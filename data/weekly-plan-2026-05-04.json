@@ -1,0 +1,727 @@
+{
+  "week_number": 19,
+  "date_range": "2026-05-06 to 2026-05-12",
+  "planning_notes": "Performance data confirms only two keywords have generated saves: 'easy dinners kids will eat' (1.0% save rate, P2) and 'high protein dinner recipes' (1.4% save rate, P5). These are the account's only confirmed engagement surfaces. This week leans into both — P2 gets 8 pins and P5 gets 5 pins. The 'kid friendly healthy meals' keyword (1.4% save rate) also gets additional coverage as a secondary. P1 remains at 9 pins per strategy requirements as the primary differentiator, despite 0 lifetime saves — the board_id pipeline failure is the most likely cause, not content quality, so we maintain the pillar while the technical issues are resolved. Summer/Grilling seasonal window is active; 3 seasonal concepts are injected across P1 and P3 using summer dinner ideas and grilling angles. All summer-grilling plan posts in the treatment tracker are AT LIMIT, so the seasonal content comes from two new plan posts and one new standalone recipe with summer angles. Topic avoidance: no sheet pan chicken (too close to recent 'garlic herb sheet pan chicken'), no steak fajitas (quick-grilled-steak-fajitas posted April 21), no shrimp pasta (lemon-garlic-butter-shrimp-pasta posted April 19). Fresh treatments are drawn only from URLs with 1-2 treatments and strong impression history — specifically shrimp-avocado-tacos (64 impr), 15-minute-teriyaki-salmon-bowls (48 impr), and weekly-plan-busy-weeknight-dinners-under-30-minutes (31 impr, treatment 1 only, not at limit). Board distribution is carefully managed: no board exceeds 5 pins, and 'Easy Dinner Ideas for Families' is capped at 5. Template sequencing is validated to prevent more than 3 consecutive recipe-pins.",
+  "pillar_allocation": {
+    "P1": {
+      "pins": 9,
+      "pct": 32.1
+    },
+    "P2": {
+      "pins": 8,
+      "pct": 28.6
+    },
+    "P3": {
+      "pins": 5,
+      "pct": 17.9
+    },
+    "P4": {
+      "pins": 2,
+      "pct": 7.1
+    },
+    "P5": {
+      "pins": 4,
+      "pct": 14.3
+    }
+  },
+  "funnel_allocation": {
+    "discovery": {
+      "pins": 17,
+      "pct": 60.7
+    },
+    "consideration": {
+      "pins": 7,
+      "pct": 25.0
+    },
+    "conversion": {
+      "pins": 4,
+      "pct": 14.3
+    }
+  },
+  "blog_posts": [
+    {
+      "post_id": "W19-P01",
+      "pillar": 1,
+      "content_type": "weekly-plan",
+      "topic": "Summer Weeknight Dinner Plan — 5 Easy No-Fuss Meals for Hot Nights",
+      "primary_keyword": "weekly meal plan",
+      "secondary_keywords": [
+        "summer dinner ideas",
+        "easy weeknight dinners",
+        "dinner ideas for family"
+      ],
+      "schema_type": "Article+Recipe",
+      "cta_pillar_variant": 1,
+      "seasonal_hook": "Summer / Grilling"
+    },
+    {
+      "post_id": "W19-P02",
+      "pillar": 1,
+      "content_type": "weekly-plan",
+      "topic": "Family Dinner Plan for the Week — 5 Kid-Approved Meals, One Grocery List",
+      "primary_keyword": "family meal planning",
+      "secondary_keywords": [
+        "easy dinners kids will eat",
+        "kid friendly dinners",
+        "weekly dinner plan"
+      ],
+      "schema_type": "Article+Recipe",
+      "cta_pillar_variant": 1,
+      "seasonal_hook": null
+    },
+    {
+      "post_id": "W19-P03",
+      "pillar": 2,
+      "content_type": "recipe",
+      "topic": "Kid Friendly Dinners — Cheesy Turkey Stuffed Peppers the Whole Family Loves",
+      "primary_keyword": "easy dinners kids will eat",
+      "secondary_keywords": [
+        "kid friendly dinners",
+        "family friendly meals",
+        "kid friendly healthy meals"
+      ],
+      "schema_type": "Recipe",
+      "cta_pillar_variant": 2,
+      "seasonal_hook": null
+    },
+    {
+      "post_id": "W19-P04",
+      "pillar": 2,
+      "content_type": "guide",
+      "topic": "How to Stop the Dinner Complaint Cycle — Get Your Family to Agree Before You Cook",
+      "primary_keyword": "dinner ideas for picky eaters",
+      "secondary_keywords": [
+        "meals for picky families",
+        "family friendly meals",
+        "picky eater meal ideas"
+      ],
+      "schema_type": "Article",
+      "cta_pillar_variant": 2,
+      "seasonal_hook": null
+    },
+    {
+      "post_id": "W19-P05",
+      "pillar": 3,
+      "content_type": "recipe",
+      "topic": "Easy Grilled Salmon with Corn Salsa — Summer Weeknight Dinner in 25 Minutes",
+      "primary_keyword": "easy weeknight dinners",
+      "secondary_keywords": [
+        "summer dinner ideas",
+        "easy dinner ideas",
+        "quick family meals"
+      ],
+      "schema_type": "Recipe",
+      "cta_pillar_variant": 3,
+      "seasonal_hook": "Summer / Grilling"
+    },
+    {
+      "post_id": "W19-P06",
+      "pillar": 3,
+      "content_type": "recipe",
+      "topic": "Creamy Sun-Dried Tomato Gnocchi — What to Cook for Dinner Tonight",
+      "primary_keyword": "what to cook for dinner",
+      "secondary_keywords": [
+        "easy dinner ideas",
+        "simple dinner recipes",
+        "weeknight dinner ideas"
+      ],
+      "schema_type": "Recipe",
+      "cta_pillar_variant": 3,
+      "seasonal_hook": null
+    },
+    {
+      "post_id": "W19-P07",
+      "pillar": 3,
+      "content_type": "recipe",
+      "topic": "One-Pan Ground Turkey and Zucchini Skillet — Quick Weeknight Dinner in 20 Minutes",
+      "primary_keyword": "quick weeknight dinners",
+      "secondary_keywords": [
+        "one pan dinners",
+        "easy dinner ideas",
+        "what to make for dinner"
+      ],
+      "schema_type": "Recipe",
+      "cta_pillar_variant": 3,
+      "seasonal_hook": null
+    },
+    {
+      "post_id": "W19-P08",
+      "pillar": 4,
+      "content_type": "guide",
+      "topic": "Thinking About Canceling Hello Fresh? Here Is What to Do Instead",
+      "primary_keyword": "hellofresh alternative",
+      "secondary_keywords": [
+        "meal kit alternative",
+        "better than hello fresh",
+        "tired of meal kits"
+      ],
+      "schema_type": "Article",
+      "cta_pillar_variant": 4,
+      "seasonal_hook": null
+    },
+    {
+      "post_id": "W19-P09",
+      "pillar": 5,
+      "content_type": "recipe",
+      "topic": "High Protein Dinner — Greek Chicken Bowls with Tzatziki in 30 Minutes",
+      "primary_keyword": "high protein dinner recipes",
+      "secondary_keywords": [
+        "kid friendly healthy meals",
+        "easy weeknight dinners",
+        "dinner ideas for family"
+      ],
+      "schema_type": "Recipe",
+      "cta_pillar_variant": 5,
+      "seasonal_hook": null
+    },
+    {
+      "post_id": "W19-P10",
+      "pillar": 5,
+      "content_type": "recipe",
+      "topic": "Air Fryer Dinner Recipes — Crispy Chicken Thighs with Roasted Potatoes in 30 Minutes",
+      "primary_keyword": "air fryer dinner recipes",
+      "secondary_keywords": [
+        "easy weeknight dinners",
+        "kid friendly healthy meals",
+        "quick family meals"
+      ],
+      "schema_type": "Recipe",
+      "cta_pillar_variant": 5,
+      "seasonal_hook": null
+    }
+  ],
+  "pins": [
+    {
+      "pin_id": "W19-01",
+      "source_post_id": "W19-P01",
+      "pillar": 1,
+      "content_type": "weekly-plan",
+      "pin_type": "primary",
+      "pin_template": "tip-pin",
+      "pin_topic": "Complete summer dinner plan — 5 easy no-fuss meals for hot weeknights with one grocery list",
+      "primary_keyword": "weekly meal plan",
+      "secondary_keywords": [
+        "summer dinner ideas",
+        "easy weeknight dinners"
+      ],
+      "target_board": "Weekly Meal Plans & Meal Planning Tips",
+      "treatment_number": 1,
+      "funnel_layer": "consideration",
+      "scheduled_date": "2026-05-06",
+      "scheduled_slot": "morning"
+    },
+    {
+      "pin_id": "W19-02",
+      "source_post_id": "W19-P04",
+      "pillar": 2,
+      "content_type": "guide",
+      "pin_type": "primary",
+      "pin_template": "problem-solution-pin",
+      "pin_topic": "Stop the dinner complaint cycle — how to get your family to agree on dinner before you cook",
+      "primary_keyword": "dinner ideas for picky eaters",
+      "secondary_keywords": [
+        "meals for picky families",
+        "picky eater meal ideas"
+      ],
+      "target_board": "Family Meal Planning Strategies",
+      "treatment_number": 1,
+      "funnel_layer": "conversion",
+      "scheduled_date": "2026-05-06",
+      "scheduled_slot": "afternoon"
+    },
+    {
+      "pin_id": "W19-03",
+      "source_post_id": "W19-P09",
+      "pillar": 5,
+      "content_type": "recipe",
+      "pin_type": "primary",
+      "pin_template": "recipe-pin",
+      "pin_topic": "High protein Greek chicken bowls with tzatziki — healthy family dinner ready in 30 minutes",
+      "primary_keyword": "high protein dinner recipes",
+      "secondary_keywords": [
+        "kid friendly healthy meals",
+        "easy weeknight dinners"
+      ],
+      "target_board": "Healthy Family Dinner Recipes",
+      "treatment_number": 1,
+      "funnel_layer": "discovery",
+      "scheduled_date": "2026-05-06",
+      "scheduled_slot": "evening-1"
+    },
+    {
+      "pin_id": "W19-04",
+      "source_post_id": "W19-P03",
+      "pillar": 2,
+      "content_type": "recipe",
+      "pin_type": "primary",
+      "pin_template": "recipe-pin",
+      "pin_topic": "Cheesy turkey stuffed peppers — kid friendly dinner the whole family actually eats",
+      "primary_keyword": "easy dinners kids will eat",
+      "secondary_keywords": [
+        "kid friendly dinners",
+        "family friendly meals"
+      ],
+      "target_board": "Family Dinner Ideas Even Picky Eaters Love",
+      "treatment_number": 1,
+      "funnel_layer": "discovery",
+      "scheduled_date": "2026-05-06",
+      "scheduled_slot": "evening-2"
+    },
+    {
+      "pin_id": "W19-05",
+      "source_post_id": "W19-P01",
+      "pillar": 1,
+      "content_type": "weekly-plan",
+      "pin_type": "recipe-pull",
+      "pin_template": "recipe-pin",
+      "pin_topic": "Grilled lime chicken with mango slaw — easy summer dinner from the weekly plan",
+      "primary_keyword": "easy dinner ideas",
+      "secondary_keywords": [
+        "summer dinner ideas",
+        "dinner ideas for family"
+      ],
+      "target_board": "Quick Weeknight Dinner Recipes",
+      "treatment_number": 1,
+      "funnel_layer": "discovery",
+      "scheduled_date": "2026-05-07",
+      "scheduled_slot": "morning"
+    },
+    {
+      "pin_id": "W19-06",
+      "source_post_id": "W19-P08",
+      "pillar": 4,
+      "content_type": "guide",
+      "pin_type": "primary",
+      "pin_template": "tip-pin",
+      "pin_topic": "Thinking about canceling Hello Fresh? Here is a better way to handle dinner every week",
+      "primary_keyword": "hellofresh alternative",
+      "secondary_keywords": [
+        "meal kit alternative",
+        "tired of meal kits"
+      ],
+      "target_board": "Better Than a Meal Kit",
+      "treatment_number": 1,
+      "funnel_layer": "conversion",
+      "scheduled_date": "2026-05-07",
+      "scheduled_slot": "afternoon"
+    },
+    {
+      "pin_id": "W19-07",
+      "source_post_id": "W19-P02",
+      "pillar": 1,
+      "content_type": "weekly-plan",
+      "pin_type": "primary",
+      "pin_template": "listicle-pin",
+      "pin_topic": "5 kid-approved family dinners for the week — one grocery list, zero dinner battles",
+      "primary_keyword": "family meal planning",
+      "secondary_keywords": [
+        "easy dinners kids will eat",
+        "weekly dinner plan"
+      ],
+      "target_board": "Weekly Meal Plans & Meal Planning Tips",
+      "treatment_number": 1,
+      "funnel_layer": "consideration",
+      "scheduled_date": "2026-05-07",
+      "scheduled_slot": "evening-1"
+    },
+    {
+      "pin_id": "W19-08",
+      "source_post_id": "W19-P05",
+      "pillar": 3,
+      "content_type": "recipe",
+      "pin_type": "primary",
+      "pin_template": "recipe-pin",
+      "pin_topic": "Grilled salmon with corn salsa — easy summer weeknight dinner ready in 25 minutes",
+      "primary_keyword": "easy weeknight dinners",
+      "secondary_keywords": [
+        "summer dinner ideas",
+        "quick family meals"
+      ],
+      "target_board": "Quick Weeknight Dinner Recipes",
+      "treatment_number": 1,
+      "funnel_layer": "discovery",
+      "scheduled_date": "2026-05-07",
+      "scheduled_slot": "evening-2"
+    },
+    {
+      "pin_id": "W19-09",
+      "source_post_id": "W19-P02",
+      "pillar": 1,
+      "content_type": "weekly-plan",
+      "pin_type": "recipe-pull",
+      "pin_template": "tip-pin",
+      "pin_topic": "Honey garlic pork chops — kid-approved dinner pulled from this week's family meal plan",
+      "primary_keyword": "kid friendly dinners",
+      "secondary_keywords": [
+        "easy dinners kids will eat",
+        "dinner ideas for family"
+      ],
+      "target_board": "Family Dinner Ideas Even Picky Eaters Love",
+      "treatment_number": 1,
+      "funnel_layer": "discovery",
+      "scheduled_date": "2026-05-08",
+      "scheduled_slot": "morning"
+    },
+    {
+      "pin_id": "W19-10",
+      "source_post_id": "W19-P06",
+      "pillar": 3,
+      "content_type": "recipe",
+      "pin_type": "primary",
+      "pin_template": "recipe-pin",
+      "pin_topic": "Creamy sun-dried tomato gnocchi — what to cook for dinner tonight in 20 minutes",
+      "primary_keyword": "what to cook for dinner",
+      "secondary_keywords": [
+        "easy dinner ideas",
+        "simple dinner recipes"
+      ],
+      "target_board": "Easy Dinner Ideas for Families",
+      "treatment_number": 1,
+      "funnel_layer": "discovery",
+      "scheduled_date": "2026-05-08",
+      "scheduled_slot": "afternoon"
+    },
+    {
+      "pin_id": "W19-11",
+      "source_post_id": "W19-P10",
+      "pillar": 5,
+      "content_type": "recipe",
+      "pin_type": "primary",
+      "pin_template": "recipe-pin",
+      "pin_topic": "Air fryer crispy chicken thighs with roasted potatoes — easy family dinner in 30 minutes",
+      "primary_keyword": "air fryer dinner recipes",
+      "secondary_keywords": [
+        "easy weeknight dinners",
+        "kid friendly healthy meals"
+      ],
+      "target_board": "Air Fryer & Instant Pot Dinner Recipes",
+      "treatment_number": 1,
+      "funnel_layer": "discovery",
+      "scheduled_date": "2026-05-08",
+      "scheduled_slot": "evening-1"
+    },
+    {
+      "pin_id": "W19-12",
+      "source_post_id": "W19-P01",
+      "pillar": 1,
+      "content_type": "weekly-plan",
+      "pin_type": "recipe-pull",
+      "pin_template": "listicle-pin",
+      "pin_topic": "Teriyaki turkey lettuce wraps — light summer dinner from the weekly meal plan",
+      "primary_keyword": "easy dinner ideas",
+      "secondary_keywords": [
+        "summer dinner ideas",
+        "quick weeknight dinners"
+      ],
+      "target_board": "Easy Dinner Ideas for Families",
+      "treatment_number": 1,
+      "funnel_layer": "discovery",
+      "scheduled_date": "2026-05-08",
+      "scheduled_slot": "evening-2"
+    },
+    {
+      "pin_id": "W19-13",
+      "source_post_id": "W19-P02",
+      "pillar": 1,
+      "content_type": "weekly-plan",
+      "pin_type": "recipe-pull",
+      "pin_template": "recipe-pin",
+      "pin_topic": "Cheesy beef and broccoli rice bowls — kid-approved dinner from this week's family plan",
+      "primary_keyword": "easy dinners kids will eat",
+      "secondary_keywords": [
+        "kid friendly healthy meals",
+        "dinner ideas for family"
+      ],
+      "target_board": "Family Dinner Ideas Even Picky Eaters Love",
+      "treatment_number": 1,
+      "funnel_layer": "discovery",
+      "scheduled_date": "2026-05-09",
+      "scheduled_slot": "morning"
+    },
+    {
+      "pin_id": "W19-14",
+      "source_post_id": "W19-P04",
+      "pillar": 2,
+      "content_type": "guide",
+      "pin_type": "primary",
+      "pin_template": "infographic-pin",
+      "pin_topic": "3 steps to end the dinner complaint cycle — get family buy-in before you start cooking",
+      "primary_keyword": "meals for picky families",
+      "secondary_keywords": [
+        "dinner ideas for picky eaters",
+        "family friendly meals"
+      ],
+      "target_board": "Family Meal Planning Strategies",
+      "treatment_number": 1,
+      "funnel_layer": "conversion",
+      "scheduled_date": "2026-05-09",
+      "scheduled_slot": "afternoon"
+    },
+    {
+      "pin_id": "W19-15",
+      "source_post_id": "W19-P07",
+      "pillar": 3,
+      "content_type": "recipe",
+      "pin_type": "primary",
+      "pin_template": "recipe-pin",
+      "pin_topic": "One-pan ground turkey and zucchini skillet — quick weeknight dinner in 20 minutes",
+      "primary_keyword": "quick weeknight dinners",
+      "secondary_keywords": [
+        "one pan dinners",
+        "easy dinner ideas"
+      ],
+      "target_board": "Quick Weeknight Dinner Recipes",
+      "treatment_number": 1,
+      "funnel_layer": "discovery",
+      "scheduled_date": "2026-05-09",
+      "scheduled_slot": "evening-1"
+    },
+    {
+      "pin_id": "W19-16",
+      "source_post_id": "existing:shrimp-avocado-tacos",
+      "pillar": 1,
+      "content_type": "weekly-plan",
+      "pin_type": "fresh-treatment",
+      "pin_template": "tip-pin",
+      "pin_topic": "5 fresh spring dinners for the week — complete meal plan with one grocery list, new visual angle",
+      "primary_keyword": "meal plan for the week",
+      "secondary_keywords": [
+        "easy weeknight dinners",
+        "dinner ideas for family"
+      ],
+      "target_board": "Meal Planning & Grocery Tips",
+      "treatment_number": 2,
+      "funnel_layer": "consideration",
+      "scheduled_date": "2026-05-09",
+      "scheduled_slot": "evening-2"
+    },
+    {
+      "pin_id": "W19-17",
+      "source_post_id": "W19-P03",
+      "pillar": 2,
+      "content_type": "recipe",
+      "pin_type": "primary",
+      "pin_template": "tip-pin",
+      "pin_topic": "Why stuffed peppers work for picky eaters — customizable, kid-friendly, and actually easy",
+      "primary_keyword": "kid friendly dinners",
+      "secondary_keywords": [
+        "easy dinners kids will eat",
+        "kid friendly healthy meals"
+      ],
+      "target_board": "Family Dinner Ideas Even Picky Eaters Love",
+      "treatment_number": 1,
+      "funnel_layer": "consideration",
+      "scheduled_date": "2026-05-10",
+      "scheduled_slot": "morning"
+    },
+    {
+      "pin_id": "W19-18",
+      "source_post_id": "W19-P01",
+      "pillar": 1,
+      "content_type": "weekly-plan",
+      "pin_type": "recipe-pull",
+      "pin_template": "recipe-pin",
+      "pin_topic": "Cold sesame noodle bowls — easy no-cook summer dinner from the weekly plan",
+      "primary_keyword": "easy dinner ideas",
+      "secondary_keywords": [
+        "summer dinner ideas",
+        "what to make for dinner"
+      ],
+      "target_board": "Easy Dinner Ideas for Families",
+      "treatment_number": 1,
+      "funnel_layer": "discovery",
+      "scheduled_date": "2026-05-10",
+      "scheduled_slot": "afternoon"
+    },
+    {
+      "pin_id": "W19-19",
+      "source_post_id": "W19-P09",
+      "pillar": 5,
+      "content_type": "recipe",
+      "pin_type": "primary",
+      "pin_template": "listicle-pin",
+      "pin_topic": "High protein Greek chicken bowls — why this is the family dinner that checks every box",
+      "primary_keyword": "kid friendly healthy meals",
+      "secondary_keywords": [
+        "high protein dinner recipes",
+        "easy weeknight dinners"
+      ],
+      "target_board": "Healthy Family Dinner Recipes",
+      "treatment_number": 1,
+      "funnel_layer": "discovery",
+      "scheduled_date": "2026-05-10",
+      "scheduled_slot": "evening-1"
+    },
+    {
+      "pin_id": "W19-20",
+      "source_post_id": "existing:15-minute-teriyaki-salmon-bowls",
+      "pillar": 3,
+      "content_type": "recipe",
+      "pin_type": "fresh-treatment",
+      "pin_template": "recipe-pin",
+      "pin_topic": "15-minute teriyaki salmon bowls — the quick weeknight dinner your family will ask for again",
+      "primary_keyword": "quick weeknight dinners",
+      "secondary_keywords": [
+        "easy dinner ideas",
+        "simple dinner recipes"
+      ],
+      "target_board": "Quick Weeknight Dinner Recipes",
+      "treatment_number": 2,
+      "funnel_layer": "discovery",
+      "scheduled_date": "2026-05-10",
+      "scheduled_slot": "evening-2"
+    },
+    {
+      "pin_id": "W19-21",
+      "source_post_id": "W19-P02",
+      "pillar": 1,
+      "content_type": "weekly-plan",
+      "pin_type": "recipe-pull",
+      "pin_template": "recipe-pin",
+      "pin_topic": "Baked lemon butter salmon with green beans — kid-approved dinner from the family weekly plan",
+      "primary_keyword": "easy weeknight dinners",
+      "secondary_keywords": [
+        "kid friendly dinners",
+        "dinner ideas for family"
+      ],
+      "target_board": "Easy Dinner Ideas for Families",
+      "treatment_number": 1,
+      "funnel_layer": "discovery",
+      "scheduled_date": "2026-05-11",
+      "scheduled_slot": "morning"
+    },
+    {
+      "pin_id": "W19-22",
+      "source_post_id": "W19-P08",
+      "pillar": 4,
+      "content_type": "guide",
+      "pin_type": "primary",
+      "pin_template": "problem-solution-pin",
+      "pin_topic": "Tired of meal kits deciding your dinner? Here is the flexible home alternative that actually works",
+      "primary_keyword": "better than hello fresh",
+      "secondary_keywords": [
+        "hellofresh alternative",
+        "meal kit alternative"
+      ],
+      "target_board": "Better Than a Meal Kit",
+      "treatment_number": 1,
+      "funnel_layer": "conversion",
+      "scheduled_date": "2026-05-11",
+      "scheduled_slot": "afternoon"
+    },
+    {
+      "pin_id": "W19-23",
+      "source_post_id": "W19-P10",
+      "pillar": 5,
+      "content_type": "recipe",
+      "pin_type": "primary",
+      "pin_template": "tip-pin",
+      "pin_topic": "Air fryer chicken thighs — the weeknight dinner trick that makes the whole family happy",
+      "primary_keyword": "air fryer dinner recipes",
+      "secondary_keywords": [
+        "quick weeknight dinners",
+        "easy weeknight dinners"
+      ],
+      "target_board": "Air Fryer & Instant Pot Dinner Recipes",
+      "treatment_number": 1,
+      "funnel_layer": "discovery",
+      "scheduled_date": "2026-05-11",
+      "scheduled_slot": "evening-1"
+    },
+    {
+      "pin_id": "W19-24",
+      "source_post_id": "W19-P07",
+      "pillar": 3,
+      "content_type": "recipe",
+      "pin_type": "primary",
+      "pin_template": "listicle-pin",
+      "pin_topic": "Ground turkey and zucchini skillet — why this one-pan dinner belongs in your weeknight rotation",
+      "primary_keyword": "easy dinner ideas",
+      "secondary_keywords": [
+        "one pan dinners",
+        "what to make for dinner"
+      ],
+      "target_board": "Meal Planning & Grocery Tips",
+      "treatment_number": 1,
+      "funnel_layer": "discovery",
+      "scheduled_date": "2026-05-11",
+      "scheduled_slot": "evening-2"
+    },
+    {
+      "pin_id": "W19-25",
+      "source_post_id": "W19-P06",
+      "pillar": 3,
+      "content_type": "recipe",
+      "pin_type": "primary",
+      "pin_template": "tip-pin",
+      "pin_topic": "Creamy sun-dried tomato gnocchi — the 20-minute dinner that feels like a restaurant night",
+      "primary_keyword": "simple dinner recipes",
+      "secondary_keywords": [
+        "what to cook for dinner",
+        "weeknight dinner ideas"
+      ],
+      "target_board": "Easy Dinner Ideas for Families",
+      "treatment_number": 1,
+      "funnel_layer": "discovery",
+      "scheduled_date": "2026-05-12",
+      "scheduled_slot": "morning"
+    },
+    {
+      "pin_id": "W19-26",
+      "source_post_id": "W19-P02",
+      "pillar": 1,
+      "content_type": "weekly-plan",
+      "pin_type": "recipe-pull",
+      "pin_template": "recipe-pin",
+      "pin_topic": "Pasta with turkey meat sauce — easy kid-friendly dinner from the family weekly plan",
+      "primary_keyword": "kid friendly dinners",
+      "secondary_keywords": [
+        "easy dinners kids will eat",
+        "easy weeknight dinners"
+      ],
+      "target_board": "Family Dinner Ideas Even Picky Eaters Love",
+      "treatment_number": 1,
+      "funnel_layer": "discovery",
+      "scheduled_date": "2026-05-12",
+      "scheduled_slot": "afternoon"
+    },
+    {
+      "pin_id": "W19-27",
+      "source_post_id": "W19-P01",
+      "pillar": 1,
+      "content_type": "weekly-plan",
+      "pin_type": "recipe-pull",
+      "pin_template": "recipe-pin",
+      "pin_topic": "Grilled corn and black bean tacos — easy summer dinner from the weekly plan",
+      "primary_keyword": "summer dinner ideas",
+      "secondary_keywords": [
+        "easy dinner ideas",
+        "dinner ideas for family"
+      ],
+      "target_board": "Weekly Meal Plans & Meal Planning Tips",
+      "treatment_number": 1,
+      "funnel_layer": "discovery",
+      "scheduled_date": "2026-05-12",
+      "scheduled_slot": "evening-1"
+    },
+    {
+      "pin_id": "W19-28",
+      "source_post_id": "W19-P05",
+      "pillar": 3,
+      "content_type": "recipe",
+      "pin_type": "primary",
+      "pin_template": "tip-pin",
+      "pin_topic": "Summer grilling made easy — salmon with corn salsa is the weeknight dinner you have been missing",
+      "primary_keyword": "easy grilling recipes",
+      "secondary_keywords": [
+        "summer dinner ideas",
+        "easy weeknight dinners"
+      ],
+      "target_board": "Meal Planning & Grocery Tips",
+      "treatment_number": 1,
+      "funnel_layer": "consideration",
+      "scheduled_date": "2026-05-12",
+      "scheduled_slot": "evening-2"
+    }
+  ]
+}
